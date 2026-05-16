@@ -6,6 +6,15 @@ vim.opt.guifont = "HackGen Console NF:h12"
 vim.opt.relativenumber = false
 vim.opt.wildmode = { "longest", "list" }
 
+-- denops globals: must exist before VimEnter, otherwise denops.vim can fail
+-- with `E121: Undefined variable: g:denops#disabled` during startup.
+-- The actual Deno executable path is resolved later in lua/config/skkeleton.lua.
+vim.g["denops#disabled"] = 0
+vim.g["denops#deno"] = "deno"
+vim.g["denops#deno_dir"] = vim.fn.stdpath("cache") .. "/denops"
+vim.g["denops#debug"] = 0
+vim.g["denops#disable_deprecation_warning_message"] = 1
+
 if vim.fn.has("win32") == 1 then
 	vim.opt.shell = "powershell"
 	vim.opt.shellcmdflag = "-NoLogo -NoProfile -ExecutionPolicy RemoteSigned -Command"
