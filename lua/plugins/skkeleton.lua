@@ -51,6 +51,7 @@ end
 
 return {
   { "vim-denops/denops.vim", lazy = true },
+  { "delphinus/skkeleton_indicator.nvim", opts = {} },
 
   {
     "vim-skk/skkeleton",
