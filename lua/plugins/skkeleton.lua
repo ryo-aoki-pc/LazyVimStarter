@@ -1,30 +1,68 @@
 local skk_data_dir = vim.fn.stdpath("data") .. "/skk"
 local skk_dict_dir = skk_data_dir .. "/dict"
 
--- skkeleton が直接読めない EUC-JIS-2004 系辞書を iconv で UTF-8 化する
-local function convert_dict_to_utf8(name, src_enc)
-  local src = skk_dict_dir .. "/" .. name
-  local dst = skk_dict_dir .. "/" .. name .. ".utf8"
-  if vim.fn.filereadable(src) ~= 1 then
-    return
+-- 登録対象辞書 (相対パス). 順序は変換候補の優先順.
+local dict_names = {
+  "SKK-JISYO.L",
+  "SKK-JISYO.pubdic+",
+  "SKK-JISYO.jinmei",
+  "SKK-JISYO.fullname",
+  "SKK-JISYO.geo",
+  "SKK-JISYO.station",
+  "SKK-JISYO.propernoun",
+  "SKK-JISYO.assoc",
+  "SKK-JISYO.requested",
+  "SKK-JISYO.notes",
+  "SKK-JISYO.hukugougo",
+  "SKK-JISYO.edict2",
+  "SKK-JISYO.emoji",
+  "zipcode/SKK-JISYO.zipcode",
+  "zipcode/SKK-JISYO.office.zipcode",
+  "SKK-JISYO.JIS2004",
+  "SKK-JISYO.JIS3_4",
+  "SKK-JISYO.itaiji",
+  "SKK-JISYO.itaiji.JIS3_4",
+}
+
+-- 辞書ファイル先頭の `;; -*- ... coding: <enc> ... -*-` 宣言を取得
+local function read_coding(path)
+  if vim.fn.filereadable(path) ~= 1 then
+    return ""
   end
-  -- src 側が新しくなったときだけ再変換
-  if vim.fn.filereadable(dst) == 1 and vim.fn.getftime(dst) >= vim.fn.getftime(src) then
-    return
+  local first = (vim.fn.readfile(path, "", 1)[1] or ""):lower()
+  return first:match("coding:%s*([%w%-_]+)") or ""
+end
+
+-- 1 辞書を「skkeleton に渡せる形」(path 単体または {path, enc} タプル) に解決し,
+-- 必要なら iconv で .utf8 を生成する (副作用).
+-- - coding が utf-8/euc-jp の場合: パス文字列を返す (skkeleton 自動判定)
+-- - coding が euc-jis-2004 / euc-jisx0213 の場合: 同名 + ".utf8" を作って {path, "utf-8"} を返す
+-- - 宣言が読めない場合: パス文字列を返す (自動判定にフォールバック)
+local function resolve_dict(rel_path)
+  local src = skk_dict_dir .. "/" .. rel_path
+  local coding = read_coding(src)
+  if coding:match("euc%-jis%-2004") or coding:match("euc%-jisx0213") then
+    local dst = src .. ".utf8"
+    if
+      vim.fn.filereadable(src) == 1
+      and (vim.fn.filereadable(dst) ~= 1 or vim.fn.getftime(dst) < vim.fn.getftime(src))
+    then
+      vim.notify("Converting " .. rel_path .. " (" .. coding .. " -> UTF-8)...", vim.log.levels.INFO)
+      local out = vim.fn.system({ "iconv", "-f", "EUC-JISX0213", "-t", "UTF-8", src })
+      if vim.v.shell_error ~= 0 then
+        vim.notify("iconv failed for " .. rel_path .. ":\n" .. out, vim.log.levels.ERROR)
+      else
+        local f = io.open(dst, "wb")
+        if f then
+          f:write(out)
+          f:close()
+        end
+      end
+    end
+    return { dst, "utf-8" }
   end
-  vim.notify("Converting " .. name .. " (" .. src_enc .. " -> UTF-8)...", vim.log.levels.INFO)
-  local out = vim.fn.system({ "iconv", "-f", src_enc, "-t", "UTF-8", src })
-  if vim.v.shell_error ~= 0 then
-    vim.notify("iconv failed for " .. name .. " (PATH に iconv が必要):\n" .. out, vim.log.levels.ERROR)
-    return
-  end
-  local f = io.open(dst, "wb")
-  if not f then
-    vim.notify("Cannot write " .. dst, vim.log.levels.ERROR)
-    return
-  end
-  f:write(out)
-  f:close()
+  -- それ以外 (euc-jp / utf-8 / 不明) は skkeleton の自動判定に任せる
+  return src
 end
 
 local function ensure_skk_dict()
@@ -43,10 +81,10 @@ local function ensure_skk_dict()
       return
     end
   end
-  -- EUC-JIS-2004 系辞書を UTF-8 へ事前変換 (skkeleton は euc-jp/sjis/utf-8 のみ対応)
-  convert_dict_to_utf8("SKK-JISYO.JIS2004", "EUC-JISX0213")
-  convert_dict_to_utf8("SKK-JISYO.JIS3_4", "EUC-JISX0213")
-  convert_dict_to_utf8("SKK-JISYO.itaiji.JIS3_4", "EUC-JISX0213")
+  -- 全辞書をスキャンして coding 宣言を読み, 必要なものだけ変換 (resolve_dict が副作用で行う)
+  for _, name in ipairs(dict_names) do
+    resolve_dict(name)
+  end
 end
 
 return {
@@ -63,35 +101,14 @@ return {
       vim.api.nvim_create_autocmd("User", {
         pattern = "skkeleton-initialize-pre",
         callback = function()
+          -- resolve_dict は副作用 (.utf8 生成) を伴うが冪等. coding 宣言を見て
+          -- 必要なら iconv で UTF-8 化し, skkeleton に渡せる形 (string or {path, enc}) を返す.
+          local dicts = {}
+          for _, name in ipairs(dict_names) do
+            table.insert(dicts, resolve_dict(name))
+          end
           vim.fn["skkeleton#config"]({
-            globalDictionaries = {
-              -- 基本
-              skk_dict_dir .. "/SKK-JISYO.L",
-              skk_dict_dir .. "/SKK-JISYO.pubdic+",
-              -- 固有名詞
-              skk_dict_dir .. "/SKK-JISYO.jinmei",
-              skk_dict_dir .. "/SKK-JISYO.fullname",
-              skk_dict_dir .. "/SKK-JISYO.geo",
-              skk_dict_dir .. "/SKK-JISYO.station",
-              skk_dict_dir .. "/SKK-JISYO.propernoun",
-              -- 連想・補強
-              skk_dict_dir .. "/SKK-JISYO.assoc",
-              skk_dict_dir .. "/SKK-JISYO.requested",
-              skk_dict_dir .. "/SKK-JISYO.notes",
-              skk_dict_dir .. "/SKK-JISYO.hukugougo",
-              -- 英和
-              skk_dict_dir .. "/SKK-JISYO.edict2",
-              -- 絵文字 (UTF-8 と明示)
-              { skk_dict_dir .. "/SKK-JISYO.emoji", "utf-8" },
-              -- 郵便番号 (zipcode サブディレクトリ)
-              skk_dict_dir .. "/zipcode/SKK-JISYO.zipcode",
-              skk_dict_dir .. "/zipcode/SKK-JISYO.office.zipcode",
-              -- 異体字 (EUC-JIS-2004 由来の 3 つは build フックで UTF-8 化済み)
-              { skk_dict_dir .. "/SKK-JISYO.JIS2004.utf8", "utf-8" },
-              { skk_dict_dir .. "/SKK-JISYO.JIS3_4.utf8", "utf-8" },
-              skk_dict_dir .. "/SKK-JISYO.itaiji", -- 純 EUC-JP
-              { skk_dict_dir .. "/SKK-JISYO.itaiji.JIS3_4.utf8", "utf-8" },
-            },
+            globalDictionaries = dicts,
             eggLikeNewline = true,
             registerConvertResult = true,
           })
