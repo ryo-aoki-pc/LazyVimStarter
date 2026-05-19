@@ -35,11 +35,32 @@ return {
         callback = function()
           vim.fn["skkeleton#config"]({
             globalDictionaries = {
+              -- 基本
               skk_dict_dir .. "/SKK-JISYO.L",
+              skk_dict_dir .. "/SKK-JISYO.pubdic+",
+              -- 固有名詞
               skk_dict_dir .. "/SKK-JISYO.jinmei",
+              skk_dict_dir .. "/SKK-JISYO.fullname",
               skk_dict_dir .. "/SKK-JISYO.geo",
               skk_dict_dir .. "/SKK-JISYO.station",
               skk_dict_dir .. "/SKK-JISYO.propernoun",
+              -- 連想・補強
+              skk_dict_dir .. "/SKK-JISYO.assoc",
+              skk_dict_dir .. "/SKK-JISYO.requested",
+              skk_dict_dir .. "/SKK-JISYO.notes",
+              skk_dict_dir .. "/SKK-JISYO.hukugougo",
+              -- 英和
+              skk_dict_dir .. "/SKK-JISYO.edict2",
+              -- 絵文字 (UTF-8 と明示)
+              { skk_dict_dir .. "/SKK-JISYO.emoji", "utf-8" },
+              -- 郵便番号 (zipcode サブディレクトリ)
+              skk_dict_dir .. "/zipcode/SKK-JISYO.zipcode",
+              skk_dict_dir .. "/zipcode/SKK-JISYO.office.zipcode",
+              -- 異体字
+              skk_dict_dir .. "/SKK-JISYO.JIS2004",
+              skk_dict_dir .. "/SKK-JISYO.JIS3_4",
+              skk_dict_dir .. "/SKK-JISYO.itaiji",
+              skk_dict_dir .. "/SKK-JISYO.itaiji.JIS3_4",
             },
             eggLikeNewline = true,
             registerConvertResult = true,
