@@ -4,4 +4,19 @@
 --       nvim-lint + none-ls (lint 診断) / markdown-preview.nvim (<leader>cp) / render-markdown.nvim
 return {
   { import = "lazyvim.plugins.extras.lang.markdown" },
+
+  -- prettier の Markdown 整形: prose (本文) の改行を維持する。
+  -- conform は formatters テーブルをマージするので、extra の markdown-toc /
+  -- markdownlint-cli2 の条件や formatters_by_ft の順序はそのまま保たれる。
+  {
+    "stevearc/conform.nvim",
+    optional = true,
+    opts = {
+      formatters = {
+        prettier = {
+          prepend_args = { "--prose-wrap", "preserve" },
+        },
+      },
+    },
+  },
 }
