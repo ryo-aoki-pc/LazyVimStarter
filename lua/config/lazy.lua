@@ -18,6 +18,10 @@ require("lazy").setup({
   spec = {
     -- add LazyVim and import its plugins
     { "LazyVim/LazyVim", import = "lazyvim.plugins" },
+    -- import any extras modules here
+    -- (lazyvim.json は gitignore のため、リポジトリで追跡できる import で extra を有効化する。
+    --  LazyVim の順序チェックのため extra は lazyvim.plugins の後・plugins の前に置く)
+    { import = "lazyvim.plugins.extras.lang.markdown" },
     -- import/override with your plugins
     { import = "plugins" },
   },

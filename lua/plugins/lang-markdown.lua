@@ -1,10 +1,9 @@
--- Markdown 言語サポート (LazyVim extra)
--- lazyvim.json は gitignore されているため、リポジトリで追跡できる import スペックで有効化する。
--- 内容: marksman LSP / markdownlint-cli2 + markdown-toc / conform (整形) /
+-- Markdown 言語サポート (LazyVim extra) の設定上書き。
+-- extra 本体の有効化は lua/config/lazy.lua の import で行う (import 順序チェックのため
+-- extra は lazyvim.plugins の後・plugins の前に置く必要があり、plugins 配下のここでは遅すぎるため)。
+-- extra の内容: marksman LSP / markdownlint-cli2 + markdown-toc / conform (整形) /
 --       nvim-lint + none-ls (lint 診断) / markdown-preview.nvim (<leader>cp) / render-markdown.nvim
 return {
-  { import = "lazyvim.plugins.extras.lang.markdown" },
-
   -- GLFM (GitLab Flavored Markdown) を壊さず整形するため、markdown の整形連鎖から
   -- prettier を除外する。prettier は数式 $...$ の \$ 化・複数行脚注の破壊・[[_TOC_]] の
   -- 再整形などで GLFM 固有構文を壊すため。代わりに GitLab 公式も採用する
