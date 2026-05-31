@@ -1,6 +1,12 @@
 local skk_data_dir = vim.fn.stdpath("data") .. "/skk"
 local skk_dict_dir = skk_data_dir .. "/dict"
 
+-- 補完候補の表示順を保存するファイル (data 配下: 学習した順位はセッション間で残したいため).
+local skk_completion_rank = skk_data_dir .. "/completion-rank.json"
+-- 辞書解析結果の Deno KV キャッシュ (cache 配下: 辞書から再生成可能。2 回目以降の初回 <C-j> を高速化).
+local skk_database_dir = vim.fn.stdpath("cache") .. "/skkeleton"
+local skk_database_path = skk_database_dir .. "/dict-cache.db"
+
 -- 登録対象辞書 (相対パス). 順序は変換候補の優先順.
 local dict_names = {
   "SKK-JISYO.L",
@@ -121,10 +127,18 @@ return {
           for _, name in ipairs(dict_names) do
             table.insert(dicts, resolve_dict(name))
           end
+          -- completionRankFile / databasePath の親ディレクトリを保証する。
+          -- skkeleton (Deno KV) はファイルは作るが親ディレクトリは作らないため。mkdir -p は冪等。
+          vim.fn.mkdir(skk_data_dir, "p")
+          vim.fn.mkdir(skk_database_dir, "p")
           vim.fn["skkeleton#config"]({
             globalDictionaries = dicts,
             eggLikeNewline = true,
             registerConvertResult = true,
+            -- 補完候補の表示順をファイルに保存して永続化する (未設定だと毎セッション初期化される).
+            completionRankFile = skk_completion_rank,
+            -- 辞書を Deno KV でDB化し、2 回目以降の起動 (初回 <C-j>) の辞書ロードを高速化する.
+            databasePath = skk_database_path,
           })
         end,
       })
