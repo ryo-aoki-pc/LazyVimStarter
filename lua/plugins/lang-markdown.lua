@@ -11,6 +11,11 @@ return {
   -- markdownlint-cli2 --fix に任せる (リント違反のみ修正し、本文や GLFM 構文は書き換えない)。
   -- formatters_by_ft の値はリストなので deep-merge で「置換」され、extra の連鎖を上書きする。
   -- markdown.mdx (JSX 混在) は GLFM ではないため extra 既定 (prettier 含む) のまま残す。
+  --
+  -- 一部だけ整形: 整形したい行をビジュアル選択 (V) → <leader>cf。conform が選択範囲を
+  -- 自動検出し、markdownlint-cli2 をバッファ全体に適用した上で「選択範囲に重なる差分だけ」反映する
+  -- (markdownlint-cli2 は range 非対応だが conform が差分を範囲で絞る。範囲外は不変)。
+  -- 注: markdownlint-cli2 はバッファに markdownlint 診断がある時のみ動作 (extra の condition)。
   {
     "stevearc/conform.nvim",
     optional = true,
