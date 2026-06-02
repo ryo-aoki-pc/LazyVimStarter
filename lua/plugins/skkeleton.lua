@@ -94,16 +94,28 @@ local function ensure_skk_dict()
 end
 
 return {
-  -- SKK スタック (denops / skkeleton / cmp-skkeleton / indicator) は <C-j> で SKK を
-  -- 起動した時だけ読み込む。lazy.lua の defaults.lazy=false のため、各プラグインに lazy=true を
-  -- 明示しないと起動時にロードされる。さらに blink.cmp(InsertEnter) の依存に cmp-skkeleton を
-  -- 置くと「最初の挿入で denops(Deno) コールドスタート + 19 辞書ロード」が走り挿入モードが固まる。
-  -- その依存連鎖を断ち、SKK 一式は skkeleton の dependencies (=<C-j>) 側へ寄せる。
+  -- SKK スタック (denops / skkeleton / cmp-skkeleton / indicator)。lazy.lua の defaults.lazy=false の
+  -- ため、各プラグインに lazy=true を明示しないと起動時にロードされる。blink.cmp(InsertEnter) の依存に
+  -- cmp-skkeleton を置くと「最初の挿入で denops(Deno) コールドスタート + 19 辞書ロード」の同期待ちが
+  -- 走り挿入モードが固まるため、その依存連鎖は断ったまま SKK 一式を skkeleton の dependencies へ寄せる。
+  --
+  -- ロード契機は 2 つ:
+  --  1) <C-j> (keys): SKK を使う正規の発火条件。
+  --  2) 起動後のバックグラウンド事前ウォームアップ (skkeleton の init 内 autocmd):
+  --     PC 起動直後 (コールドキャッシュ) の初回 <C-j> で Deno 起動 + 辞書ロードを同期で
+  --     待たされる問題への対策。重い処理は別プロセス (Deno) で非同期に進むため UI は
+  --     ブロックせず、InsertEnter とも無関係なので挿入モードの固まりは再発しない。
   { "vim-denops/denops.vim", lazy = true },
   { "saghen/blink.compat", version = "2.*", lazy = true, opts = {} },
   -- cmp-skkeleton は require('cmp') で blink.compat の cmp シムにソース登録するため compat に依存させる。
   { "uga-rosa/cmp-skkeleton", lazy = true, dependencies = { "saghen/blink.compat" } },
-  { "delphinus/skkeleton_indicator.nvim", lazy = true, opts = {} },
+  -- インジケータは VeryLazy でロードする。インジケータ本体は「ロード後最初の InsertEnter」で
+  -- 実体化される設計 (グループなしの once autocmd) のため、skkeleton 経由 (事前ウォームアップ =
+  -- VeryLazy+1 秒/<C-j>) のロードだけだと、それより早い初回 InsertEnter で表示されない
+  -- (イベントは遡って発火せず、lazy.nvim の event 再発火もグループ付き autocmd しか対象にしない)。
+  -- VeryLazy はユーザー入力より前に発火するため、これで初回挿入から表示される。
+  -- インジケータは denops 非依存の純 Lua であり、VeryLazy での同期ロードは軽量 (数 ms)。
+  { "delphinus/skkeleton_indicator.nvim", lazy = true, event = "VeryLazy", opts = {} },
 
   {
     "vim-skk/skkeleton",
@@ -142,6 +154,33 @@ return {
           })
         end,
       })
+
+      -- PC 起動後の初回 <C-j> で「Deno コールドスタート + 辞書ロード」を同期で待たされる問題への対策:
+      -- 起動後のアイドル時にバックグラウンドで SKK スタックを事前初期化する。これにより <C-j> 時点では
+      -- denops + 辞書がロード済みになり、toggle 内部の同期待ち (denops#plugin#wait) が即座に返る。
+      vim.api.nvim_create_autocmd("User", {
+        pattern = "VeryLazy",
+        once = true,
+        callback = function()
+          -- headless (nvim --headless "+Lazy! sync" 等) では SKK を使わないため、
+          -- プラグインのソース読込ごとスキップする。
+          if #vim.api.nvim_list_uis() == 0 then
+            return
+          end
+          -- LazyVim 自身の VeryLazy 処理や PC 起動直後のディスク競合を避けて少し遅らせる。
+          -- 重い処理 (Deno 起動・辞書ロード) は別プロセスで非同期に進むため UI はブロックしない。
+          vim.defer_fn(function()
+            pcall(function()
+              -- SKK 一式 (denops / cmp ソース / indicator) をロードする (同期だが数十 ms 程度)。
+              -- lazy.nvim の load() はプラグインの短縮名 ("skkeleton") で引く。
+              require("lazy").load({ plugins = { "skkeleton" } })
+              -- skkeleton#initialize は notify_async ベースで一切ブロックしない。denops 未起動でも
+              -- queue されるため直後に呼んで安全。失敗しても <C-j> の通常経路がフォールバックになる。
+              vim.fn["skkeleton#initialize"]()
+            end)
+          end, 1000)
+        end,
+      })
     end,
   },
 
@@ -158,8 +197,9 @@ return {
             name = "skkeleton",
             module = "blink.compat.source",
             score_offset = 100,
-            -- skkeleton 未ロード時に skkeleton#is_enabled() を呼ぶと E117 になるため pcall でガード。
-            -- SKK 未起動 = ソース無効。<C-j> 起動後に skkeleton が有効化されると true を返す。
+            -- skkeleton 未ロード時 (事前ウォームアップ前/失敗時) に skkeleton#is_enabled() を呼ぶと
+            -- E117 になるため pcall でガード。ロード済みでも SKK 未起動なら false = ソース無効。
+            -- <C-j> で skkeleton が有効化されると true を返す。
             enabled = function()
               local ok, on = pcall(function()
                 return vim.fn["skkeleton#is_enabled"]() == 1
