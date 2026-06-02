@@ -109,7 +109,13 @@ return {
   { "saghen/blink.compat", version = "2.*", lazy = true, opts = {} },
   -- cmp-skkeleton は require('cmp') で blink.compat の cmp シムにソース登録するため compat に依存させる。
   { "uga-rosa/cmp-skkeleton", lazy = true, dependencies = { "saghen/blink.compat" } },
-  { "delphinus/skkeleton_indicator.nvim", lazy = true, opts = {} },
+  -- インジケータは VeryLazy でロードする。インジケータ本体は「ロード後最初の InsertEnter」で
+  -- 実体化される設計 (グループなしの once autocmd) のため、skkeleton 経由 (事前ウォームアップ =
+  -- VeryLazy+1 秒/<C-j>) のロードだけだと、それより早い初回 InsertEnter で表示されない
+  -- (イベントは遡って発火せず、lazy.nvim の event 再発火もグループ付き autocmd しか対象にしない)。
+  -- VeryLazy はユーザー入力より前に発火するため、これで初回挿入から表示される。
+  -- インジケータは denops 非依存の純 Lua であり、VeryLazy での同期ロードは軽量 (数 ms)。
+  { "delphinus/skkeleton_indicator.nvim", lazy = true, event = "VeryLazy", opts = {} },
 
   {
     "vim-skk/skkeleton",
