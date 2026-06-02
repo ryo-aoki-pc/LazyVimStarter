@@ -2,8 +2,14 @@
 -- extra 本体の有効化は lua/config/lazy.lua の import で行う (import 順序チェックのため
 -- extra は lazyvim.plugins の後・plugins の前に置く必要があり、plugins 配下のここでは遅すぎるため)。
 -- extra の内容: marksman LSP / markdownlint-cli2 + markdown-toc / conform (整形) /
---       nvim-lint + none-ls (lint 診断) / markdown-preview.nvim (<leader>cp) / render-markdown.nvim
+--       nvim-lint + none-ls (lint 診断) / render-markdown.nvim
+--       (markdown-preview.nvim も含まれるが、下で無効化している)
 return {
+  -- Markdown プレビュー (markdown-preview.nvim) は使わないため無効化する。
+  -- extra が導入する <leader>cp キーマップ・:MarkdownPreview* コマンド・node 製
+  -- プレビューアプリの build も丸ごと登録されなくなる (:Lazy clean でディスクからも削除可)。
+  { "iamcco/markdown-preview.nvim", enabled = false },
+
   -- GLFM (GitLab Flavored Markdown) を壊さず整形するため、markdown の整形連鎖から
   -- prettier を除外する。prettier は数式 $...$ の \$ 化・複数行脚注の破壊・[[_TOC_]] の
   -- 再整形などで GLFM 固有構文を壊すため。代わりに GitLab 公式も採用する
