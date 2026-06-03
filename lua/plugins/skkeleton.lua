@@ -105,7 +105,21 @@ return {
   --     PC 起動直後 (コールドキャッシュ) の初回 <C-j> で Deno 起動 + 辞書ロードを同期で
   --     待たされる問題への対策。重い処理は別プロセス (Deno) で非同期に進むため UI は
   --     ブロックせず、InsertEnter とも無関係なので挿入モードの固まりは再発しない。
-  { "vim-denops/denops.vim", lazy = true },
+  {
+    "vim-denops/denops.vim",
+    lazy = true,
+    init = function()
+      -- 辞書キャッシュ (deno_kv ソース / databasePath) は Deno KV を使う。Deno KV は Deno 2.x でも
+      -- 依然 unstable API で、--unstable-kv が無いと Deno.openKv が使えず deno_kv が全辞書のロードに
+      -- 失敗する。denops 既定の deno_args (-q --no-lock -A) に --unstable-kv を足す。denops の autoload
+      -- が conf#define で既定値を入れる前 (= 各プラグインの init は起動時に走る) に設定するのが肝。
+      local args = vim.g["denops#server#deno_args"] or { "-q", "--no-lock", "-A" }
+      if not vim.tbl_contains(args, "--unstable-kv") then
+        table.insert(args, "--unstable-kv")
+      end
+      vim.g["denops#server#deno_args"] = args
+    end,
+  },
   { "saghen/blink.compat", version = "2.*", lazy = true, opts = {} },
   -- cmp-skkeleton は require('cmp') で blink.compat の cmp シムにソース登録するため compat に依存させる。
   { "uga-rosa/cmp-skkeleton", lazy = true, dependencies = { "saghen/blink.compat" } },
@@ -145,17 +159,19 @@ return {
           vim.fn.mkdir(skk_database_dir, "p")
           vim.fn["skkeleton#config"]({
             globalDictionaries = dicts,
-            -- 変換ソース (先頭ほど候補が上位). ローカル SKK 辞書を優先し、Google 日本語入力
-            -- (Google CGI API for Japanese Input) を補助として追加する。google_japanese_input は
-            -- skkeleton 組み込みソースで別プラグイン不要。変換のみ対応 (補完・送り仮名ありは非対応)、
-            -- ネットワーク必須 (denops の Deno は -A 起動のため通信は許可済み)、応答は 500ms で
-            -- タイムアウト。辞書にない語や長文変換に強い。読みは http で Google に送られる点に留意。
-            sources = { "skk_dictionary", "google_japanese_input" },
+            -- 変換ソース (先頭ほど候補が上位).
+            --  - deno_kv: ローカル SKK 辞書を Deno KV にDB化して使う。初回のみDB構築で遅いが、
+            --    2 回目以降は辞書の mtime 比較でロードを省いて高速 (databasePath と上の
+            --    --unstable-kv とセットで機能する。skk_dictionary は毎回全辞書をメモリ展開する)。
+            --  - google_japanese_input: Google 日本語入力 (CGI API) による変換。skkeleton 組み込みで
+            --    別プラグイン不要。変換のみ (補完・送り仮名ありは非対応)、ネットワーク必須、応答は
+            --    500ms でタイムアウト。辞書にない語・長文変換に強い。読みは http で Google に送られる。
+            sources = { "deno_kv", "google_japanese_input" },
             eggLikeNewline = true,
             registerConvertResult = true,
             -- 補完候補の表示順をファイルに保存して永続化する (未設定だと毎セッション初期化される).
             completionRankFile = skk_completion_rank,
-            -- 辞書を Deno KV でDB化し、2 回目以降の起動 (初回 <C-j>) の辞書ロードを高速化する.
+            -- deno_kv ソースが辞書をDB化する先 (上の sources=deno_kv と --unstable-kv とセットで機能).
             databasePath = skk_database_path,
           })
         end,
