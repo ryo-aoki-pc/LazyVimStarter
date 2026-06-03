@@ -145,6 +145,12 @@ return {
           vim.fn.mkdir(skk_database_dir, "p")
           vim.fn["skkeleton#config"]({
             globalDictionaries = dicts,
+            -- 変換ソース (先頭ほど候補が上位). ローカル SKK 辞書を優先し、Google 日本語入力
+            -- (Google CGI API for Japanese Input) を補助として追加する。google_japanese_input は
+            -- skkeleton 組み込みソースで別プラグイン不要。変換のみ対応 (補完・送り仮名ありは非対応)、
+            -- ネットワーク必須 (denops の Deno は -A 起動のため通信は許可済み)、応答は 500ms で
+            -- タイムアウト。辞書にない語や長文変換に強い。読みは http で Google に送られる点に留意。
+            sources = { "skk_dictionary", "google_japanese_input" },
             eggLikeNewline = true,
             registerConvertResult = true,
             -- 補完候補の表示順をファイルに保存して永続化する (未設定だと毎セッション初期化される).
