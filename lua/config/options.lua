@@ -18,3 +18,8 @@ if vim.fn.has("win32") == 1 then
   vim.opt.shellredir = "2>&1 | Out-File -Encoding UTF8 %s; exit $LastExitCode"
   vim.opt.shellpipe = "2>&1 | Tee-Object %s; exit $LastExitCode"
 end
+
+-- git diff の品質改善: ハンク分割を git 同等の histogram に、インデントを考慮した整形、
+-- 変更行同士の行対応付け (linematch, Neovim 0.9+) で side-by-side 表示を見やすくする。
+-- "vertical" は :diffsplit 系 (gitsigns の <leader>ghd など) も左右分割にするため。
+vim.opt.diffopt:append({ "algorithm:histogram", "indent-heuristic", "linematch:60", "vertical" })
