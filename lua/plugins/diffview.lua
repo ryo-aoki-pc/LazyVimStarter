@@ -11,6 +11,10 @@
 --   ファイルパネル : - (または s) で stage/unstage トグル、S 全ステージ、U 全アンステージ、X 変更破棄
 --   ステージ済みの確認はパネルの "Staged changes" セクション (HEAD↔index の差分が開く)
 --   別手段: 左 (index) バッファは編集可能で、dp / do で差分を送ってから :w しても index に反映できる
+--
+-- ※ ステージ/取り消し後、右の gitsigns 符号は即時更新されるが、左右の side-by-side 表示は
+--   自動更新しない (理由は下の watch_index コメント参照)。最新表示が要るときはパネルの R か
+--   :DiffviewRefresh で手動更新する。
 return {
   {
     "sindrets/diffview.nvim",
@@ -47,6 +51,17 @@ return {
         file_history = { layout = "diff2_horizontal" },
       },
       enhanced_diff_hl = true, -- 削除側 filler 等の diff ハイライトを強化
+      -- watch_index を無効化する理由 (重要):
+      -- diffview の watch_index (既定 on) は .git/index の変化を検知してビューを自動再描画する。
+      -- だがこの再描画で作業ツリーバッファが再読込/差し替えされ、gitsigns が detach→再 attach
+      -- される。gitsigns の undo_stage_hunk (= <leader>ghu) は「その attach セッション中に
+      -- ステージした hunk のスタック (staged_diffs)」を辿って取り消す実装なので、再 attach で
+      -- スタックが消えると「ステージはできるが取り消せない」状態になる (特に Windows で発生)。
+      -- 自動再描画を切ることで gitsigns の attach とスタックが保持され、ステージ/取り消しの両方が
+      -- 安定して動く。トレードオフとして、左 (index) 側の side-by-side 表示はステージ後に自動
+      -- 更新されない (gitsigns の符号は stage 直後に即時更新される)。最新の差分表示が欲しいときは
+      -- パネルの R / :DiffviewRefresh で手動更新する (手動更新時はスタックがリセットされる点に注意)。
+      watch_index = false,
       file_panel = {
         listing_style = "tree",
         win_config = { position = "left", width = 32 },
@@ -60,22 +75,33 @@ return {
           { "n", "q", "<cmd>DiffviewClose<cr>", { desc = "Diffview を閉じる" } },
         },
       },
-    },
-    config = function(_, opts)
-      require("diffview").setup(opts)
-      -- gitsigns でステージ / 取り消しした内容を即座にパネルと左 (index) バッファへ反映する。
-      -- GitSignsChanged は「リポジトリ状態を変え得る操作」(stage 等) の後にのみ発火する。
-      -- DiffviewRefresh は冪等なので余分に走っても安全 (手動更新はパネルの R でも可)。
-      vim.api.nvim_create_autocmd("User", {
-        pattern = "GitSignsChanged",
-        group = vim.api.nvim_create_augroup("user_diffview_refresh", { clear = true }),
-        callback = function()
-          if require("diffview.lib").get_current_view() then
-            vim.cmd("DiffviewRefresh")
+      -- diffview が diff バッファを読み込むたびに、左右の「実ファイル (作業ツリー) 側」
+      -- バッファへ gitsigns が attach していなければ attach する (保険)。
+      -- 重要: 既に attach 済みなら何もしない。ここで無条件に再 attach すると undo_stage_hunk
+      -- が使う staged_diffs スタックを消してしまい、取り消しが効かなくなるため。
+      -- index 側 (diffview:// 仮想バッファ) は実ファイルではないので name で除外する。
+      hooks = {
+        diff_buf_read = function(bufnr)
+          local name = vim.api.nvim_buf_get_name(bufnr)
+          if vim.bo[bufnr].buftype ~= "" or name == "" or name:match("^diffview://") then
+            return
+          end
+          local ok, gs_cache = pcall(require, "gitsigns.cache")
+          local attached = ok and gs_cache.cache and gs_cache.cache[bufnr] ~= nil
+          if not attached then
+            pcall(function()
+              require("gitsigns").attach(bufnr)
+            end)
           end
         end,
-      })
-    end,
+      },
+    },
+    -- 補足: 以前ここには "GitSignsChanged → DiffviewRefresh" autocmd があったが削除した。
+    -- DiffviewRefresh / 自動再描画は作業ツリーバッファを再読込して gitsigns を detach させ、
+    -- gitsigns の attach・staged_diffs スタックを壊す (= ステージ後に取り消せない / Windows で
+    -- 右ペインのキーマップが失われる) 原因になっていたため。表示の自動更新 (watch_index) も
+    -- 上の opts で無効化し、安定動作を優先している。
+    -- opts はテーブルなので LazyVim が require("diffview").setup(opts) を自動実行する。
   },
 
   -- LazyVim 既定の <leader>gd (Snacks "Git Diff (hunks)" ピッカー) は diffview に譲り、
