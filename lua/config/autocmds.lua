@@ -17,3 +17,19 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.opt_local.spelllang = { "en", "cjk" }
   end,
 })
+
+-- gitsigns で hunk を stage/unstage/reset すると `User GitSignsChanged` が発火する。
+-- diffview を開いている間だけ差分ビューを即時更新し、file panel と左ペイン(index 表示)を最新化する。
+-- pcall: diffview 未ロード時の require 失敗等で autocmd を落とさないため。
+-- get_current_view(): diffview 未表示時に無駄な :DiffviewRefresh を撃たないため。
+vim.api.nvim_create_autocmd("User", {
+  pattern = "GitSignsChanged",
+  group = vim.api.nvim_create_augroup("diffview_refresh_on_gitsigns", { clear = true }),
+  callback = function()
+    pcall(function()
+      if require("diffview.lib").get_current_view() then
+        vim.cmd("DiffviewRefresh")
+      end
+    end)
+  end,
+})
