@@ -23,3 +23,17 @@ end
 -- 変更行同士の行対応付け (linematch, Neovim 0.9+) で side-by-side 表示を見やすくする。
 -- "vertical" は :diffsplit 系 (gitsigns の <leader>ghd など) も左右分割にするため。
 vim.opt.diffopt:append({ "algorithm:histogram", "indent-heuristic", "linematch:60", "vertical" })
+
+-- 日本語 (マルチバイト) 向けの整形挙動:
+--  m: マルチバイト文字の間でも折り返しを許可する。日本語は空白で区切られないため、
+--     これがないと gq や textwidth の自動改行が日本語の長文を折り返せない。
+--  M: 行連結 (J / gq の再整形) でマルチバイト文字の前後に空白を挿入しない
+--     (「〜です。」+「しかし〜」の連結で不要な半角空白が入るのを防ぐ)。
+-- LazyVim の既定 "jcroqlnt" はグローバル代入で、このファイルはその後に読まれるため append でよい。
+-- 'formatoptions' はバッファローカルだがグローバル値が初期値になり、ftplugin (markdown 等) は
+-- +=/-= の差分操作しかしないため、グローバル append だけで全 filetype に行き渡る。
+vim.opt.formatoptions:append("mM")
+
+-- 全角括弧でも % ジャンプと matchparen の対応強調を効かせる (日本語の文章・技術文書用)。
+-- 'matchpairs' も「バッファローカル + グローバル初期値」で ftplugin は追記しかしないため append で足りる。
+vim.opt.matchpairs:append({ "（:）", "「:」", "『:』", "【:】" })
