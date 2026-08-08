@@ -6,7 +6,6 @@ debug
 foo.*
 *.log
 data
-/lazy-lock.json
 /lazyvim.json
 /.stfolder
 /.claude/worktrees
