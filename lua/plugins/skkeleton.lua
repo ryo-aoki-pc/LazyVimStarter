@@ -43,14 +43,18 @@ end
 -- 必要なら iconv で .utf8 を生成する (副作用).
 -- - coding が utf-8/euc-jp の場合: パス文字列を返す (skkeleton 自動判定)
 -- - coding が euc-jis-2004 / euc-jisx0213 の場合: 同名 + ".utf8" を作って {path, "utf-8"} を返す
+-- - 変換できず .utf8 が存在しない場合: nil を返す (呼び出し側でスキップ)
 -- - 宣言が読めない場合: パス文字列を返す (自動判定にフォールバック)
 local function resolve_dict(rel_path)
   local src = skk_dict_dir .. "/" .. rel_path
   local coding = read_coding(src)
   if coding:match("euc%-jis%-2004") or coding:match("euc%-jisx0213") then
     local dst = src .. ".utf8"
+    -- iconv 不在 (素の Windows 等) は executable で先に弾く: vim.fn.system のリスト形式は
+    -- コマンド不在だと shell_error ではなく E475 を throw するため、実行前チェックが必須。
     if
-      vim.fn.filereadable(src) == 1
+      vim.fn.executable("iconv") == 1
+      and vim.fn.filereadable(src) == 1
       and (vim.fn.filereadable(dst) ~= 1 or vim.fn.getftime(dst) < vim.fn.getftime(src))
     then
       vim.notify("Converting " .. rel_path .. " (" .. coding .. " -> UTF-8)...", vim.log.levels.INFO)
@@ -64,6 +68,15 @@ local function resolve_dict(rel_path)
           f:close()
         end
       end
+    end
+    -- 変換結果が存在しない辞書は登録しない (存在しないパスを skkeleton に渡すと
+    -- 辞書ロードでエラーになるため)。古い dst が残っていればそれを使う (無いよりまし)。
+    if vim.fn.filereadable(dst) ~= 1 then
+      vim.notify(
+        "Skipping " .. rel_path .. ": UTF-8 conversion unavailable (iconv missing or failed)",
+        vim.log.levels.WARN
+      )
+      return nil
     end
     return { dst, "utf-8" }
   end
@@ -120,7 +133,8 @@ return {
       vim.g["denops#server#deno_args"] = args
     end,
   },
-  { "saghen/blink.compat", version = "2.*", lazy = true, opts = {} },
+  -- version="*" (最新リリース追従) にして LazyVim の blink.cmp (同じく version="*") と足並みを揃える。
+  { "saghen/blink.compat", version = "*", lazy = true, opts = {} },
   -- cmp-skkeleton は require('cmp') で blink.compat の cmp シムにソース登録するため compat に依存させる。
   { "uga-rosa/cmp-skkeleton", lazy = true, dependencies = { "saghen/blink.compat" } },
   -- インジケータは VeryLazy でロードする。インジケータ本体は「ロード後最初の InsertEnter」で
@@ -149,9 +163,13 @@ return {
         callback = function()
           -- resolve_dict は副作用 (.utf8 生成) を伴うが冪等. coding 宣言を見て
           -- 必要なら iconv で UTF-8 化し, skkeleton に渡せる形 (string or {path, enc}) を返す.
+          -- nil (変換不能) の辞書はスキップし、残りの辞書だけで動かす (graceful degradation)。
           local dicts = {}
           for _, name in ipairs(dict_names) do
-            table.insert(dicts, resolve_dict(name))
+            local dict = resolve_dict(name)
+            if dict then
+              table.insert(dicts, dict)
+            end
           end
           -- completionRankFile / databasePath の親ディレクトリを保証する。
           -- skkeleton (Deno KV) はファイルは作るが親ディレクトリは作らないため。mkdir -p は冪等。
@@ -213,11 +231,15 @@ return {
     dependencies = { "saghen/blink.compat" },
     opts = {
       sources = {
-        default = { "skkeleton", "lsp", "path", "snippets", "buffer" },
+        -- LazyVim の compat ルート: ここに挙げたソースは blink.compat 経由の provider
+        -- (name/module は自動設定、下の providers の指定が優先マージ) として登録され、
+        -- sources.default にも自動追加される。
+        -- 注: sources.default は LazyVim の opts_extend により「置換」ではなく「追記」される
+        -- ため、ここで default を列挙し直すと既定ソース (lsp/path/snippets/buffer) が
+        -- 重複登録される。default には触れないこと。候補の優先順は score_offset で制御する。
+        compat = { "skkeleton" },
         providers = {
           skkeleton = {
-            name = "skkeleton",
-            module = "blink.compat.source",
             score_offset = 100,
             -- skkeleton 未ロード時 (事前ウォームアップ前/失敗時) に skkeleton#is_enabled() を呼ぶと
             -- E117 になるため pcall でガード。ロード済みでも SKK 未起動なら false = ソース無効。

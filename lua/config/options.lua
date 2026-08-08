@@ -10,13 +10,22 @@ vim.opt.wildmode = { "longest", "list" }
 -- (Neovim の既定は Windows で "dos,unix" のため、両 OS で統一するには明示が必要)
 vim.opt.fileformats = { "unix", "dos" }
 
+-- Windows の shell を PowerShell にする (:help shell-powershell の公式レシピ準拠)。
+-- pwsh (PowerShell 7) があれば優先。コンソール入出力を UTF-8 に固定しないと
+-- :! や外部コマンド出力の日本語が cp932 で文字化けするため、shellcmdflag で明示する。
 if vim.fn.has("win32") == 1 then
-  vim.opt.shell = "powershell"
-  vim.opt.shellcmdflag = "-NoLogo -NoProfile -ExecutionPolicy RemoteSigned -Command"
+  local pwsh = vim.fn.executable("pwsh") == 1
+  vim.opt.shell = pwsh and "pwsh" or "powershell"
+  vim.opt.shellcmdflag = "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -Command "
+    .. "[Console]::InputEncoding=[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();"
+    .. "$PSDefaultParameterValues['Out-File:Encoding']='utf8';"
+    -- $PSStyle は pwsh 7.2+ 専用 (Windows PowerShell 5.1 では存在せずエラーになる)
+    .. (pwsh and "$PSStyle.OutputRendering='plaintext';" or "")
+    .. "Remove-Alias -Force -ErrorAction SilentlyContinue tee;"
+  vim.opt.shellredir = '2>&1 | %%{ "$_" } | Out-File %s; exit $LastExitCode'
+  vim.opt.shellpipe = '2>&1 | %%{ "$_" } | tee %s; exit $LastExitCode'
   vim.opt.shellquote = ""
   vim.opt.shellxquote = ""
-  vim.opt.shellredir = "2>&1 | Out-File -Encoding UTF8 %s; exit $LastExitCode"
-  vim.opt.shellpipe = "2>&1 | Tee-Object %s; exit $LastExitCode"
 end
 
 -- git diff の品質改善: ハンク分割を git 同等の histogram に、インデントを考慮した整形、

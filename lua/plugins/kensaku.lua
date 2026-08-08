@@ -24,12 +24,29 @@ return {
     event = "VeryLazy",
     dependencies = { "lambdalisue/vim-kensaku" },
     -- 検索コマンドライン (/ ?) の <CR> で、入力を kensaku の正規表現に置換してから検索を実行する。
-    -- <Plug>(kensaku-search-replace) は getcmdtype() が / ? 以外では空を返す実装のため、
-    -- : コマンドラインの <CR> は素通しになり安全。プラグイン側に既定マップはないため自前で張る。
+    -- getcmdtype() でガードし、: 等の非検索コマンドラインでは素の <CR> にフォールバックする
+    -- (<Plug>(kensaku-search-replace) 自体も / ? 以外では空を返す実装だが、: の <CR> まで
+    -- plug 経由にしない二重の防御)。プラグイン側に既定マップはないため自前で張る。
+    -- 注: remap=true を付けないこと。<Plug> は noremap でも常に展開される (Vim 仕様) 一方、
+    -- remap=true だと戻り値末尾の <CR> がこのマッピング自身に再入して再帰する。
+    -- expr の Lua コールバックは replace_keycodes が既定で有効なため追加オプション不要。
     -- 既知の制限: 起動直後 ~1 秒以内 (denops 未起動) の検索は失敗し得る (以後は自然回復)。
     -- 初回検索時のみ辞書ダウンロードの待ちが発生する (要ネットワーク、以後はキャッシュ)。
     keys = {
-      { "<CR>", "<Plug>(kensaku-search-replace)<CR>", mode = "c", silent = true, desc = "Kensaku 検索" },
+      {
+        "<CR>",
+        function()
+          local cmdtype = vim.fn.getcmdtype()
+          if cmdtype == "/" or cmdtype == "?" then
+            return "<Plug>(kensaku-search-replace)<CR>"
+          end
+          return "<CR>"
+        end,
+        mode = "c",
+        expr = true,
+        silent = true,
+        desc = "Kensaku 検索",
+      },
     },
   },
 }
