@@ -22,6 +22,14 @@ require("lazy").setup({
     -- (lazyvim.json は gitignore のため、リポジトリで追跡できる import で extra を有効化する。
     --  LazyVim の順序チェックのため extra は lazyvim.plugins の後・plugins の前に置く)
     { import = "lazyvim.plugins.extras.lang.markdown" },
+    -- 設定ファイル編集の強化: JSON/YAML は SchemaStore によるスキーマ補完・検証付き LSP、TOML は taplo。
+    -- (stylua.toml / CI の yaml / package.json 等の編集で補完とエラー表示が効くようになる)
+    { import = "lazyvim.plugins.extras.lang.json" },
+    { import = "lazyvim.plugins.extras.lang.yaml" },
+    { import = "lazyvim.plugins.extras.lang.toml" },
+    -- <C-a>/<C-x> の強化 (dial.nvim): 日付・曜日・true/false のほか、markdown では
+    -- チェックボックス [ ]⇔[x] のトグルと見出しレベルの増減が効く。
+    { import = "lazyvim.plugins.extras.editor.dial" },
     -- import/override with your plugins
     { import = "plugins" },
   },
