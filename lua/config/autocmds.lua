@@ -54,17 +54,31 @@ vim.api.nvim_create_autocmd({ "CmdlineEnter", "CmdlineLeave" }, {
 
 -- Neovim を離れている間に OS 側で切り替えられている可能性があるため、復帰時に実測し直す。
 -- watch="signal" ならシグナルで拾えているはずだが、監視が落ちていた場合の保険。
-vim.api.nvim_create_autocmd({ "FocusGained", "VimResume" }, {
+vim.api.nvim_create_autocmd("FocusGained", {
   group = ime_group,
   callback = ime.sync,
 })
 
--- 終了時: 監視プロセスを確実に落とし、IME を英数に戻して他アプリへ引き継ぐ。
-vim.api.nvim_create_autocmd("VimLeavePre", {
+-- 終了・中断時: gnome-shell が認識しているエンジンへ戻す。
+-- gnome-shell は外部からの engine 変更を観測しないため、nvim が強制した英数のまま
+-- 抜けると gnome-shell の内部状態とズレが残り、Super+Space での入力ソース切替が
+-- 一手ぶん噛み合わなくなる。nvim を起動する前の状態に戻して抜けるのが正しい。
+vim.api.nvim_create_autocmd({ "VimLeavePre", "VimSuspend" }, {
+  group = ime_group,
+  callback = function(ev)
+    ime.restore_shell(true)
+    if ev.event == "VimLeavePre" then
+      ime.teardown()
+    end
+  end,
+})
+
+-- 中断から戻ったらノーマルモードに居るので、また英数へ落として実体を測り直す。
+vim.api.nvim_create_autocmd("VimResume", {
   group = ime_group,
   callback = function()
     ime.ascii()
-    ime.teardown()
+    ime.sync()
   end,
 })
 

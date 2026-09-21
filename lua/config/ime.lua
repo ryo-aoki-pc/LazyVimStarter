@@ -48,6 +48,10 @@ local state = {
   value = nil, ---@type string|nil 最後に観測したバックエンド値 (nil = 不明)
   desired = nil, ---@type string|nil 投入したい値 (コアレス用)
   inflight = false,
+  -- gnome-shell が最後に「自分で」有効化したエンジン (= gnome-shell の内部状態)。
+  -- 終了・中断時にここへ戻すことで、OS 側の入力ソース切替が壊れたままにならないようにする。
+  shell_value = nil, ---@type string|nil
+  expected = {}, ---@type string[] 自分が要求した変更 (シグナルの発生元を切り分けるため)
   watcher = nil,
   watch_fails = 0,
   poll = nil,
@@ -313,6 +317,24 @@ local function observe(value)
   pcall(vim.cmd.redrawstatus)
 end
 
+-- gnome-shell は ibus の global engine を「外部から」変えられても自分の内部状態を
+-- 更新しない (gsettings の current を書いても追従しないことを実測で確認済み)。
+-- そのため nvim が裏でエンジンを変えると gnome-shell の認識がズレ、Super+Space が
+-- 古い状態を基準に動いてしまう。ズレを残さないよう「gnome-shell が最後に有効化した
+-- エンジン」を覚えておき、終了・中断時にそこへ戻す。
+-- 自分が出した変更かどうかは、要求した値を FIFO に積んでシグナルと突き合わせて判定する。
+local function observe_external(value)
+  if state.expected[1] == value then
+    table.remove(state.expected, 1)
+  else
+    -- 自分の要求ではない = gnome-shell (Super+Space やインジケータ) による変更。
+    -- この瞬間は gnome-shell の認識と実体が一致している。
+    state.expected = {}
+    state.shell_value = value
+  end
+  observe(value)
+end
+
 -- 書き込み (直列化 + コアレス) -----------------------------------------------
 
 -- i / <Esc> / i を高速に往復しても外部プロセスは常に 1 本以下に保つ。実行中に新しい
@@ -334,6 +356,8 @@ local function pump()
     return
   end
   state.inflight = true
+  -- 続いて飛んでくる GlobalEngineChanged が「自分由来」だと分かるようにしておく。
+  table.insert(state.expected, want)
   vim.system(cmd, { text = true, env = env, timeout = 1000 }, function(res)
     state.inflight = false
     if res.code == 0 then
@@ -349,6 +373,7 @@ local function pump()
       vim.schedule(function()
         invalidate()
         state.desired = nil
+        state.expected = {}
       end)
     end
   end)
@@ -414,7 +439,7 @@ start_watcher = function()
   end
   local cmd, handle_line = state.backend.watch(function(value)
     vim.schedule(function()
-      observe(value)
+      observe_external(value)
     end)
   end)
   if not cmd then
@@ -516,6 +541,32 @@ function M.on_insert_leave(buf)
   poll_stop()
 end
 
+-- 終了・中断時に「gnome-shell が認識しているエンジン」へ戻す。
+-- これをしないと nvim が強制した英数のまま gnome-shell の内部状態とズレが残り、
+-- OS 側の入力ソース切替 (Super+Space) が一手ぶん噛み合わなくなる。
+---@param blocking boolean|nil 終了直前は同期的に投げる (非同期だと nvim の終了に間に合わない)
+function M.restore_shell(blocking)
+  if not state.backend then
+    return
+  end
+  local target = state.shell_value or state.backend.ascii
+  if not blocking then
+    request(target)
+    return
+  end
+  if state.value == target then
+    return
+  end
+  local cmd, env = state.backend.cmd_set(target)
+  if not cmd then
+    return
+  end
+  -- 1 回 7ms 程度の外部コマンドなので、終了直前に待っても体感されない。
+  pcall(function()
+    vim.system(cmd, { text = true, env = env, timeout = 1000 }):wait(1500)
+  end)
+end
+
 function M.teardown()
   poll_stop()
   if state.watcher then
@@ -558,7 +609,23 @@ function M.setup(opts)
   if M.config.watch == "signal" then
     start_watcher()
   end
-  M.sync() -- 起動時に一度だけ実測して初期状態を確定させる
+
+  -- 起動時点のエンジンを同期的に 1 回だけ読む (7ms 程度)。これが gnome-shell の
+  -- 認識しているエンジンであり、終了時に戻す先になる。非同期にすると直後の
+  -- ascii() が先に走って「nvim が英数にした後の値」を読んでしまう。
+  local cmd, env = state.backend.cmd_get()
+  if cmd then
+    local ok, res = pcall(function()
+      return vim.system(cmd, { text = true, env = env, timeout = 1000 }):wait(1500)
+    end)
+    if ok and res and res.code == 0 then
+      local value = state.backend.parse(res.stdout)
+      if value then
+        state.shell_value = value
+        observe(value)
+      end
+    end
+  end
   M.ascii() -- 起動直後は必ず英数 (直前のアプリが日本語のままでもノーマルモードを守る)
 end
 
