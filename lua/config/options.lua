@@ -46,3 +46,10 @@ vim.opt.formatoptions:append("mM")
 -- 全角括弧でも % ジャンプと matchparen の対応強調を効かせる (日本語の文章・技術文書用)。
 -- 'matchpairs' も「バッファローカル + グローバル初期値」で ftplugin は追記しかしないため append で足りる。
 vim.opt.matchpairs:append({ "（:）", "「:」", "『:』", "【:】" })
+
+-- 'ambiwidth' は意図的に既定 (single) のまま変えない。
+-- East Asian Ambiguous 幅の文字 (○ ± ① → など) を何桁で描くかは「端末側の設定」と
+-- 「Neovim 側の設定」が一致していないと、その文字を含む行の桁が丸ごとずれる。
+-- Neovim 既定の single は WezTerm 既定の treat_east_asian_ambiguous_width_as_wide=false と
+-- 一致しているため、現状で正しい。端末側を wide に変えるときだけ、ここを "double" に
+-- 揃えること (片方だけ変えるのが「端末で日本語表示が崩れる」最頻の原因)。
