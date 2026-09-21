@@ -32,6 +32,12 @@ local specs = {
   -- formatters_by_ft の値はリストなので deep-merge で「置換」され、extra の連鎖を上書きする。
   -- markdown.mdx (JSX 混在) は GLFM ではないため extra 既定 (prettier 含む) のまま残す。
   --
+  -- ★ 注意: extras の formatting.prettier を有効にすると、この上書きは無効化される。
+  -- あちらは opts 関数の中で formatters_by_ft.markdown に prettier を table.insert するため、
+  -- ここでリストを置換しても「置換した後に追記」されて prettier が復活する。
+  -- lang.typescript など prettier を推移的に import する extra も同様なので、
+  -- 追加する際は markdown の整形連鎖を必ず確認すること。
+  --
   -- 一部だけ整形: 整形したい行をビジュアル選択 (V) → <leader>cf。conform が選択範囲を
   -- 自動検出し、markdownlint-cli2 をバッファ全体に適用した上で「選択範囲に重なる差分だけ」反映する
   -- (markdownlint-cli2 は range 非対応だが conform が差分を範囲で絞る。範囲外は不変)。
@@ -72,7 +78,7 @@ if #disabled_rules > 0 then
 
   -- lint 診断 (nvim-lint) の markdownlint-cli2 に除外ルール設定を渡す。
   -- この linter の既定 args は { "-" } (stdin 入力)。--config は "-" より前に置く必要があるため、
-  -- prepend_args (LazyVim では args 末尾に追記される) ではなく args を明示的に上書きする。
+  -- prepend_args (LazyVim の list_prepend で args の先頭に挿入される) ではなく args を明示的に上書きする。
   table.insert(specs, {
     "mfussenegger/nvim-lint",
     optional = true,

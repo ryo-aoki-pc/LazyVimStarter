@@ -27,17 +27,25 @@ ime.setup()
 local ime_group = vim.api.nvim_create_augroup("user_ime", { clear = true })
 
 -- 挿入を抜けたら必ず英数に戻す。ノーマルモードのキー (dd, ciw, ...) が IME に食われない
--- ための最優先処理なので、モード遷移の直前に発火する InsertLeavePre を使う
--- (InsertLeave より一手早い)。i_CTRL-O は挿入モードを抜けないため発火せず、
--- 一時ノーマルコマンドの最中に IME が落ちる事故は起きない。
-vim.api.nvim_create_autocmd("InsertLeavePre", {
+-- ための最優先処理。イベントではなく ModeChanged のパターンで拾うのが正確:
+--  - InsertLeave は <C-c> で発火しない (:help InsertLeave の "But not for i_CTRL-C")。
+--    取りこぼすと <C-c> で抜けた時に IME が日本語のまま残る。
+--  - InsertLeavePre は <C-c> を拾えるが i_CTRL-O でも発火する (:help InsertLeavePre)。
+--    <C-o>zz のたびに英数化 → sticky で復帰、と往復して busctl が 2 回余計に起動し、
+--    あ/A の表示もちらつく。
+--  - ModeChanged の "i*:n" なら <Esc> と <C-c> (どちらも遷移先 n) を拾い、
+--    i_CTRL-O (遷移先 niI) は一致しないので除外できる。実測で確認済み。
+-- 置換モード (R / Rv) も挿入と同じ扱いなので "R*:n" を併せて登録する。
+vim.api.nvim_create_autocmd("ModeChanged", {
   group = ime_group,
+  pattern = { "i*:n", "R*:n" },
   callback = function(ev)
     ime.on_insert_leave(ev.buf)
   end,
 })
 
 -- 挿入に入る時の復帰。前回そのバッファで日本語のまま抜けていたら日本語に戻す (sticky)。
+-- InsertEnter は挿入・置換・仮想置換のいずれでも発火する。
 vim.api.nvim_create_autocmd("InsertEnter", {
   group = ime_group,
   callback = function(ev)
@@ -47,13 +55,46 @@ vim.api.nvim_create_autocmd("InsertEnter", {
 
 -- コマンドライン。: や / で IME が生きていると Ex コマンドも検索も打てない。
 -- 日本語検索はローマ字のままマッチする vim-kensaku が担うので、常に英数でよい。
-vim.api.nvim_create_autocmd({ "CmdlineEnter", "CmdlineLeave" }, {
+vim.api.nvim_create_autocmd("ModeChanged", {
   group = ime_group,
+  pattern = "*:c*",
   callback = ime.ascii,
 })
 
+-- コマンドラインから挿入モードへ戻る経路 (挿入中の <C-r>= など)。
+-- この場合 CmdlineLeave の後に InsertEnter は発火しないため、ここで復元しないと
+-- 文章の途中で式レジスタを使っただけで英数に落ちたまま戻らなくなる。
+-- なお CmdlineLeave 時点では mode() がまだ "c" なので、イベント側では判定できない
+-- (実測済み)。ModeChanged なら遷移先がパターンに出るので取りこぼさない。
+vim.api.nvim_create_autocmd("ModeChanged", {
+  group = ime_group,
+  pattern = "c*:i*",
+  callback = function(ev)
+    ime.on_insert_enter(ev.buf)
+  end,
+})
+
+-- ターミナルモード。Insert* 系の autocmd は端末モードでは発火しない
+-- (:help InsertEnter は挿入/置換/仮想置換のみ) ため、専用イベントで同じ面倒を見る。
+-- これが無いと lazygit のコミットメッセージなどで日本語を打って <C-\><C-n> で抜けた時に
+-- IME が日本語のまま残る。TermLeave は TermClose の後にも発火するので、
+-- バッファの有効性は on_insert_leave 側のガードに任せる。
+vim.api.nvim_create_autocmd("TermEnter", {
+  group = ime_group,
+  callback = function(ev)
+    ime.on_insert_enter(ev.buf)
+  end,
+})
+vim.api.nvim_create_autocmd("TermLeave", {
+  group = ime_group,
+  callback = function(ev)
+    ime.on_insert_leave(ev.buf)
+  end,
+})
+
 -- Neovim を離れている間に OS 側で切り替えられている可能性があるため、復帰時に実測し直す。
--- watch="signal" ならシグナルで拾えているはずだが、監視が落ちていた場合の保険。
+-- ただし sync() が直すのは表示用のキャッシュ (state.value) だけで、終了時の復帰先
+-- (shell_value) は更新しない。あくまで「あ/A 表示がズレたままになる」ことへの保険。
 vim.api.nvim_create_autocmd("FocusGained", {
   group = ime_group,
   callback = ime.sync,
@@ -90,8 +131,8 @@ vim.api.nvim_create_autocmd("VimResume", {
 -- ウィンドウローカルなので、ウィンドウが作られるたびに (w: の番兵で重複を防いで) 張る。
 local zenkaku_group = vim.api.nvim_create_augroup("user_zenkaku_space", { clear = true })
 
--- ハイライト定義は colorscheme の切り替えで消えるので張り直す。特定の colorscheme に
--- 依存しないよう、色は直接指定せず「波線の下線」で示す (背景色だと選択範囲と紛らわしい)。
+-- ハイライト定義は colorscheme の切り替えで消えるので張り直す。背景色だと選択範囲と
+-- 紛らわしいので波線の下線で示す (sp は tokyonight の赤に合わせた固定値)。
 local function zenkaku_hl()
   vim.api.nvim_set_hl(0, "ZenkakuSpace", { undercurl = true, sp = "#f7768e" })
 end

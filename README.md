@@ -21,6 +21,12 @@ SKK 方式 (skkeleton) は使わない。実装は `lua/config/ime.lua`。
   `gdbus monitor` で購読して把握するため、OS 側で切り替えても表示がズレない
   (ポーリングはしない)。
 - コマンドライン (`:` `/`) は常に英数。日本語検索は下記の vim-kensaku が担う。
+  挿入モード中の `<C-r>=` のようにコマンドラインから挿入モードへ戻る経路では、
+  元の入力状態に復元する。
+- **端末モード・`<C-c>`・置換モードも同じ扱い** — lazygit のコミットメッセージなどを
+  端末で書いて `<C-\><C-n>` で抜けた時も英数に戻る。`<C-c>` で挿入モードを抜けた場合も同様
+  (`InsertLeave` は `<C-c>` で発火しないため、モード遷移そのものを見ている)。
+  一時ノーマルコマンド (`<C-o>`) では切り替えない。
 - **終了時は nvim を起動する前の状態に戻す** — gnome-shell は外部からの engine 変更を
   観測しないため、nvim が強制した英数のまま抜けると gnome-shell の内部状態がズレたままになり、
   Super+Space での入力ソース切替が噛み合わなくなる。セッション中に Super+Space で
@@ -77,8 +83,14 @@ gsettings set $S default "$v"
   set -ga terminal-overrides ',*:Cs=\E]12;%p1%s\007:Cr=\E]112\007'
   ```
 
-- **Windows**: `zenhan.exe` (推奨) か `im-select.exe` が PATH にあれば同じ挙動になる。
-  どちらも無ければ何もしない。
+- **Windows**: `zenhan.exe` (推奨) か `im-select.exe` が PATH にあれば、モード連動と
+  終了時の復帰は同じように動く。ただし ibus の `GlobalEngineChanged` に相当する通知が
+  無いため、**OS 側で IME を切り替えても Neovim は気付けない** (あ/A 表示が実態と
+  ズレることがある)。どちらのコマンドも無ければ何もしない。
+- **既知の制限 — nvim を同時に 2 つ以上起動した場合**: 起動時の英数化を、もう一方の
+  nvim が「gnome-shell による切り替え」と誤認し、終了時の復帰先を英数で上書きすることがある。
+  外部からの変更が「gnome-shell によるものか別の nvim によるものか」を判別する手段が
+  無いため、現状は許容している (その場合も Super+Space をもう一度押せば揃う)。
 - **[vim-kensaku](https://github.com/lambdalisue/vim-kensaku)** — ローマ字のまま日本語を
   バッファ検索 (`/kensaku<CR>` が「検索」等にマッチ)。`/` `?` の `<CR>` にのみフック。
   検索のたびに IME を入れ直さずに済むので、この構成では要になる。
