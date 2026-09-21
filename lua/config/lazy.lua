@@ -30,6 +30,16 @@ require("lazy").setup({
     -- <C-a>/<C-x> の強化 (dial.nvim): 日付・曜日・true/false のほか、markdown では
     -- チェックボックス [ ]⇔[x] のトグルと見出しレベルの増減が効く。
     { import = "lazyvim.plugins.extras.editor.dial" },
+    -- 長い文書で「今どの見出しの中か」を画面上部に固定表示する (<leader>ut でトグル)。
+    { import = "lazyvim.plugins.extras.ui.treesitter-context" },
+    -- gitcommit / gitignore 等の treesitter パーサー。日本語でコミットメッセージを
+    -- 書くのに、これが無いとハイライトが全く効かない。
+    { import = "lazyvim.plugins.extras.lang.git" },
+    -- shell の診断。bashls (LSP) を有効にし、Mason で shellcheck を入れる
+    -- (bash-language-server が shellcheck を内部で呼ぶので、診断は LSP 経由で出る。
+    --  nvim-lint 側には登録されない)。LazyVim core の linters_by_ft は fish のみで、
+    --  これまで shell は shfmt による整形しか効いていなかった。
+    { import = "lazyvim.plugins.extras.util.dot" },
     -- import/override with your plugins
     { import = "plugins" },
   },

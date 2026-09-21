@@ -357,7 +357,17 @@ local function pump()
   end
   state.inflight = true
   -- 続いて飛んでくる GlobalEngineChanged が「自分由来」だと分かるようにしておく。
-  table.insert(state.expected, want)
+  -- 消費するのは watcher だけなので、watcher が居ないとき (gdbus 不在 / watch≠signal /
+  -- 監視を諦めた後 / Windows) に積むと際限なく溜まる。また「既にその engine だった」
+  -- ケースではシグナルが飛ばず 1 つ消え残るため、上限を超えたら捨てて自己修復させる。
+  -- ズレたまま放置すると、次の本物の Super+Space を「自分由来」と誤判定して
+  -- shell_value が更新されず、終了時に誤ったエンジンへ復帰する。
+  if state.watcher then
+    if #state.expected >= 8 then
+      state.expected = {}
+    end
+    table.insert(state.expected, want)
+  end
   vim.system(cmd, { text = true, env = env, timeout = 1000 }, function(res)
     state.inflight = false
     if res.code == 0 then
@@ -449,6 +459,10 @@ start_watcher = function()
     text = true,
     stdout = function(err, data)
       if not err and data then
+        -- 出力が届いた = 接続できている。以後の再接続のために失敗カウンタを戻す
+        -- (戻さないと、長時間セッション中に ibus が累計 5 回再起動しただけで
+        --  監視が永久に止まり、状態表示が実態を追わなくなる)。
+        state.watch_fails = 0
         handle_line(data)
       end
     end,
@@ -562,9 +576,13 @@ function M.restore_shell(blocking)
     return
   end
   -- 1 回 7ms 程度の外部コマンドなので、終了直前に待っても体感されない。
-  pcall(function()
-    vim.system(cmd, { text = true, env = env, timeout = 1000 }):wait(1500)
+  local ok, res = pcall(function()
+    return vim.system(cmd, { text = true, env = env, timeout = 1000 }):wait(1500)
   end)
+  -- キャッシュを必ず更新する。忘れると中断 (VimSuspend) からの復帰時に
+  -- pump() の短絡 (state.value == want) に当たって書き込みが飛ばされ、
+  -- ノーマルモードなのに IME が日本語のまま、という状態になる。
+  state.value = (ok and res and res.code == 0) and target or nil
 end
 
 function M.teardown()
@@ -596,7 +614,8 @@ function M.setup(opts)
   end
 
   if M.config.cursor then
-    -- 既定の guicursor は "n-v-c-sm:block,i-ci-ve:ver25,r-cr-o:hor20"。後勝ちなので
+    -- 既定の guicursor は "n-v-c-sm:block,i-ci-ve:ver25,r-cr-o:hor20" (+ 0.12 では
+    -- t:block-blinkon500-blinkoff500-TermCursor)。後勝ちなので
     -- i-ci-ve を名前付きグループ付きで append すれば挿入モードのカーソルだけ色が付く。
     vim.opt.guicursor:append("i-ci-ve:ver25-IMECursor")
     M.apply_cursor()
