@@ -7,3 +7,14 @@
 local map = vim.keymap.set
 map({ "n", "x" }, "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true, desc = "Down (display line)" })
 map({ "n", "x" }, "k", "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true, desc = "Up (display line)" })
+
+-- IME (OS 側) のトグル。skkeleton の <C-j> の筋肉記憶を引き継ぐ。
+-- 挿入モードとコマンドラインのみに張る: ノーマルモードの <C-j> は LazyVim が <C-w>j
+-- (下のウィンドウへ移動) に、ターミナルモードの <C-j> も LazyVim が使っているため奪わない。
+--
+-- 前提: 既定では Ctrl+J が anthy の on_off ショートカットに消費されて Neovim まで届かない。
+-- README の gsettings 手順で on_off から Ctrl+J / Ctrl+space を外しておくこと
+-- (外すと preedit が無いときの Ctrl+J は anthy の commit ハンドラが素通しする)。
+map({ "i", "c" }, "<C-j>", function()
+  require("config.ime").toggle()
+end, { desc = "IME トグル (あ/A)" })

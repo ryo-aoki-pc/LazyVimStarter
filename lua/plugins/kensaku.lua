@@ -1,21 +1,21 @@
 -- ローマ字のまま日本語をバッファ検索する (Migemo 後継の denops 実装)。
--- 例: /kensaku<CR> が「検索」「けんさく」「ケンサク」等にマッチ。IME (skkeleton) を
--- 起動せずに日本語文書内を検索できる。denops (Deno) は skkeleton で導入済みのため追加コストは小さい。
+-- 例: /kensaku<CR> が「検索」「けんさく」「ケンサク」等にマッチ。
+-- ノーマルモード/コマンドラインでは IME を必ず英数に落とす運用 (lua/config/ime.lua) のため、
+-- 「検索のたびに IME を入れ直す」を避けるにはこれが要になる。
 return {
   {
     "lambdalisue/vim-kensaku", -- 旧名 kensaku.vim
     event = "VeryLazy",
-    -- denops は dependencies に宣言しない: 宣言すると VeryLazy 時点で denops (Deno サーバー) が
-    -- 起動してしまい、skkeleton 側の「VeryLazy + 1 秒のバックグラウンド事前初期化」による
-    -- 起動タイミング調整を崩すため。denops はサーバー起動時に runtimepath を走査して denops
-    -- プラグインを発見するので、kensaku は「denops より先に rtp に載っている」ことだけ保証すれば
-    -- よい。event=VeryLazy は事前初期化の 1 秒遅延より必ず先に発火する (<C-j> 経由の起動でも同様)。
-    -- 注: skkeleton (が起動する denops) を外した場合は kensaku も動かなくなる暗黙の結合がある。
+    -- denops (Deno サーバー) を明示的に依存として持つ。以前は skkeleton 側の spec が denops を
+    -- 宣言しており、起動タイミングを崩さないためここでは宣言していなかったが、skkeleton を
+    -- 削除した今は kensaku が denops の唯一の利用者であり、暗黙の結合を残す理由がない。
+    -- denops はサーバー起動時に runtimepath を走査して denops プラグインを発見するため、
+    -- 依存として同時にロードされれば kensaku は正しく登録される。
+    dependencies = { "vim-denops/denops.vim" },
     init = function()
       -- 辞書 (migemo-compact-dict / jsmigemo 形式) は初回クエリ時に自動ダウンロードされる。
-      -- SKK-JISYO とは形式が異なるため skk-dev/dict の流用はできない (しなくてよい)。
-      -- キャッシュ先を既定の ~/.cache/kensaku.vim から stdpath("cache") 配下へ寄せ、
-      -- skkeleton の Deno KV キャッシュ等と置き場所を揃える (Windows でも適切な場所になる)。
+      -- キャッシュ先を既定の ~/.cache/kensaku.vim から stdpath("cache") 配下へ寄せる
+      -- (Windows でも適切な場所になる)。
       vim.g.kensaku_dictionary_cache = vim.fn.stdpath("cache") .. "/kensaku/migemo-compact-dict"
     end,
   },
@@ -30,7 +30,7 @@ return {
     -- 注: remap=true を付けないこと。<Plug> は noremap でも常に展開される (Vim 仕様) 一方、
     -- remap=true だと戻り値末尾の <CR> がこのマッピング自身に再入して再帰する。
     -- expr の Lua コールバックは replace_keycodes が既定で有効なため追加オプション不要。
-    -- 既知の制限: 起動直後 ~1 秒以内 (denops 未起動) の検索は失敗し得る (以後は自然回復)。
+    -- 既知の制限: 起動直後 (denops 未起動) の検索は失敗し得る (以後は自然回復)。
     -- 初回検索時のみ辞書ダウンロードの待ちが発生する (要ネットワーク、以後はキャッシュ)。
     keys = {
       {
