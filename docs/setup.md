@@ -11,13 +11,13 @@
 
 | 依存 | 用途 | 必須? |
 | --- | --- | --- |
-| [Neovim](https://neovim.io/) 0.11.2 以上 | 本体 | 必須 (下回ると LazyVim が `:checkhealth` でエラーにする) |
+| [Neovim](https://neovim.io/) 0.11.3 以上 | 本体 | 必須 (0.11.2 でも `:checkhealth` は緑のまま日本語検索だけ死ぬ。[つまずきやすい点](#つまずきやすい点)) |
 | git | lazy.nvim の bootstrap、プラグインの取得・更新、git 系ピッカー | 必須 |
 | PowerShell (pwsh 推奨) | Windows の `shell`。外部コマンドと端末が全部これを通る | Windows で必須 |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) (rg) | grep ピッカーと `grepprg` | 必須 |
 | [fd](https://github.com/sharkdp/fd) | ファイルピッカーと explorer | Windows で必須 / Linux では推奨 |
 | C コンパイラ (gcc または MSVC の cl) | treesitter パーサーのビルド | 必須 |
-| curl / tar / gzip | treesitter パーサーと Mason のダウンロード・展開 | 必須 |
+| curl / tar / gzip / unzip | treesitter と Mason の取得・展開 | 必須 |
 | [Node.js](https://nodejs.org/) (node + npm) | Mason が npm で入れる LSP・整形ツール、Markdown プレビュー | 必須 |
 | [Deno](https://deno.com/) | denops (vim-kensaku の実行基盤) | 日本語検索に必須 |
 | Nerd Font ([HackGen Console NF](https://github.com/yuru7/HackGen)) | アイコン表示と `guifont` | 実質必須 (無いと記号が豆腐になる) |
@@ -25,6 +25,10 @@
 | [zenhan](https://github.com/iuchim/zenhan) または im-select | 日本語入力 (Windows) | 任意 (無ければ IME 連携のみ無効) |
 | lazygit | `<leader>gg` | 任意 (無ければキーマップが定義されないだけ) |
 | ネットワーク | 初回のプラグイン取得、Mason、treesitter パーサー、kensaku の辞書 | 初回のみ必須 |
+
+`unzip` は Mason が zip 配布のツール (`stylua` など) を展開するのに使う。無いと
+**そのツールだけ**が静かに入らず、他は入るので気付きにくい。Deno の公式インストーラも
+展開に使う。
 
 **不要なもの** — fzf (ピッカーは snacks.nvim の Lua 実装。`:checkhealth lazyvim` が
 警告を出すが機能には影響しない)、telescope とその C ビルド (使っていない)、make、
@@ -120,27 +124,54 @@ WezTerm を使う場合は `treat_east_asian_ambiguous_width_as_wide` を既定 
 
 ## Linux
 
-ディストリごとにパッケージ名が違うので、Debian/Ubuntu 系と Fedora 系を併記する。
+ディストリごとにパッケージ名が違うので、Debian/Ubuntu 系・Fedora 系・RHEL 系を併記する。
 
 ### 1) Neovim と必須コマンド
 
-★ **ディストリの Neovim はたいてい古すぎる** (Ubuntu 24.04 は 0.9 系)。
-LazyVim は 0.11.2 以上を要求するので、リポジトリ版を入れる前にバージョンを確認し、
-古ければ [公式リリース](https://github.com/neovim/neovim/releases) の AppImage か
-Homebrew を使うこと。
-
 ```sh
 # Debian / Ubuntu
-sudo apt install git ripgrep fd-find build-essential curl tar gzip
+sudo apt install git ripgrep fd-find build-essential curl tar gzip unzip
 
 # Fedora
-sudo dnf install git ripgrep fd-find gcc curl tar gzip
+sudo dnf install git ripgrep fd-find gcc curl tar gzip unzip
 
-nvim --version | head -1   # v0.11.2 以上であること
+# RHEL 系 (AlmaLinux / Rocky / RHEL)
+# ★ ripgrep と fd-find は base リポジトリに無い。先に EPEL を足さないと
+#   「Unable to find a match: ripgrep fd-find」で止まる。
+sudo dnf install epel-release
+sudo dnf install git ripgrep fd-find gcc curl tar gzip unzip
 ```
 
-`fd-find` はコマンド名が `fdfind` になるが、この設定 (snacks.nvim) は `fd` と `fdfind` の
-両方を探すのでそのままで動く。
+`fd-find` のコマンド名はディストリによって違う。**Debian/Ubuntu だけが `fdfind`** で、
+Fedora / EPEL は `fd` のまま。この設定 (snacks.nvim) は両方を探すのでどちらでも動く。
+
+#### Neovim 本体
+
+★ **ディストリの Neovim はたいてい古すぎる** (Ubuntu 24.04 は 0.9 系、EPEL 10 は 0.10.1)。
+この設定は 0.11.3 以上を要求するので、リポジトリ版を入れる前にバージョンを確認すること。
+古い場合は **Homebrew が最も手軽** — Linux は x86_64 / aarch64 ともボトル (ビルド済み
+バイナリ) が用意されており、ソースビルドを待たずに最新版が入る。
+
+```sh
+# Homebrew (未導入なら)。前提は上で入れた git / curl に加えて file / procps-ng。
+NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"   # ~/.bashrc にも追記しておく
+
+brew install neovim
+
+nvim --version | head -1   # v0.11.3 以上であること
+```
+
+★ Homebrew を入れると `python@3.x` が依存として link されることがあり、そうなると
+**ibus-anthy が起動できなくなって OS 全体で日本語が打てなくなる**。症状と対処は
+[README のトラブルシューティング](../README.md#トラブルシューティング--日本語が一切入力できない-linux)
+にある。
+
+Homebrew を使いたくない場合は [公式リリース](https://github.com/neovim/neovim/releases) の
+tar.gz を展開して PATH に通す (`nvim-linux-x86_64.tar.gz` / `nvim-linux-arm64.tar.gz`)。
+AppImage も配布されているが **FUSE を必要とする**ため、コンテナや FUSE の無い環境では
+`fuse: device not found` で起動しない。その場合は `--appimage-extract` で展開して
+`squashfs-root/AppRun` を使う。
 
 ### 2) Node.js と Deno
 
@@ -150,13 +181,22 @@ nvim --version | head -1   # v0.11.2 以上であること
 # Debian / Ubuntu (ディストリ版が古い場合は NodeSource や fnm を使う)
 sudo apt install nodejs npm
 
-# Deno はディストリに無いことが多いので公式スクリプトで入れる
+# RHEL 系 (npm は nodejs-npm パッケージだが `npm` 指定でも解決される)
+sudo dnf install nodejs npm
+
+# Deno はディストリに無いことが多いので公式スクリプトで入れる (展開に unzip を使う)。
+# ★ このスクリプトは ~/.deno/bin に置くだけで PATH を通さない (非対話実行時)。
+#   自分で追記しないと nvim から deno が見えず、日本語検索が黙って動かない。
 curl -fsSL https://deno.land/install.sh | sh
+echo 'export PATH="$HOME/.deno/bin:$PATH"' >> ~/.bashrc
+export PATH="$HOME/.deno/bin:$PATH"
 
 node --version   # v18 以上 (Mason の要求)
 npm --version    # v7 以上
 deno --version
 ```
+
+Homebrew を入れてあるなら `brew install deno` でもよい (こちらは PATH が通った状態になる)。
 
 ### 3) 日本語入力 (ibus + anthy)
 
@@ -195,8 +235,9 @@ Neovim の設定ディレクトリそのものがこのリポジトリなので�
 Move-Item $env:LOCALAPPDATA\nvim      $env:LOCALAPPDATA\nvim.bak
 Move-Item $env:LOCALAPPDATA\nvim-data $env:LOCALAPPDATA\nvim-data.bak
 
-# 2) clone する。
-git clone git@github.com:ryo-aoki-pc/LazyVimStarter.git $env:LOCALAPPDATA\nvim
+# 2) clone する。SSH 鍵を GitHub に登録していなければ HTTPS を使う
+#    (このリポジトリは public なので鍵は要らない)。
+git clone https://github.com/ryo-aoki-pc/LazyVimStarter.git $env:LOCALAPPDATA\nvim
 
 # 3) 起動する。lazy.nvim の bootstrap → プラグイン取得 → treesitter のビルド →
 #    Mason のツール導入が続けて走るので、落ち着くまで数分待つ。
@@ -211,8 +252,10 @@ mv ~/.local/share/nvim  ~/.local/share/nvim.bak
 mv ~/.local/state/nvim  ~/.local/state/nvim.bak
 mv ~/.cache/nvim        ~/.cache/nvim.bak
 
-# 2) clone する。
-git clone git@github.com:ryo-aoki-pc/LazyVimStarter.git ~/.config/nvim
+# 2) clone する。SSH 鍵を GitHub に登録していない新しいマシンでは
+#    git@github.com: 形式は "Host key verification failed" で失敗するので、
+#    その場合は HTTPS を使う (このリポジトリは public なので鍵は要らない)。
+git clone https://github.com/ryo-aoki-pc/LazyVimStarter.git ~/.config/nvim
 
 # 3) 起動する。
 nvim
@@ -247,6 +290,20 @@ lazy.nvim は初回に各プラグインの最新コミットを取ってくる�
 :lua =vim.fn.executable("zenhan")  " Windows。1 なら IME 連携が有効 (0 でも他は動く)
 ```
 
+スクリプトで確認したい場合は headless でも同じことができる (`!` を付けないと
+`:Lazy sync` は待たずに戻り、`+qa` が取得途中のジョブを殺す点に注意)。
+
+```sh
+nvim --headless "+Lazy! sync" +qa      # 初回導入
+nvim --headless "+Lazy! restore" +qa   # lazy-lock.json に揃える
+nvim --headless "+Lazy! load mason.nvim nvim-treesitter" \
+     "+checkhealth lazyvim" "+w! /tmp/health.txt" +qa && grep ERROR /tmp/health.txt
+```
+
+ただし headless には UI が無いため `UIEnter` が発火せず、それを待つ `VeryLazy` も
+発火しない。**`lua/config/autocmds.lua` (IME 連携・CJK スペル・保存時整形の登録) は
+読み込まれない**ので、これらの確認は通常どおり `nvim` を起動して行うこと。
+
 - **日本語検索** — 日本語を含むファイルを開き、`/kensaku<CR>` で「検索」にマッチすれば成功。
   初回だけ辞書のダウンロードが走るので少し待つ。
 - **IME 連携** — 挿入モードに入って `<C-j>` を押し、lualine の表示が `A` から `あ` に
@@ -255,6 +312,17 @@ lazy.nvim は初回に各プラグインの最新コミットを取ってくる�
 - **アイコン** — ファイルピッカー (`<leader><space>`) のアイコンが豆腐でないこと。
 
 ## つまずきやすい点
+
+**`:checkhealth` は緑なのに日本語検索だけ効かない** — Neovim が 0.11.2 以下。
+LazyVim の health は 0.11.2 で `OK Using Neovim >= 0.11.2` を出すが、vim-kensaku の
+実行基盤 denops は **0.11.3 以上**を要求しており、下回ると起動時に
+`[denops] Denops requires Vim 9.1.1646 or Neovim 0.11.3.` を `:messages` に残して
+黙って止まる。`:checkhealth` には一切出ないので、`nvim --version` を直接見ること。
+
+**一部の Mason ツールだけが入らない (`stylua` など)** — `unzip` が無い。
+Mason は zip で配布されるツールの展開に `unzip` を使い、無いと**そのツールだけ**
+静かに失敗する (他のツールは入るので気付きにくい)。`:Mason` で状態を確認し、
+`sudo dnf install unzip` (または `apt install unzip`) の後に入れ直す。
 
 **treesitter のハイライトが一切効かない** — C コンパイラが見つかっていない。
 `:checkhealth lazyvim` の `nvim-treesitter` 節で `C compiler` を確認する。
