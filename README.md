@@ -145,6 +145,8 @@ shebang に Cellar/opt の絶対パスを持つので影響を受けない。
 
 ## 外部依存
 
+新しいマシンでのインストール手順 (Windows / Linux) は [docs/setup.md](docs/setup.md) を参照。
+
 | 依存 | 用途 | 必須? |
 | --- | --- | --- |
 | ibus + ibus-anthy | 日本語入力 (Linux)。Neovim から global engine を切り替える | Linux での日本語入力に必須 |
