@@ -64,6 +64,35 @@ gsettings set $S default "$v"
 置換に失敗する場合は `ibus-setup-anthy` の「キー割り当て」から `on_off` を編集する。
 以後の日本語 ON/OFF は **Super+Space** (入力ソース切替) と **Neovim の `<C-j>`** になる。
 
+#### トラブルシューティング — 日本語が一切入力できない (Linux)
+
+Neovim の中だけでなく OS 全体で日本語が打てなくなった場合、まず anthy エンジンが
+起動できるかを直接確かめる。ibus は engine の起動に失敗しても黙って英数のままになるため、
+`ibus engine` は `anthy` を返すのに変換だけが効かない、という見え方になる
+(engine プロセスはフォーカス時に遅延起動するので、`ps` に `ibus-engine-anthy` が
+居ないこと自体は異常の証拠にならない)。
+
+```sh
+/usr/libexec/ibus-engine-anthy --xml | head -3   # エンジン定義が出れば起動できている
+```
+
+**`ModuleNotFoundError: No module named 'gi'` が出る場合** — `python3` がシステム
+(`/usr/bin/python3`) ではなく Homebrew のものに解決されている。
+`/usr/libexec/ibus-engine-anthy` は `exec python3 …` と PATH 頼りで起動する一方、
+Homebrew の python には PyGObject (`gi`) が入っていないため、`brew` が `python@3.x` を
+他の formula の依存として link した瞬間 (PATH の先頭に入るため) エンジンが死ぬ。
+
+```sh
+which python3                 # /home/linuxbrew/... ならこれが原因
+brew unlink python@3.14       # brew の bin から python3 の symlink を外す
+ibus restart
+```
+
+`brew info --json=v2 python@3.14` の `installed_on_request` が `false` (= 依存として
+入っただけで自分で入れたわけではない) なら unlink して構わない。依存する formula は
+shebang に Cellar/opt の絶対パスを持つので影響を受けない。
+**`brew upgrade` で再 link されると同じ症状が再発する**ため、その時はもう一度 unlink する。
+
 #### 補足
 
 - **Neovim の中では `<C-j>` を使うこと**: gnome-shell は ibus の global engine が外部から
