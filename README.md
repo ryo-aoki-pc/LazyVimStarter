@@ -12,7 +12,7 @@ Markdown (GLFM) 執筆を強化した Neovim 設定。
 ### 日本語入力・検索
 
 OS の IME (Linux: ibus/anthy、Windows: zenhan) を Neovim のモードに追従させる。
-SKK 方式 (skkeleton) は使わない。実装は `lua/config/ime.lua`。
+実装は `lua/config/ime.lua`。
 
 - **挿入モードを抜けると自動で英数に戻る** — `dd` や `:` が IME に食われない。
   切り替えは D-Bus 直叩き (`busctl`) で 1 回 7ms 程度なので、`<Esc>` 直後に
@@ -99,17 +99,6 @@ Node.js / Deno / Nerd Font / ibus + ibus-anthy (Linux) を前提にしている�
 
 用途と必須かどうかの一覧、導入手順は
 [docs/setup.md](docs/setup.md#必要なもの一覧)にまとめてある。
-
-## SKK (skkeleton) からの移行
-
-以前は skkeleton による SKK 入力を使っていた。OS の IME に移行したため関連プラグイン
-(skkeleton / skkeleton_indicator.nvim / cmp-skkeleton / blink.compat) は削除済み。
-`:Lazy clean` でプラグイン本体が消えた後、自動 clone された SKK 辞書 (約 1GB) と
-Deno KV キャッシュが残るので、不要なら手で消す。
-
-```sh
-rm -rf ~/.local/share/nvim/skk ~/.cache/nvim/skkeleton
-```
 
 ## lazy-lock.json の運用
 

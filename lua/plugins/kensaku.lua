@@ -6,9 +6,8 @@ return {
   {
     "lambdalisue/vim-kensaku", -- 旧名 kensaku.vim
     event = "VeryLazy",
-    -- denops (Deno サーバー) を明示的に依存として持つ。以前は skkeleton 側の spec が denops を
-    -- 宣言しており、起動タイミングを崩さないためここでは宣言していなかったが、skkeleton を
-    -- 削除した今は kensaku が denops の唯一の利用者であり、暗黙の結合を残す理由がない。
+    -- denops (Deno サーバー) を明示的に依存として持つ。kensaku がこの設定で denops の
+    -- 唯一の利用者なので、他の spec に起動を任せる暗黙の結合を作らない。
     -- denops はサーバー起動時に runtimepath を走査して denops プラグインを発見するため、
     -- 依存として同時にロードされれば kensaku は正しく登録される。
     dependencies = { "vim-denops/denops.vim" },

@@ -14,7 +14,7 @@
 --
 -- 状態モデル: ibus の global engine 名だけを真実とする ("anthy" = 日本語 / "xkb:us::eng" = 英数)。
 -- anthy 内部の入力モード (ひらがな⇔Latin) は panel (gnome-shell) にしか publish されず
--- D-Bus から観測できないため、README の手順で anthy の on_off ショートカットから
+-- D-Bus から観測できないため、docs/setup.md の手順で anthy の on_off ショートカットから
 -- Ctrl+J / Ctrl+space を外し、内部モードが動かないようにしてある。これにより
 -- 「engine 名 = IME の状態」が常に成立し、<C-j> も Neovim まで届くようになる。
 --
@@ -35,7 +35,7 @@ M.config = {
   watch = "signal",
   -- guicursor で挿入モードのカーソル色を変える。
   -- 注: tmux-256color には Cs/Cr が無く Neovim は OSC 12 を出さないため、tmux 越しでは
-  --     terminal-overrides の設定が別途必要 (README 参照)。無くても無害な no-op。
+  --     terminal-overrides の設定が別途必要 (docs/setup.md 参照)。無くても無害な no-op。
   cursor = true,
   ibus = { ja = "anthy", ascii = "xkb:us::eng" },
 }
