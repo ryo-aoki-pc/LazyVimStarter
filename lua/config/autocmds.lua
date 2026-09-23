@@ -54,7 +54,7 @@ vim.api.nvim_create_autocmd("InsertEnter", {
 })
 
 -- コマンドライン。: や / で IME が生きていると Ex コマンドも検索も打てない。
--- 日本語検索はローマ字のままマッチする vim-kensaku が担うので、常に英数でよい。
+-- 日本語検索はローマ字のままマッチする Migemo (lua/plugins/migemo.lua) が担うので、常に英数でよい。
 vim.api.nvim_create_autocmd("ModeChanged", {
   group = ime_group,
   pattern = "*:c*",

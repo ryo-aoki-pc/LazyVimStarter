@@ -90,8 +90,12 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
 - **`lua/config/keymaps.lua`** — `<C-j>` トグル。**挿入モードとコマンドラインのみ**に張る
   (ノーマルモードの `<C-j>` は LazyVim のウィンドウ移動)。
 
-コマンドライン (`:` `/`) は常に英数に落とすため、日本語のバッファ検索は
-`lua/plugins/kensaku.lua` (vim-kensaku、denops = Deno が必須) が担う。この 2 つは対になっている。
+コマンドライン (`:` `/`) は常に英数に落とすため、日本語の検索はローマ字のまま日本語に
+マッチする Migemo が担う。この 2 つは対になっている。変換器は **`lua/config/migemo.lua`**
+(純 Lua の luamigemo を呼ぶ。Deno などの外部ランタイムは不要)、配線は
+**`lua/plugins/migemo.lua`** で `/` `?` の `<CR>`・flash.nvim の `s`・snacks picker の grep の
+3 経路に入れている。入力がローマ字として読めるときだけ変換する。`*` `#` の日本語対応
+(非 ASCII は `\<` `\>` なし) は `lua/config/keymaps.lua`。
 
 ### Markdown / GLFM
 

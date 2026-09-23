@@ -24,7 +24,7 @@ OS の IME (Linux: ibus/anthy、Windows: zenhan) を Neovim のモードに追�
 - **lualine に `あ` / `A` を表示** — 状態は ibus の `GlobalEngineChanged` シグナルを
   `gdbus monitor` で購読して把握するため、OS 側で切り替えても表示がズレない
   (ポーリングはしない)。
-- コマンドライン (`:` `/`) は常に英数。日本語検索は下記の vim-kensaku が担う。
+- コマンドライン (`:` `/`) は常に英数。日本語検索は下記の Migemo が担う。
   挿入モード中の `<C-r>=` のようにコマンドラインから挿入モードへ戻る経路では、
   元の入力状態に復元する。
 - **端末モード・`<C-c>`・置換モードも同じ扱い** — lazygit のコミットメッセージなどを
@@ -67,9 +67,15 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   nvim が「gnome-shell による切り替え」と誤認し、終了時の復帰先を英数で上書きすることがある。
   外部からの変更が「gnome-shell によるものか別の nvim によるものか」を判別する手段が
   無いため、現状は許容している (その場合も Super+Space をもう一度押せば揃う)。
-- **[vim-kensaku](https://github.com/lambdalisue/vim-kensaku)** — ローマ字のまま日本語を
-  バッファ検索 (`/kensaku<CR>` が「検索」等にマッチ)。`/` `?` の `<CR>` にのみフック。
-  検索のたびに IME を入れ直さずに済むので、この構成では要になる。
+- **Migemo ([luamigemo](https://github.com/delphinus/luamigemo))** — ローマ字のまま日本語を
+  検索 (`/kensaku<CR>` が「検索」「けんさく」「ケンサク」等にマッチ)。純 Lua で辞書同梱のため
+  Deno もネットワークも不要。`/` `?` の `<CR>` に加え、flash.nvim の `s` (ラベルジャンプ) と
+  snacks picker の grep (`<leader>sg` `<leader>/` など) でも同じ変換が効く。入力がローマ字として
+  読めるときだけ変換するので、英単語や正規表現の検索はそのまま通る。
+  検索のたびに IME を入れ直さずに済むので、この構成では要になる。実装は `lua/config/migemo.lua`。
+- **`*` `#` の日本語対応** — 非 ASCII の単語は `\<` `\>` を付けずに検索する (日本語では
+  単語境界が文字種の切り替わりにしか成立せず、「日本語検索」の中の「検索」に当たらないため)。
+  visual 選択して `*` `#` で選択文字列をそのまま検索できる。
 - 全角スペース (U+3000) を波線で可視化、全角括弧の `%` ジャンプ対応、
   日本語向け `formatoptions` (mM)、CJK スペルチェック、
   `fileencodings` (cp932/euc-jp 自動判別) など。
@@ -93,8 +99,8 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
 
 ## 外部依存
 
-Neovim 0.11.3 以上のほかに、git / ripgrep / fd / C コンパイラ / curl・tar・gzip・unzip /
-Node.js / Deno / Nerd Font / ibus + ibus-anthy (Linux) を前提にしている。
+Neovim 0.11.2 以上のほかに、git / ripgrep / fd / C コンパイラ / curl・tar・gzip・unzip /
+Node.js / Nerd Font / ibus + ibus-anthy (Linux) を前提にしている。
 **足りなくてもエラーにならず静かに壊れる**ため、初回起動の前に揃えること。
 
 用途と必須かどうかの一覧、導入手順は
