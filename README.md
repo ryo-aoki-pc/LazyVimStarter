@@ -3,12 +3,16 @@
 [LazyVim](https://github.com/LazyVim/LazyVim) をベースに、日本語の入力・検索と
 Markdown (GLFM) 執筆を強化した Neovim 設定。
 
+**新しいマシンで動かすまでの手順は [docs/setup.md](docs/setup.md)** にある
+(外部コマンドの導入、GNOME + ibus の初期設定、初回起動と動作確認まで)。
+この README は「何ができる設定か」を説明する。
+
 ## 主なカスタマイズ
 
 ### 日本語入力・検索
 
 OS の IME (Linux: ibus/anthy、Windows: zenhan) を Neovim のモードに追従させる。
-SKK 方式 (skkeleton) は使わない。実装は `lua/config/ime.lua`。
+実装は `lua/config/ime.lua`。
 
 - **挿入モードを抜けると自動で英数に戻る** — `dd` や `:` が IME に食われない。
   切り替えは D-Bus 直叩き (`busctl`) で 1 回 7ms 程度なので、`<Esc>` 直後に
@@ -34,64 +38,11 @@ SKK 方式 (skkeleton) は使わない。実装は `lua/config/ime.lua`。
 - IME デーモンが居ない環境・headless・対応コマンドが無い Windows では、
   何もせず静かに無効化される (エラーは出ない)。
 
-#### セットアップ (Linux / GNOME + ibus、初回のみ)
-
-```sh
-# tmux の中では DBUS_SESSION_BUS_ADDRESS が未設定で gsettings が既定値しか読めないため、
-# 必ず明示すること (指定しないと書き込みも黙って効かない)。
-export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus
-
-# 1) 入力ソースに「英語 (US)」を追加する。
-#    Neovim は global engine を anthy ↔ xkb:us::eng で切り替えるため、両方が
-#    GNOME の入力ソースとして登録されている必要がある (gnome-shell が管理外の
-#    エンジンを巻き戻すのを防ぐ)。先頭に置くとログイン直後が英数で始まる。
-gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'us'), ('ibus', 'anthy')]"
-gsettings get org.gnome.desktop.input-sources sources   # 反映確認
-
-# 2) anthy の on_off ショートカットから Ctrl+J / Ctrl+space を外す。
-#    これは anthy *内部* のひらがな⇔Latin モードを切り替えるもので、D-Bus から
-#    観測できないため、残したままだと lualine の表示が実際とズレる。加えて
-#    Ctrl+J が anthy に食われて Neovim の <C-j> が届かなくなる。
-#    ★ anthy の設定は schema 既定とマージされないので、部分的な dict を書くと
-#      他のショートカットが全部消える。必ず全体を読んで置換し、確認してから書き戻すこと。
-S=org.freedesktop.ibus.engine.anthy.shortcut
-v=$(gsettings get $S default \
-     | sed "s/'on_off': <\['Zenkaku_Hankaku', 'Ctrl+space', 'Ctrl+J'\]>/'on_off': <['Zenkaku_Hankaku']>/")
-printf '%s\n' "$v" | grep -o "'on_off': <\[[^]]*\]>"   # 置換できたか目視してから
-gsettings set $S default "$v"
-```
-
-置換に失敗する場合は `ibus-setup-anthy` の「キー割り当て」から `on_off` を編集する。
-以後の日本語 ON/OFF は **Super+Space** (入力ソース切替) と **Neovim の `<C-j>`** になる。
-
-#### トラブルシューティング — 日本語が一切入力できない (Linux)
-
-Neovim の中だけでなく OS 全体で日本語が打てなくなった場合、まず anthy エンジンが
-起動できるかを直接確かめる。ibus は engine の起動に失敗しても黙って英数のままになるため、
-`ibus engine` は `anthy` を返すのに変換だけが効かない、という見え方になる
-(engine プロセスはフォーカス時に遅延起動するので、`ps` に `ibus-engine-anthy` が
-居ないこと自体は異常の証拠にならない)。
-
-```sh
-/usr/libexec/ibus-engine-anthy --xml | head -3   # エンジン定義が出れば起動できている
-```
-
-**`ModuleNotFoundError: No module named 'gi'` が出る場合** — `python3` がシステム
-(`/usr/bin/python3`) ではなく Homebrew のものに解決されている。
-`/usr/libexec/ibus-engine-anthy` は `exec python3 …` と PATH 頼りで起動する一方、
-Homebrew の python には PyGObject (`gi`) が入っていないため、`brew` が `python@3.x` を
-他の formula の依存として link した瞬間 (PATH の先頭に入るため) エンジンが死ぬ。
-
-```sh
-which python3                 # /home/linuxbrew/... ならこれが原因
-brew unlink python@3.14       # brew の bin から python3 の symlink を外す
-ibus restart
-```
-
-`brew info --json=v2 python@3.14` の `installed_on_request` が `false` (= 依存として
-入っただけで自分で入れたわけではない) なら unlink して構わない。依存する formula は
-shebang に Cellar/opt の絶対パスを持つので影響を受けない。
-**`brew upgrade` で再 link されると同じ症状が再発する**ため、その時はもう一度 unlink する。
+Linux では **GNOME の入力ソース登録と anthy のショートカット調整が必要**。
+手順は [docs/setup.md の「日本語入力 (IME) を用意する」](docs/setup.md#4-日本語入力-ime-を用意する)
+にある (この 2 つをやらないと `<C-j>` が anthy に食われる)。
+日本語が一切入力できなくなった場合の切り分けは
+[つまずきやすい点](docs/setup.md#つまずきやすい点)を参照。
 
 #### 補足
 
@@ -106,12 +57,8 @@ shebang に Cellar/opt の絶対パスを持つので影響を受けない。
   Neovim には届かない。これは IME 側の仕様。
 - **カーソル色**: 挿入モードのカーソル色も IME 状態で変わるが、`tmux-256color` には
   `Cs`/`Cr` が無く Neovim が OSC 12 を出さないため、tmux 越しでは既定で効かない。
-  使いたい場合は `~/.config/tmux/tmux.conf` に以下を足す (無くても無害)。
-
-  ```tmux
-  set -ga terminal-overrides ',*:Cs=\E]12;%p1%s\007:Cr=\E]112\007'
-  ```
-
+  使いたい場合の設定は
+  [docs/setup.md の任意設定](docs/setup.md#カーソル色を-tmux-で効かせる-任意)にある。
 - **Windows**: `zenhan.exe` (推奨) か `im-select.exe` が PATH にあれば、モード連動と
   終了時の復帰は同じように動く。ただし ibus の `GlobalEngineChanged` に相当する通知が
   無いため、**OS 側で IME を切り替えても Neovim は気付けない** (あ/A 表示が実態と
@@ -145,33 +92,19 @@ shebang に Cellar/opt の絶対パスを持つので影響を受けない。
 
 ### その他
 
-- 有効化済み extras: `lang.markdown` / `lang.json` / `lang.yaml` / `lang.toml` / `editor.dial`
+- 有効化済み extras: `lang.markdown` / `lang.json` / `lang.yaml` / `lang.toml` /
+  `editor.dial` / `ui.treesitter-context` / `lang.git` / `util.dot`
   (`lua/config/lazy.lua` で import。`lazyvim.json` は gitignore のため import 方式で管理)
 - Windows では shell を PowerShell (pwsh 優先、UTF-8 入出力) に設定
 
 ## 外部依存
 
-新しいマシンでのインストール手順 (Windows / Linux) は [docs/setup.md](docs/setup.md) を参照。
+Neovim 0.11.2 以上のほかに、git / ripgrep / fd / C コンパイラ / curl・tar・gzip・unzip /
+Node.js / Nerd Font / ibus + ibus-anthy (Linux) を前提にしている。
+**足りなくてもエラーにならず静かに壊れる**ため、初回起動の前に揃えること。
 
-| 依存 | 用途 | 必須? |
-| --- | --- | --- |
-| ibus + ibus-anthy | 日本語入力 (Linux)。Neovim から global engine を切り替える | Linux での日本語入力に必須 |
-| busctl / gdbus | ibus との D-Bus 通信。busctl は systemd、gdbus は glib2 に同梱 | どちらか 1 つ (gdbus があれば状態のシグナル購読も有効) |
-| [zenhan](https://github.com/iuchim/zenhan) または im-select | 日本語入力 (Windows) | 任意 (無ければ IME 連携のみ無効) |
-| markdownlint-cli2 / markdown-toc | Markdown の lint・整形 | Mason で自動インストール |
-| node | markdown-preview.nvim の build | プレビュー利用時のみ |
-| HackGen Console NF | `guifont` に指定 | GUI クライアント利用時のみ |
-
-## SKK (skkeleton) からの移行
-
-以前は skkeleton による SKK 入力を使っていた。OS の IME に移行したため関連プラグイン
-(skkeleton / skkeleton_indicator.nvim / cmp-skkeleton / blink.compat) は削除済み。
-`:Lazy clean` でプラグイン本体が消えた後、自動 clone された SKK 辞書 (約 1GB) と
-Deno KV キャッシュが残るので、不要なら手で消す。
-
-```sh
-rm -rf ~/.local/share/nvim/skk ~/.cache/nvim/skkeleton
-```
+用途と必須かどうかの一覧、導入手順は
+[docs/setup.md](docs/setup.md#必要なもの一覧)にまとめてある。
 
 ## lazy-lock.json の運用
 
