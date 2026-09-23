@@ -5,7 +5,7 @@
 されない」のように静かに壊れる。エラーが出ない種類の壊れ方なので、先に全部入れてから
 初回起動するのが結局は早い。
 
-対象は Windows 11 と Linux。設定そのものの説明は [../README.md](../README.md) を参照。
+対象は Windows 11 と AlmaLinux 10。設定そのものの説明は [../README.md](../README.md) を参照。
 
 ## 必要なもの一覧
 
@@ -122,38 +122,31 @@ WezTerm を使う場合は `treat_east_asian_ambiguous_width_as_wide` を既定 
 しておく。Neovim 側の `ambiwidth` を既定 (single) のままにしてあり、片方だけ変えると
 `○` `±` `①` などを含む行の桁が丸ごとずれる (理由は `lua/config/options.lua` のコメント)。
 
-## Linux
+## Linux (AlmaLinux 10)
 
-ディストリごとにパッケージ名が違うので、Debian/Ubuntu 系・Fedora 系・RHEL 系を併記する。
+以下は AlmaLinux 10 で実際に流して確認した手順。他のディストリでも考え方は同じだが、
+パッケージ名とリポジトリの構成は読み替えが要る。
 
 ### 1) Neovim と必須コマンド
 
 ```sh
-# Debian / Ubuntu
-sudo apt install git ripgrep fd-find build-essential curl tar gzip unzip
-
-# Fedora
-sudo dnf install git ripgrep fd-find gcc curl tar gzip unzip
-
-# RHEL 系 (AlmaLinux / Rocky / RHEL)
 # ★ ripgrep と fd-find は base リポジトリに無い。先に EPEL を足さないと
 #   「Unable to find a match: ripgrep fd-find」で止まる。
 sudo dnf install epel-release
-sudo dnf install git ripgrep fd-find gcc curl tar gzip unzip
-```
 
-`fd-find` のコマンド名はディストリによって違う。**Debian/Ubuntu だけが `fdfind`** で、
-Fedora / EPEL は `fd` のまま。この設定 (snacks.nvim) は両方を探すのでどちらでも動く。
+# file と procps-ng は後で入れる Homebrew の前提。
+sudo dnf install git ripgrep fd-find gcc curl tar gzip unzip file procps-ng
+```
 
 #### Neovim 本体
 
-★ **ディストリの Neovim はたいてい古すぎる** (Ubuntu 24.04 は 0.9 系、EPEL 10 は 0.10.1)。
+★ **ディストリの Neovim は古すぎる** (EPEL 10 は 0.10.1)。
 この設定は 0.11.3 以上を要求するので、リポジトリ版を入れる前にバージョンを確認すること。
 古い場合は **Homebrew が最も手軽** — Linux は x86_64 / aarch64 ともボトル (ビルド済み
 バイナリ) が用意されており、ソースビルドを待たずに最新版が入る。
 
 ```sh
-# Homebrew (未導入なら)。前提は上で入れた git / curl に加えて file / procps-ng。
+# Homebrew (未導入なら)。前提となるコマンドは上で導入済み。
 NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"   # ~/.bashrc にも追記しておく
 
@@ -178,10 +171,7 @@ AppImage も配布されているが **FUSE を必要とする**ため、コン�
 必要な理由は [Windows の節](#4-nodejs-と-deno) と同じ。
 
 ```sh
-# Debian / Ubuntu (ディストリ版が古い場合は NodeSource や fnm を使う)
-sudo apt install nodejs npm
-
-# RHEL 系 (npm は nodejs-npm パッケージだが `npm` 指定でも解決される)
+# npm の実体は nodejs-npm パッケージだが、`npm` 指定でも解決される
 sudo dnf install nodejs npm
 
 # Deno はディストリに無いことが多いので公式スクリプトで入れる (展開に unzip を使う)。
@@ -201,11 +191,7 @@ Homebrew を入れてあるなら `brew install deno` でもよい (こちらは
 ### 3) 日本語入力 (ibus + anthy)
 
 ```sh
-# Debian / Ubuntu
-sudo apt install ibus ibus-anthy
-
-# Fedora
-sudo dnf install ibus-anthy
+sudo dnf install ibus ibus-anthy
 ```
 
 Neovim から ibus への通信には `busctl` (systemd 同梱) か `gdbus` (glib2 同梱) を使う。
@@ -322,7 +308,7 @@ LazyVim の health は 0.11.2 で `OK Using Neovim >= 0.11.2` を出すが、vim
 **一部の Mason ツールだけが入らない (`stylua` など)** — `unzip` が無い。
 Mason は zip で配布されるツールの展開に `unzip` を使い、無いと**そのツールだけ**
 静かに失敗する (他のツールは入るので気付きにくい)。`:Mason` で状態を確認し、
-`sudo dnf install unzip` (または `apt install unzip`) の後に入れ直す。
+`sudo dnf install unzip` の後に入れ直す。
 
 **treesitter のハイライトが一切効かない** — C コンパイラが見つかっていない。
 `:checkhealth lazyvim` の `nvim-treesitter` 節で `C compiler` を確認する。
