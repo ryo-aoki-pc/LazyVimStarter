@@ -11,7 +11,7 @@
 
 | 依存 | 用途 | 必須? |
 | --- | --- | --- |
-| [Neovim](https://neovim.io/) 0.11.3 以上 | 本体 | 必須 (0.11.2 でも `:checkhealth` は緑のまま日本語検索だけ死ぬ。[つまずきやすい点](#つまずきやすい点)) |
+| [Neovim](https://neovim.io/) 0.11.2 以上 | 本体 (LazyVim の要求) | 必須 |
 | git | lazy.nvim の bootstrap、プラグインの取得・更新、git 系ピッカー | 必須 |
 | PowerShell (pwsh 推奨) | Windows の `shell`。外部コマンドと端末が全部これを通る | Windows で必須 |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) (rg) | grep ピッカーと `grepprg` | 必須 |
@@ -19,16 +19,14 @@
 | C コンパイラ (gcc または MSVC の cl) | treesitter パーサーのビルド | 必須 |
 | curl / tar / gzip / unzip | treesitter と Mason の取得・展開 | 必須 |
 | [Node.js](https://nodejs.org/) (node + npm) | Mason が npm で入れる LSP・整形ツール、Markdown プレビュー | 必須 |
-| [Deno](https://deno.com/) | denops (vim-kensaku の実行基盤) | 日本語検索に必須 |
 | Nerd Font ([HackGen Console NF](https://github.com/yuru7/HackGen)) | アイコン表示と `guifont` | 実質必須 (無いと記号が豆腐になる) |
 | ibus + ibus-anthy | 日本語入力 (Linux)。global engine を切り替える | Linux で必須 |
 | [zenhan](https://github.com/iuchim/zenhan) または im-select | 日本語入力 (Windows) | 任意 (無ければ IME 連携のみ無効) |
 | lazygit | `<leader>gg` | 任意 (無ければキーマップが定義されないだけ) |
-| ネットワーク | 初回のプラグイン取得、Mason、treesitter パーサー、kensaku の辞書 | 初回のみ必須 |
+| ネットワーク | 初回のプラグイン取得、Mason、treesitter パーサー | 初回のみ必須 |
 
 `unzip` は Mason が zip 配布のツール (`stylua` など) を展開するのに使う。無いと
-**そのツールだけ**が静かに入らず、他は入るので気付きにくい。Deno の公式インストーラも
-展開に使う。
+**そのツールだけ**が静かに入らず、他は入るので気付きにくい。
 
 **不要なもの** — fzf (ピッカーは snacks.nvim の Lua 実装。`:checkhealth lazyvim` が
 警告を出すが機能には影響しない)、telescope とその C ビルド (使っていない)、make、
@@ -53,7 +51,7 @@ Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
 
 ```powershell
 # 1) 本体と必須コマンド。すべて main バケットにある。
-scoop install neovim ripgrep fd gcc nodejs deno
+scoop install neovim ripgrep fd gcc nodejs
 
 # 2) git。Git for Windows を入れている場合は不要 (重複するので入れない)。
 #    ★ Git for Windows は curl / tar / gzip / unzip も一緒に入れてくれるので、
@@ -85,18 +83,18 @@ winget install --id=BrechtSanders.WinLibs.POSIX.UCRT
 Visual Studio Build Tools を既に入れているなら `cl.exe` も自動検出される
 (LazyVim が `C:/Program Files (x86)/Microsoft Visual Studio/...` を探しにいく)。
 
-### 4) Node.js と Deno
+### 4) Node.js
 
-どちらも「入れなくても起動はするが、機能が黙って死ぬ」たぐいの依存なので、
+「入れなくても起動はするが、機能が黙って死ぬ」たぐいの依存なので、
 何のために必要かを把握しておくとよい。
 
 - **node + npm** — Mason が `markdownlint-cli2` / `markdown-toc` /
   `bash-language-server` / `json-lsp` / `yaml-language-server` を npm パッケージとして
   入れる。つまり **node を消すと Markdown の lint と整形が丸ごと止まる**。
   `markdown-preview.nvim` もプリビルド版を入れていない間は node で動く。
-- **deno** — vim-kensaku (ローマ字のまま日本語をバッファ検索する) の実行基盤 denops が
-  Deno を必須にしており、無いと起動時に「Denops requires executable Deno.」で止まる。
-  この構成では IME を入れ直さずに日本語検索できることが要なので、実質必須。
+
+日本語のローマ字検索 (Migemo) は純 Lua の luamigemo が辞書ごと同梱しているため、
+Deno などの外部ランタイムは要らない。
 
 ### 5) IME 連携 (zenhan)
 
@@ -166,27 +164,17 @@ AppImage も配布されているが **FUSE を必要とする**ため、コン�
 `fuse: device not found` で起動しない。その場合は `--appimage-extract` で展開して
 `squashfs-root/AppRun` を使う。
 
-### 2) Node.js と Deno
+### 2) Node.js
 
-必要な理由は [Windows の節](#4-nodejs-と-deno) と同じ。
+必要な理由は [Windows の節](#4-nodejs) と同じ。
 
 ```sh
 # npm の実体は nodejs-npm パッケージだが、`npm` 指定でも解決される
 sudo dnf install nodejs npm
 
-# Deno はディストリに無いことが多いので公式スクリプトで入れる (展開に unzip を使う)。
-# ★ このスクリプトは ~/.deno/bin に置くだけで PATH を通さない (非対話実行時)。
-#   自分で追記しないと nvim から deno が見えず、日本語検索が黙って動かない。
-curl -fsSL https://deno.land/install.sh | sh
-echo 'export PATH="$HOME/.deno/bin:$PATH"' >> ~/.bashrc
-export PATH="$HOME/.deno/bin:$PATH"
-
 node --version   # v18 以上 (Mason の要求)
 npm --version    # v7 以上
-deno --version
 ```
-
-Homebrew を入れてあるなら `brew install deno` でもよい (こちらは PATH が通った状態になる)。
 
 ### 3) 日本語入力 (ibus + anthy)
 
@@ -272,7 +260,7 @@ lazy.nvim は初回に各プラグインの最新コミットを取ってくる�
 機能ごとの確認:
 
 ```vim
-:lua =vim.fn.executable("deno")    " 1 が返れば日本語検索が動く
+:checkhealth luamigemo             " 辞書と LuaJIT が OK なら日本語検索が動く
 :lua =vim.fn.executable("zenhan")  " Windows。1 なら IME 連携が有効 (0 でも他は動く)
 ```
 
@@ -290,20 +278,14 @@ nvim --headless "+Lazy! load mason.nvim nvim-treesitter" \
 発火しない。**`lua/config/autocmds.lua` (IME 連携・CJK スペル・保存時整形の登録) は
 読み込まれない**ので、これらの確認は通常どおり `nvim` を起動して行うこと。
 
-- **日本語検索** — 日本語を含むファイルを開き、`/kensaku<CR>` で「検索」にマッチすれば成功。
-  初回だけ辞書のダウンロードが走るので少し待つ。
+- **日本語検索** — 日本語を含むファイルを開き、`/kensaku<CR>` で「検索」にマッチすれば成功
+  (辞書は同梱なのでネットワーク不要)。`s` → `nihongo` で「日本語」にラベルが付くことも見る。
 - **IME 連携** — 挿入モードに入って `<C-j>` を押し、lualine の表示が `A` から `あ` に
   変われば成功。`<Esc>` で `A` に戻ること。
 - **Markdown の整形** — `.md` を開いて保存し、markdownlint の指摘が自動修正されること。
 - **アイコン** — ファイルピッカー (`<leader><space>`) のアイコンが豆腐でないこと。
 
 ## つまずきやすい点
-
-**`:checkhealth` は緑なのに日本語検索だけ効かない** — Neovim が 0.11.2 以下。
-LazyVim の health は 0.11.2 で `OK Using Neovim >= 0.11.2` を出すが、vim-kensaku の
-実行基盤 denops は **0.11.3 以上**を要求しており、下回ると起動時に
-`[denops] Denops requires Vim 9.1.1646 or Neovim 0.11.3.` を `:messages` に残して
-黙って止まる。`:checkhealth` には一切出ないので、`nvim --version` を直接見ること。
 
 **一部の Mason ツールだけが入らない (`stylua` など)** — `unzip` が無い。
 Mason は zip で配布されるツールの展開に `unzip` を使い、無いと**そのツールだけ**
@@ -323,9 +305,9 @@ Windows で `gcc` を入れた直後は PATH が反映されていないこと�
 導入済みツールごと壊れる。`:Mason` で状態を見て、
 `:MasonInstall markdownlint-cli2 markdown-toc` で入れ直す。
 
-**`/` からの日本語検索が効かない** — `deno` が PATH に無いか、初回の辞書ダウンロードが
-ネットワークで失敗している。`:messages` に denops のエラーが残っていないか見る。
-辞書のキャッシュ先は `stdpath("cache")/kensaku/` なので、壊れた場合は消せば再取得される。
+**`/` からの日本語検索が効かない** — `:checkhealth luamigemo` で同梱辞書と LuaJIT を確認する。
+入力がローマ字として読めない場合 (`search` のような英単語、空白や記号を含む) は
+意図的に変換しない仕様なので、まず `/kensaku<CR>` のような純粋なローマ字で試す。
 
 **アイコンが豆腐 (□) になる** — 端末側のフォントが Nerd Font になっていない。
 `guifont` は GUI クライアント専用で、端末には効かない。
