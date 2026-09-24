@@ -39,7 +39,7 @@ OS の IME (Linux: ibus/anthy、Windows: zenhan) を Neovim のモードに追�
   何もせず静かに無効化される (エラーは出ない)。
 
 Linux では **GNOME の入力ソース登録と anthy のショートカット調整が必要**。
-手順は [docs/setup.md の「日本語入力 (IME) を用意する」](docs/setup.md#4-日本語入力-ime-を用意する)
+手順は [docs/setup.md 手順 5「日本語入力 (IME) を用意する」](docs/setup.md#実施手順)
 にある (この 2 つをやらないと `<C-j>` が anthy に食われる)。
 日本語が一切入力できなくなった場合の切り分けは
 [つまずきやすい点](docs/setup.md#つまずきやすい点)を参照。
