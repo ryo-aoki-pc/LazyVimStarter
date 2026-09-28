@@ -87,6 +87,10 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
     整形は markdownlint-cli2 `--fix` + markdown-toc のみ。
   - render-markdown.nvim は無効化 (プレビューは markdown-preview.nvim を使用)。
   - 除外したい markdownlint ルールは `lua/plugins/lang-markdown.lua` の `disabled_rules` に列挙。
+- **記法の記号を隠さない** — LazyVim 既定の `conceallevel=2` では、コードフェンスの行・
+  インラインコードの `` ` ``・強調の `*` `_`・リンクの URL などがカーソル行以外で隠れる。
+  記法をそのまま見て書けるよう、markdown バッファでは常に表示する (`lua/config/autocmds.lua`)。
+  一時的に隠し表示へ戻すには `<leader>uc`。
 - **[vim-table-mode](https://github.com/dhruvasagar/vim-table-mode)** — パイプ表の整形
   (全角幅対応)。markdown バッファ限定で `<leader>tm` (toggle) / `<leader>tr` (realign)。
 
