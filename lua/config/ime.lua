@@ -30,6 +30,9 @@ M.config = {
   enabled = true,
   -- 挿入を抜けた時点で日本語だったバッファは、次にそのバッファで挿入に入る時に自動復帰する。
   sticky = true,
+  -- 検索コマンドライン (/ ?) も同じくバッファ単位で覚える。前回の検索を日本語のまま抜けていれば
+  -- 次の / ? も日本語で始める。: など他のコマンドラインは常に英数。
+  search_sticky = true,
   -- "signal": gdbus monitor を常駐させて GlobalEngineChanged を購読する (既定・推奨)。
   -- "poll"  : 挿入モードの間だけ 400ms 間隔で問い合わせる (monitor が使えない環境の保険)。
   -- "off"   : 自前の書き込み結果だけを信じる (OS 側の切り替えは検知できない)。
@@ -59,6 +62,8 @@ local state = {
   watcher = nil,
   watch_fails = 0,
   poll = nil,
+  -- 利用者が実際に入力している検索コマンドラインの中か (on_cmdline_enter 参照)。
+  search_interactive = false,
 }
 
 -- ibus: バスアドレスの解決 ----------------------------------------------------
@@ -584,6 +589,49 @@ function M.on_insert_leave(buf)
   M.remember(buf)
   M.ascii()
   poll_stop()
+end
+
+local function is_search(cmdtype)
+  return cmdtype == "/" or cmdtype == "?"
+end
+
+-- 検索コマンドライン (/ ?) に入る時。英数への切り替えは autocmds.lua の ModeChanged (*:c*) が
+-- 全種別に対してするので、ここでは search_sticky による日本語への復元だけをする。前回そのバッファで
+-- 日本語のまま検索を抜けていれば日本語に戻す (日本語の文章を日本語で検索するバッファでは、
+-- 毎回 <C-j> を押さずに済む)。: など他のコマンドラインは常に英数のまま。
+function M.on_cmdline_enter(buf, cmdtype)
+  if not state.backend or not M.config.search_sticky or not is_search(cmdtype) then
+    return
+  end
+  state.search_interactive = false
+  local sticky = buf and vim.api.nvim_buf_is_valid(buf) and vim.b[buf].ime_search_sticky
+  -- 復元と記録は、コマンドラインが入力待ちになるまで遅らせる。* # (keymaps.lua) のように
+  -- マッピングが feedkeys で打ち切る検索は、ここで予約した処理が走る前にコマンドラインを抜ける。
+  -- その場合は日本語にせず (一瞬だけ日本語になるちらつきと余計な spawn を防ぐ)、状態も記録しない
+  -- (記録すると * を押すたびに sticky が英数で上書きされる)。
+  vim.schedule(function()
+    if not is_search(vim.fn.getcmdtype()) then
+      return
+    end
+    state.search_interactive = true
+    if sticky then
+      M.ja()
+    end
+  end)
+end
+
+-- 検索コマンドラインを抜ける時。抜けた瞬間の状態を次回の既定として記録する (<Esc> で取り消した
+-- 場合も同じ)。英数への切り替えはここではせず、遷移先を見る autocmds.lua の ModeChanged (c*:*) に任せる。
+function M.on_cmdline_leave(buf, cmdtype)
+  if not state.backend or not is_search(cmdtype) then
+    return
+  end
+  if state.search_interactive and M.config.search_sticky and buf and vim.api.nvim_buf_is_valid(buf) then
+    -- remember() と同じく、自分の書き込みの完了前 (<C-j> の直後に <CR> を打った、など) は
+    -- 実測値がまだ古いので、投入待ちの値 (desired) を優先する。
+    vim.b[buf].ime_search_sticky = (state.desired or state.value) == state.backend.ja
+  end
+  state.search_interactive = false
 end
 
 -- 終了・中断時に「gnome-shell が認識しているエンジン」へ戻す。

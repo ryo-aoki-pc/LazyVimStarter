@@ -108,6 +108,23 @@ vim.api.nvim_create_autocmd("ModeChanged", {
   end,
 })
 
+-- 検索コマンドライン (/ ?) は <C-j> で日本語を直接打つこともできるので、その状態をバッファ単位で
+-- 覚えておき、次の / ? で日本語に戻す (sticky)。種別 (v:event.cmdtype) を見るため Cmdline* で拾う。
+-- 英数への切り替えは前後の ModeChanged が受け持ち、ここでは日本語への復元と記録だけをする
+-- (入る時にいったん英数にした後、入力待ちになってから日本語に戻す。理由は ime.lua の on_cmdline_enter)。
+vim.api.nvim_create_autocmd("CmdlineEnter", {
+  group = ime_group,
+  callback = function(ev)
+    ime.on_cmdline_enter(ev.buf, vim.v.event.cmdtype)
+  end,
+})
+vim.api.nvim_create_autocmd("CmdlineLeave", {
+  group = ime_group,
+  callback = function(ev)
+    ime.on_cmdline_leave(ev.buf, vim.v.event.cmdtype)
+  end,
+})
+
 -- コマンドラインから挿入モードへ戻る経路 (挿入中の <C-r>= など)。入る時に記録した状態へ戻す。
 -- この場合 CmdlineLeave の後に InsertEnter は発火しないため、ここで復元しないと
 -- 文章の途中で式レジスタを使っただけで英数に落ちたまま戻らなくなる。

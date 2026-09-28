@@ -388,8 +388,10 @@
    ```
 
    - `/kensaku` と打って Enter を押す。3 行目の「検索」にカーソルが移り、`[1/1]` と出る
+   - `/kensaku` と打って `<Tab>` を押す。入力が「検索」に置き換わる (候補が 1 つなので、すぐ確定する)。`<Esc>` で抜ける
    - `:w` で保存する。1 行目が `# 動作確認` に直る (markdownlint-cli2 の整形)
    - `o` で行を開き、`<C-j>` を押す。下の表示が `A` から `あ` に変わる。`<Esc>` で `A` に戻る
+   - `/` の中で `<C-j>` を押し、`<Esc>` で抜ける。表示が `A` に戻り、次の `/` は `あ` で始まる (検索の sticky)。`<C-j>` で `A` にしてから `<Esc>` で抜ける
    - `<C-j>` を押したときは、カーソルのすぐ下にも `あ` / `A` が約 1 秒出る
    - Space を 2 回押してファイルピッカーを開き、アイコンが豆腐でないことを見る (`<Esc>` で閉じる)
    - `:qa!` で閉じる (`o` で足した行は保存しない)
@@ -400,7 +402,8 @@
 
    - 日本語検索は Migemo (luamigemo) で、ローマ字のまま日本語にマッチする。辞書は同梱なのでネットワークは要らない
    - 英単語や空白・記号を含む入力はそのまま検索する (ローマ字として読めるときだけ変換する)
-   - `s` → `nihongo` で「日本語」にラベルが付くことも見られる (flash.nvim)
+   - `s` → `ni` で「日本語」などにラベルが付くことも見られる (flash.nvim)。同梱の辞書に「にほんご → 日本語」の語は無いので、`nihongo` では当たらない
+   - `<Tab>` の候補は、バッファ内で Migemo に一致した文字列を ripgrep で集めたもの。ローマ字が 3 文字以上のときだけ出る
    - 整形は保存時に conform.nvim が `markdownlint-cli2 --fix` と `markdown-toc` を順に掛ける。`#動作確認` は MD018 (見出しの `#` の後の空白) の違反
    - IME 連携は ibus-daemon が動いているセッションで起動したときだけ有効になる。ログインし直した後の端末で起動する
    - コンテナでは ibus-daemon を `--panel disable` で起動して、`<C-j>` で `ibus engine` が `anthy` に、`<Esc>` で `xkb:us::eng` に変わるのを確かめた。アイコンの見た目は確かめていない
@@ -540,7 +543,7 @@
    nvim "$env:TEMP\lazyvim-check.md"
    ```
 
-   - 確かめることは [AlmaLinux 導入の手順 19](#almalinux-10-に導入する-1-度だけ) と同じ (`/kensaku`・`:w`・`<C-j>`・アイコン)
+   - 確かめることは [AlmaLinux 導入の手順 19](#almalinux-10-に導入する-1-度だけ) と同じ (`/kensaku`・`<Tab>`・`:w`・`<C-j>`・アイコン)
    - `:lua =vim.fn.executable("zenhan")` が `1` なら IME 連携が有効 (`0` でもほかは動く)
    - OS 側で IME を切り替えても、Neovim は気付けない (lualine の `あ` / `A` がずれることがある。[README](../README.md#日本語入力検索))
    - `:qa!` で閉じる。これで導入は終わり
@@ -800,7 +803,7 @@
 | [Neovim](https://neovim.io/) 0.12 以上 | 本体。LazyVim の下限は 0.11.2 だが、`lazy-lock.json` の nvim-treesitter が 0.12 を要る | 必須 ([AlmaLinux 導入の手順 11](#almalinux-10-に導入する-1-度だけ) の補足) |
 | git | lazy.nvim の bootstrap、プラグインの取得・更新、git 系ピッカー | 必須 |
 | PowerShell (pwsh 推奨) | Windows の `shell`。外部コマンドと端末が全部これを通る | Windows で必須 |
-| [ripgrep](https://github.com/BurntSushi/ripgrep) (rg) | grep ピッカーと `grepprg` | 必須 |
+| [ripgrep](https://github.com/BurntSushi/ripgrep) (rg) | grep ピッカーと `grepprg`、`/` の `<Tab>` で出す Migemo の候補 | 必須 |
 | [fd](https://github.com/sharkdp/fd) | ファイルピッカーと explorer | Windows で必須 / Linux では推奨 |
 | C コンパイラ (gcc または MSVC の cl) | treesitter のパーサーのビルド | 必須 |
 | tree-sitter CLI | treesitter のパーサーのビルド。PATH に無ければ LazyVim が Mason で入れる | 必須 (自動で入る) |
@@ -872,6 +875,7 @@
 - **`/` からの日本語検索が効かない**: `:checkhealth luamigemo` で、同梱の辞書と LuaJIT を確かめる
   - ローマ字として読めない入力 (`search` のような英単語、空白や記号を含むもの) は、わざと変換しない
   - まず `/kensaku` のような純粋なローマ字で試す
+  - `<Tab>` で候補が出ないときは、ローマ字が 3 文字以上か、`rg` が PATH にあるかを確かめる (候補の照合は ripgrep に任せている)
 - **アイコンが豆腐 (□) になる**: 端末のフォントが Nerd Font になっていない。`guifont` は GUI クライアント専用で、端末には効かない
 - **全角記号を含む行の桁がずれる**: Neovim の `ambiwidth` と、端末の East Asian Ambiguous の幅の設定が食い違っている
   - この設定は両方を narrow 側 (`single` / `treat_east_asian_ambiguous_width_as_wide=false`) に揃えてある。端末側だけを wide にしない

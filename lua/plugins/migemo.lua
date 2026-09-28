@@ -1,7 +1,7 @@
 -- ローマ字のまま日本語を検索する (Migemo)。変換器の実体は lua/config/migemo.lua。
 -- 例: /kensaku<CR> が「検索」「けんさく」「ケンサク」等にマッチ。同じ変換を flash の s と
 -- snacks picker の grep にも配線しているので、バッファ内ジャンプもプロジェクト grep も
--- IME を入れずに済む。
+-- IME を入れずに済む。/kensaku<Tab> なら一致した文字列そのものを補完候補から選べる (blink.cmp)。
 -- 以前は vim-kensaku (denops) を使っていたが、Deno という外部ランタイム・初回の辞書
 -- ダウンロード・起動直後は denops 未起動で検索が失敗する、という 3 つの面倒があった。
 -- luamigemo は同じ jsmigemo の純 Lua 移植で辞書も同梱しているため、いずれも無くなる。
@@ -99,6 +99,30 @@ return {
       opts.picker.sources.grep = vim.tbl_extend("force", opts.picker.sources.grep or {}, { finder = grep })
       opts.picker.sources.grep_buffers =
         vim.tbl_extend("force", opts.picker.sources.grep_buffers or {}, { finder = grep })
+    end,
+  },
+
+  -- 検索コマンドライン (/ ?) の補完に Migemo の一致を足す。/kensaku の後に <Tab> で、バッファ内に
+  -- 実在する「検索」「けんさく」などを出現回数の多い順に選べ、選ぶとその文字列そのものを検索する
+  -- (Migemo の正規表現で探すより絞り込める)。<Tab> を押さずに <CR> なら上の <CR> で従来どおり
+  -- Migemo の検索になる。blink は cmdline の <CR> をマップしないので、上の <CR> とは競合しない。
+  -- ソースの実体は lua/config/migemo_blink.lua。
+  {
+    "saghen/blink.cmp",
+    optional = true,
+    opts = function(_, opts)
+      opts.sources = opts.sources or {}
+      opts.sources.providers = opts.sources.providers or {}
+      opts.sources.providers.migemo = {
+        name = "Migemo",
+        module = "config.migemo_blink",
+        -- buffer ソース (-3) の単語より上に並べる
+        score_offset = 100,
+      }
+      -- cmdline のソース一覧は spec 間でマージされず丸ごと置き換わるため、blink の既定
+      -- { "buffer", "cmdline" } (どちらも自分の対象外のコマンドラインでは無効になる) ごと書く。
+      opts.cmdline = opts.cmdline or {}
+      opts.cmdline.sources = { "migemo", "buffer", "cmdline" }
     end,
   },
 }
