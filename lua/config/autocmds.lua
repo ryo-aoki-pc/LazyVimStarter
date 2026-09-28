@@ -62,11 +62,26 @@ local ime_group = vim.api.nvim_create_augroup("user_ime", { clear = true })
 --  - ModeChanged の "i*:n" なら <Esc> と <C-c> (どちらも遷移先 n) を拾い、
 --    i_CTRL-O (遷移先 niI) は一致しないので除外できる。実測で確認済み。
 -- 置換モード (R / Rv) も挿入と同じ扱いなので "R*:n" を併せて登録する。
+-- ただし、挿入モードのまま :normal を実行されたときの i:n は抜けたのではない。snacks.nvim のスムーズ
+-- スクロール (LazyVim 既定で有効) は、2 行以上のスクロールをタイマーでアニメーションし、1 コマごとに
+-- :normal! を実行するので、挿入中の <C-End> <C-Home> <C-o>zz などで i:n → n:i が数十回起きる
+-- (InsertLeave / InsertEnter は発火しない)。そのたびに英数化すると、挿入モードのまま英数に落ちる。
+-- このとき state() には「マッピングや :normal の途中」を表す m が立つ (実測。<Esc> や <C-c> では立たない)
+-- ので、その場では記録だけにして、英数化は実行が終わってもノーマルモードに留まっているときだけにする。
 vim.api.nvim_create_autocmd("ModeChanged", {
   group = ime_group,
   pattern = { "i*:n", "R*:n" },
   callback = function(ev)
-    ime.on_insert_leave(ev.buf)
+    if not vim.fn.state():find("m", 1, true) then
+      ime.on_insert_leave(ev.buf)
+      return
+    end
+    ime.remember(ev.buf)
+    vim.schedule(function()
+      if not vim.api.nvim_get_mode().mode:match("^[iR]") then
+        ime.on_insert_leave(ev.buf)
+      end
+    end)
   end,
 })
 
