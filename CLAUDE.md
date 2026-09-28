@@ -86,8 +86,10 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   パターン (`i*:n` `R*:n` `*:c*` `c*:i*`) で拾う (`<C-c>` を取りこぼさず `i_CTRL-O` を除外する
   ため)。`i_CTRL-O` に入る時 (`i*:ni*` `R*:ni*`) と挿入からコマンドラインに入る時 (`<C-r>=` など) は
   sticky を記録し直す (戻る時に古い sticky で切り替わらないように)。コマンドラインから挿入以外へ抜ける時は
-  `c*:*` で遷移先を見て英数に戻す。端末モードは `TermEnter` / `TermLeave`、終了・中断時は起動前の
-  engine に戻す。理由はすべてファイル内のコメントにある。
+  `c*:*` で遷移先を見て英数に戻す。検索コマンドライン (`/` `?`) だけは `CmdlineEnter` / `CmdlineLeave`
+  でバッファ単位の sticky を扱う (日本語への復元は入力待ちになってから。`*` `#` の検索では何もしない)。
+  端末モードは `TermEnter` / `TermLeave`、終了・中断時は起動前の engine に戻す。
+  理由はすべてファイル内のコメントにある。
 - **`lua/plugins/ime.lua`** — lualine の `あ` / `A` 表示だけ。lualine の `opts` は LazyVim の
   `ui.lua` が所有しているため、表示の追加はプラグイン spec 側でしか行えない。lualine は前もって
   組み立てた文字列を 1 秒ごとのタイマーかカーソル移動などでしか作り直さないので、`ime.lua` が
@@ -105,13 +107,20 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   (即座に消すと空白のフレームが、消さないと二重表示のフレームが一瞬描かれる)。描画は
   `vim.schedule` に回すので確定文字列の入力に追い越されうる。Neovide から届いた順をハンドラ内で
   数え (`commit_handler` も包む)、確定より前に送られた preedit は描かない。
+  コマンドラインでは noice の cmdline バッファ (`require("noice").api.get_cmdline_position()`) に
+  同じ extmark を置き、`nvim__redraw` で描く (c モードでは通常のウィンドウが自動で描き直されない)。
+  確定時は `CmdlineChanged` で消す。noice が無ければ描かない。
 
-コマンドライン (`:` `/`) は常に英数に落とすため、日本語の検索はローマ字のまま日本語に
-マッチする Migemo が担う。この 2 つは対になっている。変換器は **`lua/config/migemo.lua`**
+コマンドライン (`:` `/`) は英数で始めるため、日本語の検索はローマ字のまま日本語に
+マッチする Migemo が担う (`/` `?` では `<C-j>` で直接打つこともでき、その状態は sticky)。
+この 2 つは対になっている。変換器は **`lua/config/migemo.lua`**
 (純 Lua の luamigemo を呼ぶ。Deno などの外部ランタイムは不要)、配線は
-**`lua/plugins/migemo.lua`** で `/` `?` の `<CR>`・flash.nvim の `s`・snacks picker の grep の
-3 経路に入れている。入力がローマ字として読めるときだけ変換する。`*` `#` の日本語対応
-(非 ASCII は `\<` `\>` なし) は `lua/config/keymaps.lua`。
+**`lua/plugins/migemo.lua`** で `/` `?` の `<CR>`・flash.nvim の `s`・snacks picker の grep・
+検索コマンドラインの補完 (blink.cmp) の 4 経路に入れている。入力がローマ字として読めるときだけ
+変換する。補完のソースは **`lua/config/migemo_blink.lua`** で、バッファ内の一致文字列を出現回数順に
+候補にする (`/kensaku<Tab>`)。照合は ripgrep に標準入力で本文を渡して行う (Vim の正規表現は Migemo の
+巨大なパターンに極端に遅い)。`*` `#` の日本語対応 (非 ASCII は `\<` `\>` なし) は
+`lua/config/keymaps.lua`。
 
 ### Markdown / GLFM
 
@@ -150,6 +159,9 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
 - lualine への追加は `lua/config/` ではなくプラグイン spec の `opts` 関数で行う。autocmd を張るのも
   `opts` の中にする: lazy.nvim が spec をまたいで合成するのは `opts` / `dependencies` / `cmd` /
   `event` / `ft` / `keys` だけで、`init` / `config` を書くと LazyVim 側の spec を丸ごと上書きする。
+- blink.cmp の `cmdline.sources` はリストが spec 間でマージされず丸ごと置き換わる。
+  `lua/plugins/migemo.lua` で blink 既定 (`buffer` `cmdline`) ごと書いているので、cmdline の
+  ソースを足すときはそこに足す。
 - IME 連携を触るときは、対応環境が無くても静かに無効化される性質を壊さないこと
   (headless やコンテナで設定全体が落ちる)。
 

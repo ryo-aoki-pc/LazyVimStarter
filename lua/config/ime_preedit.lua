@@ -13,19 +13,58 @@
 --
 -- 描き方: カーソル位置に inline の仮想テキスト (extmark) として置き、行の続きを右へ押し出す。
 -- バッファ自体は確定まで一切変えないので、undo 履歴・TextChanged・LSP・補完は未確定文字列を見ない。
+-- コマンドライン (/ ? : など) では、noice がコマンドラインを描いている浮動ウィンドウのバッファに
+-- 同じ extmark を置く (Neovim 本体のコマンドラインはバッファではないので、noice が無ければ描かない)。
 
 local M = {}
 
 local ns = vim.api.nvim_create_namespace("user_ime_preedit")
 
----@type { buf: integer, id: integer }|nil 表示中の extmark (未確定文字列が無いときは nil)
+---@type { buf: integer, id: integer, row: integer, col: integer, win?: integer }|nil
+--- 表示中の extmark (未確定文字列が無いときは nil)。win はコマンドライン (noice のウィンドウ) に
+--- 描いたときだけ持つ。
 local mark = nil
 
-local function clear()
+-- noice のコマンドラインのウィンドウを描き直し、カーソルを画面に出す。コマンドラインの入力中は
+-- Neovim が通常のウィンドウを自動では描き直さない (noice もコマンドラインの内容が変わった時にしか
+-- 描かない) ので自分で描く。noice は描くたびにウィンドウのカーソルを置いてから画面に出すが、
+-- その後でウィンドウのカーソル自体は行頭に戻っていることがある (実測)。そのまま描き直すと
+-- 画面のカーソルが行頭へ飛ぶので、noice と同じ位置 (noice の fix_cursor) に置き直してから描く。
+local function redraw_cmdline(win, row, col)
+  pcall(vim.api.nvim_win_set_cursor, win, { row + 1, col })
+  pcall(vim.api.nvim__redraw, { win = win, cursor = true, flush = true })
+end
+
+---@param redraw? boolean コマンドラインに描いていた場合に、消した結果をすぐ画面へ出す
+local function clear(redraw)
   if mark then
     pcall(vim.api.nvim_buf_del_extmark, mark.buf, ns, mark.id)
+    -- 取り消しではコマンドラインの内容が変わらず noice が描き直さないので、自分で描く。
+    if redraw and mark.win and vim.api.nvim_win_is_valid(mark.win) then
+      redraw_cmdline(mark.win, mark.row, mark.col)
+    end
     mark = nil
   end
+end
+
+-- noice が描いているコマンドラインの、カーソル位置のバッファ座標。描けないときは nil。
+-- noice は読み込み済みのときだけ使う (無効にしている環境で require して読み込ませない)。
+---@return integer|nil buf, integer|nil win, integer|nil row, integer|nil col (row / col は 0 始まり)
+local function cmdline_cursor()
+  local noice = package.loaded["noice"]
+  if not noice or vim.fn.getcmdtype() == "" then
+    return nil
+  end
+  local ok, pos = pcall(noice.api.get_cmdline_position)
+  -- position はコマンドラインを閉じても残る (次に開くまで古い値) ので、ウィンドウの生存も確かめる。
+  if not ok or not pos or not pos.buf or not pos.win then
+    return nil
+  end
+  if not vim.api.nvim_buf_is_valid(pos.buf) or not vim.api.nvim_win_is_valid(pos.win) then
+    return nil
+  end
+  -- noice は自分のカーソルを「バッファの最終行・pos.cursor バイト目」に置く (noice の fix_cursor)。
+  return pos.buf, pos.win, vim.api.nvim_buf_line_count(pos.buf) - 1, pos.cursor
 end
 
 -- winit の Ime::Preedit が渡すカーソル範囲は「バイト単位・[s, e)・UTF-8 の文字境界」で、
@@ -52,28 +91,43 @@ local function chunks(text, s, e)
 end
 
 local function render(text, s, e)
-  -- 挿入・置換モード以外では描かない。コマンドラインはバッファの extmark では描けず、
-  -- 端末モードは端末自身の描画と干渉するため対象外 (従来どおり確定まで見えない)。
+  -- 描くのは挿入・置換モードと、noice が描くコマンドラインだけ。端末モードは端末自身の描画と
+  -- 干渉するため対象外 (従来どおり確定まで見えない)。
   -- ノーマルモード (<C-o> 中の niI を含む) で未確定文字列を打つことはそもそも想定しない。
-  if not vim.api.nvim_get_mode().mode:match("^[iR]") then
-    clear()
+  local mode = vim.api.nvim_get_mode().mode
+  local buf, win, row, col
+  if mode:match("^[iR]") then
+    buf = vim.api.nvim_get_current_buf()
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    row, col = cursor[1] - 1, cursor[2]
+  elseif mode:match("^c") then
+    buf, win, row, col = cmdline_cursor()
+  end
+  if not buf then
+    clear(true)
     return
   end
-  local buf = vim.api.nvim_get_current_buf()
   if mark and mark.buf ~= buf then
     clear()
   end
-  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
-  local id = vim.api.nvim_buf_set_extmark(buf, ns, row - 1, col, {
+  local id = vim.api.nvim_buf_set_extmark(buf, ns, row, col, {
     id = mark and mark.id or nil,
     virt_text = chunks(text, s, e),
     virt_text_pos = "inline",
     -- 左 gravity にするのが要。挿入モードのカーソルは、その位置にある「左 gravity の inline
     -- 仮想テキスト」の幅だけ右へずらして描かれる (右 gravity の分はノーマルモードでしか足されない。
     -- Neovim の plines.c の virt_text_cursor_off)。これでカーソルが未確定文字列の直後に来る。
+    -- コマンドライン (noice のウィンドウ) でも同じ理屈で、カーソルが未確定文字列の直後に来る。
     right_gravity = false,
+    -- noice はコマンドラインが変わると行ごと書き直すので、そのときは残骸を残さず消えるようにする。
+    invalidate = win ~= nil,
+    undo_restore = win == nil,
   })
-  mark = { buf = buf, id = id }
+  mark = { buf = buf, id = id, row = row, col = col, win = win }
+  if win then
+    -- 描き直して、カーソル (と Neovide の変換候補ウィンドウ) を未確定文字列の後ろへ動かす。
+    redraw_cmdline(win, row, col)
+  end
 end
 
 -- 未確定文字列が空になった (確定か取り消し) とき、消すまで待つ時間 (ms)。理由は on_preedit を参照。
@@ -90,18 +144,18 @@ local function on_preedit(n, text, s, e)
     -- 確定より前に送られた未確定文字列は、確定文字列に追い越された古いもの。描くと確定文字列の
     -- 後ろに重なって見える (main loop が塞がっている間に「変換 → 確定」が届くと起きる)。
     if n > committed and not pcall(render, text, s, e) then
-      clear()
+      clear(true)
     end
     return
   end
   -- 空 = 確定か取り消し。確定のとき winit は Preedit("") → Commit(text) と続けて出すが、Neovide は
   -- これを 1 往復ずつ順に Neovim へ渡すので、ここで即座に消すと確定文字列が届くまでの一瞬だけ
   -- 「未確定文字列も確定文字列も無い」画面が描かれ、Neovide のカーソルが左右に行き来する。
-  -- 確定なら直後の挿入の直前に InsertCharPre で消える (setup 参照) ので、ここでは少し待ち、
-  -- その間に次の未確定文字列も届かなかった (= 取り消し) ときだけ消す。
+  -- 確定なら確定文字列が入るところで InsertCharPre / CmdlineChanged により消える (setup 参照)
+  -- ので、ここでは少し待ち、その間に次の未確定文字列も届かなかった (= 取り消し) ときだけ消す。
   vim.defer_fn(function()
     if received == n then
-      clear()
+      clear(true)
     end
   end, CLEAR_DELAY_MS)
 end
@@ -137,8 +191,17 @@ function M.setup()
       clear()
     end,
   })
-  -- 保険: 未確定のまま挿入モードやウィンドウを離れたら残骸を消す。
-  vim.api.nvim_create_autocmd({ "InsertLeave", "BufLeave", "WinLeave" }, {
+  -- コマンドラインでは、確定文字列が入った直後 (noice がコマンドラインを描き直す前) に消す。
+  -- 挿入モードの InsertCharPre と同じく、消した結果は続く noice の再描画で画面に出るので
+  -- ここでは描かない (描くと、確定文字列がまだ無いコマンドラインが一瞬映る)。
+  vim.api.nvim_create_autocmd("CmdlineChanged", {
+    group = group,
+    callback = function()
+      clear()
+    end,
+  })
+  -- 保険: 未確定のまま挿入モード・コマンドライン・ウィンドウを離れたら残骸を消す。
+  vim.api.nvim_create_autocmd({ "InsertLeave", "CmdlineLeave", "BufLeave", "WinLeave" }, {
     group = group,
     callback = function()
       clear()

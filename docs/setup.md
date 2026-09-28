@@ -314,9 +314,11 @@ tmux でカーソル色を使うなら[カーソル色を tmux で効かせる (
    機能ごとの確認:
 
    - **日本語検索** — 日本語を含むファイルを開き、`/kensaku<CR>` で「検索」にマッチすれば成功
-     (辞書は同梱なのでネットワーク不要)。`s` → `nihongo` で「日本語」にラベルが付くことも見る。
+     (辞書は同梱なのでネットワーク不要)。`s` → `ni` で「日本語」などにラベルが付くことも見る。
+     `/kensaku` の後に `<Tab>` を押すと「検索」が補完候補に出ることも見る。
    - **IME 連携** — 挿入モードで `<C-j>` を押し、lualine の表示が `A` から `あ` に変われば成功
-     (カーソルのすぐ下にも `あ` が一瞬出る)。`<Esc>` で `A` に戻ること。
+     (カーソルのすぐ下にも `あ` が一瞬出る)。`<Esc>` で `A` に戻ること。`/` の中で `<C-j>` を押して
+     日本語で検索した後も `A` に戻り、次の `/` では `あ` で始まること (検索の sticky)。
    - **Markdown の整形** — `.md` を開いて保存し、markdownlint の指摘が自動修正されること。
    - **アイコン** — ファイルピッカー (`<leader><space>`) のアイコンが豆腐でないこと。
 
@@ -426,7 +428,7 @@ mv ~/.cache/nvim.bak       ~/.cache/nvim
 | [Neovim](https://neovim.io/) 0.11.2 以上 | 本体 (LazyVim の要求) | 必須 ([手順 4 の補足](#実施手順)) |
 | git | lazy.nvim の bootstrap、プラグインの取得・更新、git 系ピッカー | 必須 |
 | PowerShell (pwsh 推奨) | Windows の `shell`。外部コマンドと端末が全部これを通る | Windows で必須 |
-| [ripgrep](https://github.com/BurntSushi/ripgrep) (rg) | grep ピッカーと `grepprg` | 必須 |
+| [ripgrep](https://github.com/BurntSushi/ripgrep) (rg) | grep ピッカーと `grepprg`、`/` の `<Tab>` で出す Migemo の候補 | 必須 |
 | [fd](https://github.com/sharkdp/fd) | ファイルピッカーと explorer | Windows で必須 / Linux では推奨 |
 | C コンパイラ (gcc または MSVC の cl) | treesitter パーサーのビルド | 必須 |
 | curl / tar / gzip / unzip | treesitter と Mason の取得・展開 | 必須 |
@@ -478,6 +480,8 @@ npm パッケージなので、node を入れ替えたり消したりすると M
 **`/` からの日本語検索が効かない** — `:checkhealth luamigemo` で同梱辞書と LuaJIT を確認する。
 入力がローマ字として読めない場合 (`search` のような英単語、空白や記号を含む) は
 意図的に変換しない仕様なので、まず `/kensaku<CR>` のような純粋なローマ字で試す。
+`<Tab>` で候補が出ないときは、ローマ字が 3 文字以上か、`rg` が PATH にあるか
+(候補の照合は ripgrep に任せている) を確認する。
 
 **アイコンが豆腐 (□) になる** — 端末側のフォントが Nerd Font になっていない。
 `guifont` は GUI クライアント専用で、端末には効かない。
