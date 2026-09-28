@@ -22,6 +22,7 @@
 -- Super+Space など OS 側の切り替えも検知できる。ポーリングは行わない。
 
 local uv = vim.uv or vim.loop
+local indicator = require("config.ime_indicator")
 
 local M = {}
 
@@ -37,6 +38,9 @@ M.config = {
   -- 注: tmux-256color には Cs/Cr が無く Neovim は OSC 12 を出さないため、tmux 越しでは
   --     terminal-overrides の設定が別途必要 (docs/setup.md 参照)。無くても無害な no-op。
   cursor = true,
+  -- 状態が変わった瞬間に、カーソルのすぐ下へ あ / A を短時間だけ出す (挿入・置換・端末モードのみ)。
+  -- lualine は入力中の視線から遠く、カーソル色は tmux 越しでは効かないため。実体は lua/config/ime_indicator.lua。
+  indicator = true,
   ibus = { ja = "anthy", ascii = "xkb:us::eng" },
 }
 
@@ -313,7 +317,19 @@ local function observe(value)
   if M.config.cursor then
     M.apply_cursor()
   end
-  -- lualine は既定 1 秒タイマで再描画するが、状態変化は即座に見せたい。
+  -- 変わった瞬間をカーソルのそばにも出す (ノーマルモードなどで出さない判定は show() 側)。
+  -- 別の値への切り替えがまだ控えている途中経過は出さない (<Esc>o を素早く打つと、英数化の完了が
+  -- 挿入モードに戻った後になり、A を出した直後に あ を出し直すことになる)。pump() は完了した
+  -- 値を observe() してから desired を消すので、最後の要求の完了はここを通る。
+  -- 表示の失敗で IME の制御まで止めないよう pcall で包む。
+  if M.config.indicator and (state.desired == nil or state.desired == value) then
+    pcall(indicator.show, M.status(), M.is_ja())
+  end
+  -- ステータスラインにも即座に反映する。lualine は前もって組み立てた文字列を 1 秒ごとのタイマーか
+  -- カーソル移動などのイベントでしか作り直さず、redrawstatus だけでは古い文字列を描き直すだけで
+  -- あ / A が最大 1 秒遅れる。そこで User ImeStateChanged を出して作り直させ (受け側は
+  -- lua/plugins/ime.lua)、その結果を描き直す。
+  pcall(vim.api.nvim_exec_autocmds, "User", { pattern = "ImeStateChanged", modeline = false })
   pcall(vim.cmd.redrawstatus)
 end
 
@@ -326,6 +342,12 @@ end
 local function observe_external(value)
   if state.expected[1] == value then
     table.remove(state.expected, 1)
+    -- 自分の要求がまだ後に控えているなら、このシグナルはもう古い。反映すると、先に完了を観測した
+    -- 新しい値から一瞬巻き戻る (lualine やカーソル直下の表示がちらつく)。後の要求の結果は
+    -- pump() の完了時に必ず observe() されるので、ここで捨ててよい。
+    if #state.expected > 0 then
+      return
+    end
   else
     -- 自分の要求ではない = gnome-shell (Super+Space やインジケータ) による変更。
     -- この瞬間は gnome-shell の認識と実体が一致している。
@@ -369,23 +391,25 @@ local function pump()
     table.insert(state.expected, want)
   end
   vim.system(cmd, { text = true, env = env, timeout = 1000 }, function(res)
-    state.inflight = false
-    if res.code == 0 then
-      vim.schedule(function()
+    -- inflight は観測値の更新と一緒に main loop で下ろす。この完了通知は別のキー処理の途中
+    -- (<C-o>:w<CR> のように一気に処理されるキー列など) でも割り込んで届くため、ここで先に
+    -- 下ろすと、その間に呼ばれた pump() が更新前の state.value を見て「既にその状態」と
+    -- 誤判定し、要求を捨ててしまう (挿入に戻った時の日本語への復帰が消える)。
+    vim.schedule(function()
+      state.inflight = false
+      if res.code == 0 then
         observe(want)
         if state.desired == want then
           state.desired = nil
         end
         pump()
-      end)
-    else
-      -- ibus-daemon の再起動などでアドレスが失効した可能性が高い。次回に再解決させる。
-      vim.schedule(function()
+      else
+        -- ibus-daemon の再起動などでアドレスが失効した可能性が高い。次回に再解決させる。
         invalidate()
         state.desired = nil
         state.expected = {}
-      end)
-    end
+      end
+    end)
   end)
 end
 
@@ -542,15 +566,22 @@ function M.on_insert_enter(buf)
   end
 end
 
+-- sticky 用に「挿入モードを離れる瞬間に日本語だったか」を記録する (切り替えはしない)。
+-- state.value は watcher 由来の実測値なので、OS のホットキーで切り替えられていても正しく拾える。
+-- ただし自分の書き込みが完了する前 (<C-j> の直後に <Esc> を打った、など) は実測値がまだ古いので、
+-- 投入待ちの値 (desired) を優先する。
+function M.remember(buf)
+  if not state.backend or not M.config.sticky or not (buf and vim.api.nvim_buf_is_valid(buf)) then
+    return
+  end
+  vim.b[buf].ime_sticky = (state.desired or state.value) == state.backend.ja
+end
+
 function M.on_insert_leave(buf)
   if not state.backend then
     return
   end
-  if M.config.sticky and buf and vim.api.nvim_buf_is_valid(buf) then
-    -- 「抜けた瞬間に日本語だったか」を記録する。state.value は watcher 由来の実測値なので、
-    -- OS のホットキーで切り替えられていても正しく拾える。
-    vim.b[buf].ime_sticky = M.is_ja()
-  end
+  M.remember(buf)
   M.ascii()
   poll_stop()
 end
@@ -623,6 +654,10 @@ function M.setup(opts)
       group = vim.api.nvim_create_augroup("user_ime_cursor", { clear = true }),
       callback = M.apply_cursor,
     })
+  end
+
+  if M.config.indicator then
+    indicator.setup()
   end
 
   if M.config.watch == "signal" then

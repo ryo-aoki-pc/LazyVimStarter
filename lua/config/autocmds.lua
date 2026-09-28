@@ -70,6 +70,19 @@ vim.api.nvim_create_autocmd("ModeChanged", {
   end,
 })
 
+-- i_CTRL-O で一時的にノーマルモードへ出る時 (遷移先 niI / niR / niV)。IME は切り替えないが、
+-- コマンドの後で挿入に戻る時にも InsertEnter が発火して sticky が適用される (そのときの mode() は niI)。
+-- ここで今の状態を記録し直しておかないと、前回挿入を抜けた時の古い値で切り替わってしまう
+-- (日本語で打っていても <C-o>zz で英数に落ちる)。<C-o>:w のようにコマンドラインを挟んで英数に
+-- 落ちた場合も、挿入に戻った時にここで記録した状態へ戻る。
+vim.api.nvim_create_autocmd("ModeChanged", {
+  group = ime_group,
+  pattern = { "i*:ni*", "R*:ni*" },
+  callback = function(ev)
+    ime.remember(ev.buf)
+  end,
+})
+
 -- 挿入に入る時の復帰。前回そのバッファで日本語のまま抜けていたら日本語に戻す (sticky)。
 -- InsertEnter は挿入・置換・仮想置換のいずれでも発火する。
 vim.api.nvim_create_autocmd("InsertEnter", {
@@ -80,23 +93,46 @@ vim.api.nvim_create_autocmd("InsertEnter", {
 })
 
 -- コマンドライン。: や / で IME が生きていると Ex コマンドも検索も打てない。
--- 日本語検索はローマ字のままマッチする Migemo (lua/plugins/migemo.lua) が担うので、常に英数でよい。
+-- 日本語検索はローマ字のままマッチする Migemo (lua/plugins/migemo.lua) が担うので、英数で入る。
+-- 挿入モードから来た時 (<C-r>= など) は、戻った時に復元できるよう英数にする前の状態を記録しておく。
+-- 記録しないと、前回挿入を抜けた時の古い sticky に戻されてしまう (挿入中に日本語へ切り替えていても、
+-- <C-r>= から戻ると英数になる)。
 vim.api.nvim_create_autocmd("ModeChanged", {
   group = ime_group,
   pattern = "*:c*",
-  callback = ime.ascii,
+  callback = function(ev)
+    if vim.v.event.old_mode:match("^[iR]") then
+      ime.remember(ev.buf)
+    end
+    ime.ascii()
+  end,
 })
 
--- コマンドラインから挿入モードへ戻る経路 (挿入中の <C-r>= など)。
+-- コマンドラインから挿入モードへ戻る経路 (挿入中の <C-r>= など)。入る時に記録した状態へ戻す。
 -- この場合 CmdlineLeave の後に InsertEnter は発火しないため、ここで復元しないと
 -- 文章の途中で式レジスタを使っただけで英数に落ちたまま戻らなくなる。
 -- なお CmdlineLeave 時点では mode() がまだ "c" なので、イベント側では判定できない
--- (実測済み)。ModeChanged なら遷移先がパターンに出るので取りこぼさない。
+-- (実測済み)。ModeChanged なら遷移先がパターンに出るので取りこぼさない。置換モードも同じ扱い。
 vim.api.nvim_create_autocmd("ModeChanged", {
   group = ime_group,
-  pattern = "c*:i*",
+  pattern = { "c*:i*", "c*:R*" },
   callback = function(ev)
     ime.on_insert_enter(ev.buf)
+  end,
+})
+
+-- コマンドラインを抜けてノーマルモードなど (挿入・置換・端末以外) に戻る時も英数に戻す。コマンドラインでも
+-- <C-j> で日本語にできるので、そのまま <Esc> や <CR> で抜けると、ノーマルモードのキー (dd, ciw, ...)
+-- が IME に食われる。戻り先はノーマル (<C-o> 中の niI も)・ビジュアル・hit-enter プロンプトなど
+-- 多岐にわたるので、パターンで列挙せず遷移先を見て判定する。英数のままなら ascii() は外部コマンドを
+-- 起こさないので、<C-j> を使わなかった大半の場合は何もしない。
+vim.api.nvim_create_autocmd("ModeChanged", {
+  group = ime_group,
+  pattern = "c*:*",
+  callback = function()
+    if not vim.v.event.new_mode:match("^[iRtc]") then
+      ime.ascii()
+    end
   end,
 })
 

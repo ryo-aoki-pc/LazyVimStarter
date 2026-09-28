@@ -22,6 +22,22 @@ return {
         end,
         padding = { left = 1, right = 1 },
       })
+      -- IME の状態が変わったら即座に作り直す。lualine は前もって組み立てた文字列を 1 秒ごとのタイマーか
+      -- カーソル移動などのイベントでしか作り直さないため、そのままだと <C-j> の後も あ / A が最大 1 秒
+      -- 古いまま残る。ime.lua は状態が変わるたびに User ImeStateChanged を出す。
+      -- autocmd を opts の中で張るのは、lazy.nvim が spec をまたいで合成するのは opts などに限られ、
+      -- init / config を書くと LazyVim 側の spec (起動画面でステータスラインを隠す init など) を
+      -- 上書きしてしまうため。opts は lualine を読み込む時に走る (augroup を clear するので重複しない)。
+      vim.api.nvim_create_autocmd("User", {
+        group = vim.api.nvim_create_augroup("user_ime_lualine", { clear = true }),
+        pattern = "ImeStateChanged",
+        callback = function()
+          -- 既定の refresh は溜めておいて次の周期 (refresh_time) にまとめて描くので、force で今作り直す。
+          pcall(function()
+            require("lualine").refresh({ place = { "statusline" }, force = true })
+          end)
+        end,
+      })
     end,
   },
 }
