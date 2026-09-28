@@ -74,7 +74,7 @@ nvim --headless "+Lazy! restore" +qa   # lazy-lock.json に揃える
 
 OS の IME を Neovim のモードに追従させる仕組み。Neovim には `imactivatefunc` /
 `imstatusfunc` が無いため、外部プロセス経由で IME デーモンを叩く自前実装になっている。
-5 ファイルに分かれる。
+6 ファイルに分かれる。
 
 - **`lua/config/ime.lua`** — 本体 (約 650 行)。ibus の global engine 名
   (`anthy` = 日本語 / `xkb:us::eng` = 英数) **だけ**を状態の真実とし、`busctl` / `gdbus` /
@@ -88,6 +88,10 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   理由はすべてファイル内のコメントにある。
 - **`lua/plugins/ime.lua`** — lualine の `あ` / `A` 表示だけ。lualine の `opts` は LazyVim の
   `ui.lua` が所有しているため、表示の追加はプラグイン spec 側でしか行えない。
+- **`lua/config/ime_indicator.lua`** — 状態が変わった瞬間にカーソルの直下へ `あ` / `A` を約 1 秒出す
+  浮動ウィンドウ。`ime.lua` の `observe()` (値が実際に変わったときだけ通る) から呼ばれ、挿入・置換・
+  端末モード以外では出さない (`<Esc>` の英数化は観測時点でノーマルモードなので出ない)。窓は開いた時点の
+  カーソル位置に固定されるため、`CursorMovedI`・`ModeChanged`・`WinLeave` で早めに消す。
 - **`lua/config/keymaps.lua`** — `<C-j>` トグル。**挿入モードとコマンドラインのみ**に張る
   (ノーマルモードの `<C-j>` は LazyVim のウィンドウ移動)。
 - **`lua/config/ime_preedit.lua`** — Neovide 専用 (他では no-op)。Neovide は既定で IME の

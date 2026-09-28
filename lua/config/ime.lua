@@ -22,6 +22,7 @@
 -- Super+Space など OS 側の切り替えも検知できる。ポーリングは行わない。
 
 local uv = vim.uv or vim.loop
+local indicator = require("config.ime_indicator")
 
 local M = {}
 
@@ -37,6 +38,9 @@ M.config = {
   -- 注: tmux-256color には Cs/Cr が無く Neovim は OSC 12 を出さないため、tmux 越しでは
   --     terminal-overrides の設定が別途必要 (docs/setup.md 参照)。無くても無害な no-op。
   cursor = true,
+  -- 状態が変わった瞬間に、カーソルのすぐ下へ あ / A を短時間だけ出す (挿入・置換・端末モードのみ)。
+  -- lualine は入力中の視線から遠く、カーソル色は tmux 越しでは効かないため。実体は lua/config/ime_indicator.lua。
+  indicator = true,
   ibus = { ja = "anthy", ascii = "xkb:us::eng" },
 }
 
@@ -312,6 +316,14 @@ local function observe(value)
   state.value = value
   if M.config.cursor then
     M.apply_cursor()
+  end
+  -- 変わった瞬間をカーソルのそばにも出す (ノーマルモードなどで出さない判定は show() 側)。
+  -- 別の値への切り替えがまだ控えている途中経過は出さない (<Esc>o を素早く打つと、英数化の完了が
+  -- 挿入モードに戻った後になり、A を出した直後に あ を出し直すことになる)。pump() は完了した
+  -- 値を observe() してから desired を消すので、最後の要求の完了はここを通る。
+  -- 表示の失敗で IME の制御まで止めないよう pcall で包む。
+  if M.config.indicator and (state.desired == nil or state.desired == value) then
+    pcall(indicator.show, M.status(), M.is_ja())
   end
   -- lualine は既定 1 秒タイマで再描画するが、状態変化は即座に見せたい。
   pcall(vim.cmd.redrawstatus)
@@ -623,6 +635,10 @@ function M.setup(opts)
       group = vim.api.nvim_create_augroup("user_ime_cursor", { clear = true }),
       callback = M.apply_cursor,
     })
+  end
+
+  if M.config.indicator then
+    indicator.setup()
   end
 
   if M.config.watch == "signal" then

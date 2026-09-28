@@ -24,6 +24,12 @@ OS の IME (Linux: ibus/anthy、Windows: zenhan) を Neovim のモードに追�
 - **lualine に `あ` / `A` を表示** — 状態は ibus の `GlobalEngineChanged` シグナルを
   `gdbus monitor` で購読して把握するため、OS 側で切り替えても表示がズレない
   (ポーリングはしない)。
+- **切り替えた瞬間はカーソルのすぐ下にも `あ` / `A` を出す** — lualine は画面の端にあり、
+  打っている間の視線から遠いため。`<C-j>`・Super+Space のほか、日本語のまま抜けたバッファで
+  挿入モードに入ったときの自動復帰でも出る。約 1 秒か、次の入力・モードの離脱で消える。
+  出すのは挿入・置換・端末モードで状態が変わったときだけで、`<Esc>` で英数に戻るときや
+  コマンドライン (`:` `/`) では出さない。実装は `lua/config/ime_indicator.lua`
+  (表示時間は `DURATION_MS`、不要なら `lua/config/ime.lua` の `indicator = false`)。
 - コマンドライン (`:` `/`) は常に英数。日本語検索は下記の Migemo が担う。
   挿入モード中の `<C-r>=` のようにコマンドラインから挿入モードへ戻る経路では、
   元の入力状態に復元する。
@@ -62,7 +68,7 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
 - **Windows**: `zenhan.exe` (推奨) か `im-select.exe` が PATH にあれば、モード連動と
   終了時の復帰は同じように動く。ただし ibus の `GlobalEngineChanged` に相当する通知が
   無いため、**OS 側で IME を切り替えても Neovim は気付けない** (あ/A 表示が実態と
-  ズレることがある)。どちらのコマンドも無ければ何もしない。
+  ズレることがあり、カーソル直下の表示も出ない)。どちらのコマンドも無ければ何もしない。
 - **Neovide では未確定文字列をカーソル位置に表示する** — Neovide は既定では IME の未確定文字列
   (変換前の読みや変換中の候補) を一切描かず、確定するまで何も出ない。`lua/config/ime_preedit.lua` が
   Neovide の `preedit_handler` を差し替え、カーソル位置に下線付きで描く (行の続きは右へ押し出され、
