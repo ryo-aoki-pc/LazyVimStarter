@@ -780,9 +780,10 @@
       - `lazy-lock.json` の版に揃うこと、Mason の 12 個、treesitter のパーサー 31 個とハイライト、`checkhealth` の ERROR が 0 件
       - `/kensaku` の検索、`<Tab>` の候補、保存時の整形、`<C-j>` と lualine の `あ` / `A`、カーソルのすぐ下の表示、検索の sticky
       - 取り込みの手順 2 を、変更がある状態・push していないコミットがある状態・`lazy-lock.json` が書き換わった状態で通すこと
+      - Neovide 0.16.2 の画面での、未確定文字列 (下線・変換中の文節の反転・カーソルの位置)・カーソルのすぐ下の表示・lualine の `あ` / `A` (未確定文字列は、Neovide が IME から受け取ったときと同じ引数でハンドラを呼んで描かせた)
     - **確かめていないこと**:
       - 本物の IME の切り替え (zenhan は、呼び出しを記録するモックに差し替えた。本物は前面のウィンドウの IME を切り替えるため)
-      - Neovide の画面 (未確定文字列の表示は、Neovide と同じ形でハンドラを呼んで確かめた)
+      - Neovide に本物の IME で打ったとき、Neovide がハンドラを呼ぶこと (呼び出しの形は Neovide 0.16.2 のソースで確かめた)
       - scoop の導入 (Windows 導入の手順 2) と、ロールバックの手順 7
   - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
@@ -1013,6 +1014,13 @@
   - `lua/config/autocmds.lua` で、`state()` に `m` が立つ `i:n` は抜けたと見なさないように直した。直した後は、境界の確認 31 項目 (`<C-c>`・`<C-o>`・`<C-r>=`・置換・端末・ピッカー・終了時の復帰など) のうち、ピッカーの入力欄の `<C-j>` (snacks の既定で候補の移動) を除いて通った
 - **シェル**: Store 版の pwsh はアプリ実行エイリアスで、`executable("pwsh")` が 0 になり、`shell` は `powershell` (5.1) になった。pwsh の中から起動すると `pwsh` になった
   - どちらのシェルでも、`system()`・`:!`・`:read !`・`:grep`・`:make` の日本語と終了コードは正しかった
+- **Neovide** (0.16.2): スタートメニューからと同じ環境変数で、置き場所を差し替えて起動し、ウィンドウを `PrintWindow` で取り込んで見た (PC はロック中だったが、描画は続いていた)
+  - Neovide は Lua の `neovide` テーブルに `preedit_handler` と `commit_handler` を用意し、どちらも `lua/config/ime_preedit.lua` に差し替わった
+  - Neovide のソースでは、nvim が 0.12 以上 (開発版なら 0.12.0-dev-1724 以上) のときだけ、未確定文字列を `preedit_handler(raw, 開始, 終了)`、確定を `commit_handler(raw, エスケープ済み)` で渡す
+  - 同じ引数で呼ぶと、未確定文字列はカーソル位置に下線付きで入り、行の続きは右へ押し出され、挿入モードのカーソルは未確定文字列の直後に来た。変換中の文節は反転した
+  - 確定の後は確定文字列だけが残り、二重表示も extmark の残りも無かった。検索のコマンドラインでは、noice の欄に同じように描かれた
+  - `<C-j>` でカーソルのすぐ下に `あ` が出て約 1 秒で消え、lualine と挿入モードのカーソルの色も変わった。全角スペースには波線が出て、アイコンも豆腐にならなかった
+  - `shell` は `powershell` (5.1) だった。snacks のスムーズスクロールは Neovide でも有効で、直した後の設定では挿入中の `<C-End>` でも `あ` のままだった
 - **取り込み・更新・ロールバック**: 取り込みの手順 2 は、別の clone で lock を更新して push した状態で `Fast-forward` し、6 個を記録の版に揃えた
   - push していないコミットがあると、`fatal: Not possible to fast-forward, aborting.` で止まり、restore は走らなかった
   - `lazy-lock.json` が書き換わっていると、git の既定の設定では `Your local changes … lazy-lock.json` で止まった (`pull.autostash` を true にしていると止まらない)
@@ -1022,6 +1030,6 @@
 #### 未確認事項 (Windows 11)
 
 - 本物の IME (zenhan) での切り替えと、OS 側で切り替えたときの lualine の表示
-- Neovide の画面での未確定文字列の表示 (ハンドラを呼ぶ形でだけ確かめた)
+- Neovide に本物の IME で打ったときの未確定文字列 (画面の描画は、ハンドラを呼ぶ形で確かめた)
 - scoop の導入 (Windows 導入の手順 2) と、ロールバックの手順 7
 - scoop も Git for Windows も無い、素の Windows 11 からの通し
