@@ -7,6 +7,23 @@ Markdown (GLFM) 執筆を強化した Neovim 設定。
 (外部コマンドの導入、GNOME + ibus の初期設定、初回起動と動作確認まで)。
 この README は「何ができる設定か」を説明する。
 
+## 手順書
+
+- 手順書は [docs/setup.md](docs/setup.md) の 1 本。`## 実施手順` の下で、OS ごとの導入 (1 度だけ) と、
+  ほかのマシンの変更の取り込み (繰り返し) を見出しで分けてある
+- 初めてのマシンでは、自分の OS の「導入する」を上から順に貼る。以後は、必要なシナリオと節だけを貼る
+- 対象は AlmaLinux 10 + GNOME と Windows 11。検証範囲は、手順書の補足の
+  [対象と検証環境](docs/setup.md#対象と検証環境)の「状態」に書いてある
+
+| 節 | 頻度 | 用途 |
+|---|---|---|
+| [AlmaLinux 10 に導入する](docs/setup.md#almalinux-10-に導入する-1-度だけ) | マシンごとに 1 度 | dnf + EPEL と Homebrew で外部コマンド・Neovim・ibus-anthy・フォントを入れ、この設定を clone して初回起動する |
+| [Windows 11 に導入する](docs/setup.md#windows-11-に導入する-1-度だけ) | マシンごとに 1 度 | scoop で外部コマンド・Neovim・zenhan を入れ、この設定を clone して初回起動する |
+| [ほかのマシンの変更を取り込む](docs/setup.md#ほかのマシンの変更を取り込む-繰り返し) | 繰り返し | `git pull` と `:Lazy restore` で、設定とプラグインの版を揃える |
+| [カーソル色を tmux で効かせる (任意)](docs/setup.md#カーソル色を-tmux-で効かせる-任意) | 任意、1 度だけ | tmux の `terminal-overrides` に 1 行足す |
+| [更新](docs/setup.md#更新) | 更新のたび | Neovim・外部コマンド・プラグインを上げる |
+| [ロールバック](docs/setup.md#ロールバック) | 戻すとき | この設定とプラグインを消し、退避した設定と入力ソースを戻す |
+
 ## 主なカスタマイズ
 
 ### 日本語入力・検索
@@ -51,10 +68,10 @@ OS の IME (Linux: ibus/anthy、Windows: zenhan) を Neovim のモードに追�
   何もせず静かに無効化される (エラーは出ない)。
 
 Linux では **GNOME の入力ソース登録と anthy のショートカット調整が必要**。
-手順は [docs/setup.md 手順 5「日本語入力 (IME) を用意する」](docs/setup.md#実施手順)
+手順は [docs/setup.md の AlmaLinux 導入の手順 13〜15](docs/setup.md#almalinux-10-に導入する-1-度だけ)
 にある (この 2 つをやらないと `<C-j>` が anthy に食われる)。
 日本語が一切入力できなくなった場合の切り分けは
-[つまずきやすい点](docs/setup.md#つまずきやすい点)を参照。
+[注意点](docs/setup.md#注意点)を参照。
 
 #### 補足
 
@@ -129,8 +146,9 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
 
 ## 外部依存
 
-Neovim 0.11.2 以上のほかに、git / ripgrep / fd / C コンパイラ / curl・tar・gzip・unzip /
-Node.js / Nerd Font / ibus + ibus-anthy (Linux) を前提にしている。
+Neovim 0.12 以上のほかに、git / ripgrep / fd / C コンパイラ / curl・tar・gzip・unzip /
+Node.js / Nerd Font / ibus + ibus-anthy (Linux) を前提にしている
+(`lazy-lock.json` の nvim-treesitter が Neovim 0.12 を要る。LazyVim 自身の下限は 0.11.2)。
 **足りなくてもエラーにならず静かに壊れる**ため、初回起動の前に揃えること。
 
 用途と必須かどうかの一覧、導入手順は
@@ -141,3 +159,6 @@ Node.js / Nerd Font / ibus + ibus-anthy (Linux) を前提にしている。
 プラグインのバージョン再現のため `lazy-lock.json` を git で追跡する。
 `:Lazy update` 後に変化した lock ファイルをコミットすること
 (別マシンでは `:Lazy restore` で同じバージョンに揃う)。
+`:Lazy sync` は update を含むので、揃えるだけのときは使わない。
+初めてのマシンでは初回の導入が lock ファイルを書き換えるので、
+[docs/setup.md の AlmaLinux 導入の手順 16](docs/setup.md#almalinux-10-に導入する-1-度だけ) の形で揃える。

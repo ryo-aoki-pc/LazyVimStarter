@@ -31,9 +31,10 @@ LazyVim をベースにした Neovim 設定。リポジトリのルートが **N
 # 整形 (stylua.toml = 2 スペース / 120 桁)。PATH には無く Mason 導入版を使う
 ~/.local/share/nvim/mason/bin/stylua .
 
-# headless での検証。`!` を落とすと取得途中で +qa に殺される
-nvim --headless "+Lazy! sync" +qa      # 初回導入
-nvim --headless "+Lazy! restore" +qa   # lazy-lock.json に揃える
+# headless での導入と検証。`!` を落とすと取得途中で +qa に殺される
+nvim --headless +qa                    # 初回導入 (lazy-lock.json を書き換えるので、次の行で戻す)
+git checkout -- lazy-lock.json && nvim --headless "+Lazy! restore" +qa   # lazy-lock.json に揃える
+nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamigemo" "+w! /tmp/lazyvim-health.txt" +qa
 ```
 
 ```vim
@@ -49,7 +50,12 @@ nvim --headless "+Lazy! restore" +qa   # lazy-lock.json に揃える
   (IME 連携・CJK スペル・Markdown の conceal) は読み込まれない。それらの確認は通常どおり
   `nvim` を起動して行う。
 - `lazy-lock.json` は追跡対象。`:Lazy update` で変化したらコミットする (別マシンは
-  `:Lazy restore` で揃える)。
+  `:Lazy restore` で揃える)。`:Lazy sync` は update を含むので、揃えるだけのときは使わない。
+- **初回導入は `lazy-lock.json` を書き換える**。lazy.nvim の起動時の導入は何回かに分かれ、1 回目の後に
+  導入済みの分だけで lock を書き直す (`lazy/manage/lock.lua` の `update()`) ため、後から入るプラグインが最新になる。
+  git で lock を戻してから `:Lazy restore` し直すと揃う (`docs/setup.md` の AlmaLinux 導入の手順 16)。
+- `checkhealth lazyvim` を headless で見るときは、先に `mason.nvim` を読み込む (Mason の `bin` が PATH に
+  入るのは Mason を読み込んだときだけで、読み込まないと `tree-sitter (CLI)` が ERROR になる)。
 
 ## アーキテクチャ
 
@@ -170,9 +176,21 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
 内容を重複させず、これらを参照・更新すること。**実行手順は `docs/setup.md` に一本化**して
 あるので、README に手順を書き足さない。
 
-- `docs/setup.md` — 新しいマシン (Windows 11 / AlmaLinux 10) でのセットアップ手順書。
-  手順は `## 実施手順` の番号付きリスト (マーカーは `1.`) で、本文は操作と短い注意だけ。
-  手順ごとの理由・実測・落とし穴はその手順の末尾の折り畳み `<details>`、全体に関わる補足は
-  後半の `## 補足` に置く構成 (`~/setup-notes` の記法に準拠)。外部依存の一覧と
-  「つまずきやすい点」も補足にある。
+- `docs/setup.md` — 新しいマシン (AlmaLinux 10 + GNOME / Windows 11) でのセットアップ手順書。
+  `## 実施手順` の下を、シナリオの見出し (`###`、末尾の括弧に頻度) に分ける:
+  「AlmaLinux 10 に導入する (1 度だけ)」手順 1〜19、「Windows 11 に導入する (1 度だけ)」手順 1〜11、
+  「ほかのマシンの変更を取り込む (繰り返し)」手順 1〜2。後ろに「カーソル色を tmux で効かせる (任意)」
+  「更新」「ロールバック」(OS ごとの手順は「(この節の手順 N の代わりに)」) と `## 補足` を置く。
+  - 記法は `~/setup-notes` の CLAUDE.md の「手順の形」「表現の規則」と kvm-container の `docs/setup.md` に揃える:
+    太字にしない 1 行の説明「〜する。」→ ブロック → 箇条書き (末尾に「。」を付けない) → 折り畳みの補足 1 つまで。
+    止める手順は「**次の手順は、〜してから貼る**」で終える。アラートは最上位だけに 5 個まで
+  - 変数は無い (設定の置き場所と clone 元の URL は変える必要が無いので、コマンドに直接書く)。
+    AlmaLinux 10 のブロックは bash、Windows 11 のブロックだけ PowerShell (5.1 でも通る書き方にし、`&&` / `||` を使わない)
+  - 手順は「AlmaLinux 導入の手順 N」「Windows 導入の手順 N」「取り込みの手順 N」と呼び、シナリオの見出しへリンクする。
+    番号を変えたら、本文・補足・付録・`> [!IMPORTANT]`・README・この欄を付け替える
+  - 補足は「対象と検証環境」「実施前の状態」「必要なもの一覧」(README がリンク)「選択した方針」「完了時点の状態」
+    「注意点」「参照」「付録」。付録 (検証記録) は書き直さない
+  - 状態の要約 (補足の状態行を変えたらここも直す): AlmaLinux 10 は x86_64 のコンテナでのみ、文書のブロックを
+    そのまま貼って通した (treesitter のパーサー・GNOME の画面・aarch64 は未確認。検証した設定は PR #26 より前で、
+    カーソル直下の `あ` / `A` の表示も未確認)。Windows 11 は通しておらず、PowerShell の構文だけ確かめた
 - `README.md` — この設定で何ができるかの説明。機能の挙動と設計上の判断、運用上の注意。
