@@ -29,6 +29,7 @@ LazyVim をベースにした Neovim 設定。リポジトリのルートが **N
 
 ```sh
 # 整形 (stylua.toml = 2 スペース / 120 桁)。PATH には無く Mason 導入版を使う
+# (Windows は $env:LOCALAPPDATA\nvim-data\mason\bin\stylua.cmd)
 ~/.local/share/nvim/mason/bin/stylua .
 
 # headless での導入と検証。`!` を落とすと取得途中で +qa に殺される
@@ -82,7 +83,7 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
 `imstatusfunc` が無いため、外部プロセス経由で IME デーモンを叩く自前実装になっている。
 6 ファイルに分かれる。
 
-- **`lua/config/ime.lua`** — 本体 (約 650 行)。ibus の global engine 名
+- **`lua/config/ime.lua`** — 本体 (約 740 行)。ibus の global engine 名
   (`anthy` = 日本語 / `xkb:us::eng` = 英数) **だけ**を状態の真実とし、`busctl` / `gdbus` /
   `ibus` から使えるものを選んで D-Bus を直接叩く。バスアドレスは `~/.config/ibus/bus/` から
   自前で解決する (tmux が `WAYLAND_DISPLAY` を継承しないため既存プラグインは接続に失敗する)。
@@ -90,7 +91,8 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   IME デーモンが居ない / headless / Windows でコマンドが無い環境では **静かに no-op** になる。
 - **`lua/config/autocmds.lua`** — モード遷移の配線。`InsertLeave` ではなく `ModeChanged` の
   パターン (`i*:n` `R*:n` `*:c*` `c*:i*`) で拾う (`<C-c>` を取りこぼさず `i_CTRL-O` を除外する
-  ため)。`i_CTRL-O` に入る時 (`i*:ni*` `R*:ni*`) と挿入からコマンドラインに入る時 (`<C-r>=` など) は
+  ため)。`i*:n` のうち `state()` に `m` が立つもの (挿入モードのまま実行された `:normal`。snacks の
+  スムーズスクロールがアニメーションの 1 コマごとに起こす) は抜けたと見なさず、英数化を後回しにする。`i_CTRL-O` に入る時 (`i*:ni*` `R*:ni*`) と挿入からコマンドラインに入る時 (`<C-r>=` など) は
   sticky を記録し直す (戻る時に古い sticky で切り替わらないように)。コマンドラインから挿入以外へ抜ける時は
   `c*:*` で遷移先を見て英数に戻す。検索コマンドライン (`/` `?`) だけは `CmdlineEnter` / `CmdlineLeave`
   でバッファ単位の sticky を扱う (日本語への復元は入力待ちになってから。`*` `#` の検索では何もしない)。
@@ -137,7 +139,9 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
 - 除外したい markdownlint ルールはファイル冒頭の `disabled_rules` に列挙する。空でない
   ときだけ設定 JSON を `stdpath("cache")` に生成し、**lint (nvim-lint) と整形 (conform) の
   両方**に `--config` を渡す (片方だけだと整形が lint の無効化を直し返す)。
-- render-markdown.nvim は無効。プレビューは markdown-preview.nvim (`<leader>cp`)。
+- render-markdown.nvim は無効。プレビューは markdown-preview.nvim (`<leader>cp`)。Windows だけは
+  build を差し替え、`install.cmd` を `cmd.exe` で同期に実行する (extra 既定の `mkdp#util#install()` は
+  `shell` の端末で実行するので、PowerShell では見つからずに失敗し、しかも成功と表示される)。
 - conceal も切っている (記法の記号を隠さない)。これだけは `lua/config/autocmds.lua` の
   `user_markdown_conceal` で、markdown を表示するウィンドウに `conceallevel=0` を setlocal する
   (`FileType` と `BufWinEnter` の両方で張る理由はコメント参照)。
@@ -170,6 +174,11 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   ソースを足すときはそこに足す。
 - IME 連携を触るときは、対応環境が無くても静かに無効化される性質を壊さないこと
   (headless やコンテナで設定全体が落ちる)。
+- タイマーなどから `:normal` を実行するプラグインは、挿入モードのまま `ModeChanged` の `i:n` / `n:i` を
+  起こす (`InsertLeave` / `InsertEnter` は発火しない)。モード遷移に処理を張るときは `state()` の `m` で見分ける。
+- Windows の `shell` は PowerShell なので、プラグインが `shell` 経由でカレントディレクトリのスクリプト
+  (`install.cmd` など) を実行する処理は動かない (PowerShell は `.\` 無しでは実行しない)。build が失敗しても
+  成功と表示されることがある。
 
 ## 既存ドキュメント
 
@@ -192,5 +201,7 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
     「注意点」「参照」「付録」。付録 (検証記録) は書き直さない
   - 状態の要約 (補足の状態行を変えたらここも直す): AlmaLinux 10 は x86_64 のコンテナでのみ、文書のブロックを
     そのまま貼って通した (treesitter のパーサー・GNOME の画面・aarch64 は未確認。検証した設定は PR #26 より前で、
-    カーソル直下の `あ` / `A` の表示も未確認)。Windows 11 は通しておらず、PowerShell の構文だけ確かめた
+    カーソル直下の `あ` / `A` の表示も未確認)。Windows 11 は実機 (Windows 11 Pro) で、設定とデータの置き場所を
+    差し替えて Windows PowerShell 5.1 に渡して通した (手順 2 とロールバックの手順 7 は未実行。IME の切り替えは
+    モックの zenhan で確かめた。Neovide 0.16.2 の画面は、未確定文字列のハンドラを呼ぶ形で確かめ、本物の IME での入力は未確認)
 - `README.md` — この設定で何ができるかの説明。機能の挙動と設計上の判断、運用上の注意。
