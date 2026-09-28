@@ -18,6 +18,27 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
+-- Markdown では記法の記号を隠さない。LazyVim は conceallevel=2 をグローバルに設定しており、
+-- treesitter の markdown / markdown_inline クエリがコードフェンスの ``` と言語名 (行ごと消える)、
+-- インラインコードの `、強調の * _、リンクの [] () と URL などを隠す。'concealcursor' が空なので
+-- カーソル行でだけ元に戻り、カーソルを動かすたびに周りの行が消えたり現れたりする。
+-- 記法をそのまま見て書くため 0 にする (見た目の確認は markdown-preview.nvim で行う)。
+-- 一時的に隠し表示へ戻すには <leader>uc (LazyVim の Conceal Level トグル)。
+-- 'conceallevel' はウィンドウローカルなので setlocal で張る (LazyVim の lazyvim_json_conceal と同じ)。
+-- ただし FileType だけでは、ウィンドウに出す前に filetype が決まったバッファに効かない
+-- (setlocal が autocmd 用の一時ウィンドウに当たって捨てられる)。gitsigns の差分表示 (<leader>ghd)
+-- の比較元がこれに当たり、片側だけフェンスの行が消えて左右がずれるので、表示時の BufWinEnter でも張る。
+-- なお Neovim 本体の LSP ホバー窓 (vim.lsp.util.open_floating_preview) の markdown にも効くが、
+-- この設定のホバーとシグネチャは noice が自前の窓で描くので通らない。
+vim.api.nvim_create_autocmd({ "FileType", "BufWinEnter" }, {
+  group = vim.api.nvim_create_augroup("user_markdown_conceal", { clear = true }),
+  callback = function(ev)
+    if vim.bo[ev.buf].filetype == "markdown" then
+      vim.opt_local.conceallevel = 0
+    end
+  end,
+})
+
 -- OS の IME (ibus/anthy) を Neovim のモードに追従させる。実体は lua/config/ime.lua。
 -- IME デーモンが居ない / headless / 対応コマンドが無い環境では setup() が静かに降り、
 -- 以下のコールバックもすべて no-op になるため、ここでは無条件に呼んでよい。

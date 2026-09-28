@@ -46,7 +46,8 @@ nvim --headless "+Lazy! restore" +qa   # lazy-lock.json に揃える
 - `:checkhealth lazyvim` の `fzf is not installed` 警告は無視してよい (ピッカーは
   snacks.nvim の Lua 実装で fzf バイナリを呼ばない)。
 - **headless では `UIEnter` が発火せず `VeryLazy` も来ない**ため、`lua/config/autocmds.lua`
-  (IME 連携・CJK スペル) は読み込まれない。それらの確認は通常どおり `nvim` を起動して行う。
+  (IME 連携・CJK スペル・Markdown の conceal) は読み込まれない。それらの確認は通常どおり
+  `nvim` を起動して行う。
 - `lazy-lock.json` は追跡対象。`:Lazy update` で変化したらコミットする (別マシンは
   `:Lazy restore` で揃える)。
 
@@ -107,6 +108,9 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   ときだけ設定 JSON を `stdpath("cache")` に生成し、**lint (nvim-lint) と整形 (conform) の
   両方**に `--config` を渡す (片方だけだと整形が lint の無効化を直し返す)。
 - render-markdown.nvim は無効。プレビューは markdown-preview.nvim (`<leader>cp`)。
+- conceal も切っている (記法の記号を隠さない)。これだけは `lua/config/autocmds.lua` の
+  `user_markdown_conceal` で、markdown を表示するウィンドウに `conceallevel=0` を setlocal する
+  (`FileType` と `BufWinEnter` の両方で張る理由はコメント参照)。
 - 表の整形は `lua/plugins/table-mode.lua` (markdown バッファ限定、全角幅対応)。
 
 ### 日本語まわりの横断設定
