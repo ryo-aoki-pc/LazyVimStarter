@@ -338,6 +338,12 @@ end
 local function observe_external(value)
   if state.expected[1] == value then
     table.remove(state.expected, 1)
+    -- 自分の要求がまだ後に控えているなら、このシグナルはもう古い。反映すると、先に完了を観測した
+    -- 新しい値から一瞬巻き戻る (lualine やカーソル直下の表示がちらつく)。後の要求の結果は
+    -- pump() の完了時に必ず observe() されるので、ここで捨ててよい。
+    if #state.expected > 0 then
+      return
+    end
   else
     -- 自分の要求ではない = gnome-shell (Super+Space やインジケータ) による変更。
     -- この瞬間は gnome-shell の認識と実体が一致している。
@@ -381,23 +387,25 @@ local function pump()
     table.insert(state.expected, want)
   end
   vim.system(cmd, { text = true, env = env, timeout = 1000 }, function(res)
-    state.inflight = false
-    if res.code == 0 then
-      vim.schedule(function()
+    -- inflight は観測値の更新と一緒に main loop で下ろす。この完了通知は別のキー処理の途中
+    -- (<C-o>:w<CR> のように一気に処理されるキー列など) でも割り込んで届くため、ここで先に
+    -- 下ろすと、その間に呼ばれた pump() が更新前の state.value を見て「既にその状態」と
+    -- 誤判定し、要求を捨ててしまう (挿入に戻った時の日本語への復帰が消える)。
+    vim.schedule(function()
+      state.inflight = false
+      if res.code == 0 then
         observe(want)
         if state.desired == want then
           state.desired = nil
         end
         pump()
-      end)
-    else
-      -- ibus-daemon の再起動などでアドレスが失効した可能性が高い。次回に再解決させる。
-      vim.schedule(function()
+      else
+        -- ibus-daemon の再起動などでアドレスが失効した可能性が高い。次回に再解決させる。
         invalidate()
         state.desired = nil
         state.expected = {}
-      end)
-    end
+      end
+    end)
   end)
 end
 
@@ -554,15 +562,22 @@ function M.on_insert_enter(buf)
   end
 end
 
+-- sticky 用に「挿入モードを離れる瞬間に日本語だったか」を記録する (切り替えはしない)。
+-- state.value は watcher 由来の実測値なので、OS のホットキーで切り替えられていても正しく拾える。
+-- ただし自分の書き込みが完了する前 (<C-j> の直後に <Esc> を打った、など) は実測値がまだ古いので、
+-- 投入待ちの値 (desired) を優先する。
+function M.remember(buf)
+  if not state.backend or not M.config.sticky or not (buf and vim.api.nvim_buf_is_valid(buf)) then
+    return
+  end
+  vim.b[buf].ime_sticky = (state.desired or state.value) == state.backend.ja
+end
+
 function M.on_insert_leave(buf)
   if not state.backend then
     return
   end
-  if M.config.sticky and buf and vim.api.nvim_buf_is_valid(buf) then
-    -- 「抜けた瞬間に日本語だったか」を記録する。state.value は watcher 由来の実測値なので、
-    -- OS のホットキーで切り替えられていても正しく拾える。
-    vim.b[buf].ime_sticky = M.is_ja()
-  end
+  M.remember(buf)
   M.ascii()
   poll_stop()
 end

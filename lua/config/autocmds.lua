@@ -70,6 +70,19 @@ vim.api.nvim_create_autocmd("ModeChanged", {
   end,
 })
 
+-- i_CTRL-O で一時的にノーマルモードへ出る時 (遷移先 niI / niR / niV)。IME は切り替えないが、
+-- コマンドの後で挿入に戻る時にも InsertEnter が発火して sticky が適用される (そのときの mode() は niI)。
+-- ここで今の状態を記録し直しておかないと、前回挿入を抜けた時の古い値で切り替わってしまう
+-- (日本語で打っていても <C-o>zz で英数に落ちる)。<C-o>:w のようにコマンドラインを挟んで英数に
+-- 落ちた場合も、挿入に戻った時にここで記録した状態へ戻る。
+vim.api.nvim_create_autocmd("ModeChanged", {
+  group = ime_group,
+  pattern = { "i*:ni*", "R*:ni*" },
+  callback = function(ev)
+    ime.remember(ev.buf)
+  end,
+})
+
 -- 挿入に入る時の復帰。前回そのバッファで日本語のまま抜けていたら日本語に戻す (sticky)。
 -- InsertEnter は挿入・置換・仮想置換のいずれでも発火する。
 vim.api.nvim_create_autocmd("InsertEnter", {
