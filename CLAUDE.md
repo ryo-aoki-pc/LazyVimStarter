@@ -74,7 +74,7 @@ nvim --headless "+Lazy! restore" +qa   # lazy-lock.json に揃える
 
 OS の IME を Neovim のモードに追従させる仕組み。Neovim には `imactivatefunc` /
 `imstatusfunc` が無いため、外部プロセス経由で IME デーモンを叩く自前実装になっている。
-4 ファイルに分かれる。
+5 ファイルに分かれる。
 
 - **`lua/config/ime.lua`** — 本体 (約 650 行)。ibus の global engine 名
   (`anthy` = 日本語 / `xkb:us::eng` = 英数) **だけ**を状態の真実とし、`busctl` / `gdbus` /
@@ -90,6 +90,13 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   `ui.lua` が所有しているため、表示の追加はプラグイン spec 側でしか行えない。
 - **`lua/config/keymaps.lua`** — `<C-j>` トグル。**挿入モードとコマンドラインのみ**に張る
   (ノーマルモードの `<C-j>` は LazyVim のウィンドウ移動)。
+- **`lua/config/ime_preedit.lua`** — Neovide 専用 (他では no-op)。Neovide は既定で IME の
+  未確定文字列を描かないため、`neovide.preedit_handler` を差し替えてカーソル位置に inline の
+  extmark で描く。`right_gravity = false` でないと挿入モードのカーソルが未確定文字列の前に出る。
+  確定時は空の preedit による消去を遅らせ、確定文字列の挿入直前 (`InsertCharPre`) に消す
+  (即座に消すと空白のフレームが、消さないと二重表示のフレームが一瞬描かれる)。描画は
+  `vim.schedule` に回すので確定文字列の入力に追い越されうる。Neovide から届いた順をハンドラ内で
+  数え (`commit_handler` も包む)、確定より前に送られた preedit は描かない。
 
 コマンドライン (`:` `/`) は常に英数に落とすため、日本語の検索はローマ字のまま日本語に
 マッチする Migemo が担う。この 2 つは対になっている。変換器は **`lua/config/migemo.lua`**
