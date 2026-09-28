@@ -27,7 +27,7 @@
 - この設定で何ができるかは [README](../README.md)。外部コマンドの用途は[必要なもの一覧](#必要なもの一覧)
 
 > [!WARNING]
-> **AlmaLinux 10 の手順は x86_64 のコンテナでのみ通した**。GNOME の画面と aarch64 では通していない。**Windows 11 の手順は通していない** (PowerShell の構文だけ確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
+> **AlmaLinux 10 の手順は x86_64 のコンテナでのみ通した**。GNOME の画面と aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。範囲は[対象と検証環境](#対象と検証環境)。
 
 ### AlmaLinux 10 に導入する (1 度だけ)
 
@@ -414,7 +414,7 @@
 
 - Windows 11 に scoop で外部コマンド・Neovim・zenhan を入れ、この設定を `%LOCALAPPDATA%\nvim` に clone して初回起動する
 - 管理者ではない PowerShell で貼る。Windows PowerShell 5.1 でも PowerShell 7 でもよい
-- この節の手順は、通しで実行していない。実機で常用している設定を元に書き、PowerShell 7.5.4 (Linux 版) で構文だけ確かめた
+- この節の手順は、Windows 11 Pro の実機で Windows PowerShell 5.1 に貼る形で通した (scoop が入っていたので手順 2 は飛ばした。範囲は[対象と検証環境](#対象と検証環境))
 
 1. scoop が入っているか確かめる。
 
@@ -475,17 +475,21 @@
 
    - `zenhan` は IME 連携に使う。無ければ IME 連携だけが静かに無効になる
    - `lazygit` は任意 (無ければ `<leader>gg` が定義されないだけ)
+   - 入っているものは、何も出さずに飛ばされる (scoop は複数を並べると `already installed` を出さない)
 
    <details>
    <summary>補足: Windows の外部コマンド</summary>
 
    - `zenhan` / `neovim` / `ripgrep` / `fd` / `gcc` / `nodejs` は scoop の `main` バケット、`lazygit` は `extras` にある (バケットの定義で確認)
    - `curl` と `tar` は Windows 11 が `C:\Windows\System32` に同梱している
-   - `gzip` と `unzip` は同梱されないが、Git for Windows (`C:\Program Files\Git\usr\bin`) が持っている。Mason はこれらが無いとツールの取得に失敗する
+   - `gzip` と `unzip` は要らない。Mason は Windows では zip を PowerShell の `Expand-Archive` で、`.tar.gz` を同梱の `tar` で展開する。この設定で入る 12 個は、どちらかか、展開の要らない exe・npm で済む
+   - `:checkhealth mason` の `unzip` / `gzip` / `wget` の WARNING は無視してよい
    - C コンパイラは `gcc` が PATH にあれば、LazyVim が見つけて `CC` に設定する
    - scoop を使わないなら `winget install --id=BrechtSanders.WinLibs.POSIX.UCRT` が手軽。Visual Studio Build Tools の `cl.exe` も自動で見つかる
    - `zenhan` の代わりに `im-select` でもよい (scoop のバケットには無い)
    - シェルは `pwsh` (PowerShell 7) があればそれを、無ければ `powershell` を使う (`lua/config/options.lua`)
+   - **Microsoft Store 版の PowerShell 7 は、PATH の上ではアプリ実行エイリアス (中身の無いファイル) で、Neovim は実行ファイルと判定しない**。pwsh の中から起動した nvim でだけ `pwsh` になり、エクスプローラーやスタートメニューから起動した Neovide などでは `powershell` (5.1) になる。どちらでも動く
+   - どこから起動しても `pwsh` にしたいなら、`scoop install pwsh` など、PATH にエイリアスではない `pwsh.exe` が載る入れ方にする
    - Neovide を使うなら **Neovide 0.16 以上 + Neovim 0.12 以上**にする。それより古いと IME の未確定文字列が確定まで表示されない
 
    </details>
@@ -563,6 +567,7 @@
 
    - `git status --short` が何も出さなければ、`lazy-lock.json` の版に揃っている
    - `pull` が `Not possible to fast-forward` で止まったら、このマシンに push していないコミットがある。先に push するか、`git -C ~/.config/nvim log --oneline '@{u}..'` で中身を見る
+   - `pull` が `Your local changes to the following files would be overwritten by merge:` で `lazy-lock.json` を挙げて止まったら、このマシンで lock が書き換わっている。`:Lazy update` の結果として残すのでなければ、`git -C ~/.config/nvim checkout -- lazy-lock.json` で戻してから、この手順を貼り直す
 
 1. Windows 11 では、(この節の手順 1 の代わりに) 設定を最新にしてプラグインを揃える。
 
@@ -572,6 +577,8 @@
    ```
 
    - `git status --short` が何も出さなければ、`lazy-lock.json` の版に揃っている
+   - `pull` が `Not possible to fast-forward` で止まったときは、`restore` は走らず、`git status --short` も何も出さない。このマシンに push していないコミットがある。先に push するか、`git -C "$env:LOCALAPPDATA\nvim" log --oneline '@{u}..'` で中身を見る
+   - `pull` が `Your local changes to the following files would be overwritten by merge:` で `lazy-lock.json` を挙げて止まったら、このマシンで lock が書き換わっている。`:Lazy update` の結果として残すのでなければ、`git -C "$env:LOCALAPPDATA\nvim" checkout -- lazy-lock.json` で戻してから、この手順を貼り直す
 
 ---
 
@@ -659,7 +666,7 @@
 - この設定とプラグインを消し、[AlmaLinux 導入の手順 5](#almalinux-10-に導入する-1-度だけ) / [Windows 導入の手順 4](#windows-11-に導入する-1-度だけ) で退避したものを戻す
 - AlmaLinux 10 はこの節の手順 1〜4、Windows 11 はこの節の手順 5〜7 を、上から順に貼る
 - dnf / scoop で入れた共通のコマンド (git・ripgrep・node など) と Homebrew 本体は、ほかでも使うので残す
-- Windows 11 の手順は本実行していない
+- Windows 11 の手順 7 (scoop のアンインストール) は実行していない。手順 5・6 は、設定の置き場所を差し替えた環境で通した
 
 > [!CAUTION]
 > **この節の手順 2 と手順 6 で、設定のディレクトリごと消える。push していない変更は取り戻せない**。手順 1 と手順 5 で確かめてから貼る。
@@ -766,17 +773,25 @@
       - aarch64
       - PR #26 で入った、カーソルのすぐ下の `あ` / `A` の表示 (検証した設定は、その前の 9c4e8d9)
     - 検証の都合で変えたこと (手順には含めない): sudo をパスワード無しにし、プロキシの環境変数と CA を渡した ([付録](#付録-コンテナでの検証記録-2026-09-28))
-  - **Windows 11 は、実機で常用している。ただし本書の手順を通しで実行してはいない**
-    - Windows 導入の手順・取り込みの手順 2・更新の手順 2・4・ロールバックの手順 5〜7 は、PowerShell 7.5.4 (Linux 版) で構文を解析しただけ
-    - 依存の一覧は、この設定のコードと LazyVim のコードを読んで確かめたもの
+  - **Windows 11 は、実機 (Windows 11 Pro 10.0.26200、x64) で通した (2026-09-29)。設定とデータの置き場所は、一時的な場所に差し替えた**
+    - `LOCALAPPDATA` と `TEMP` を差し替え、PATH をレジストリの値から組み立て直した Windows PowerShell 5.1 に、**この文書のコードブロックをそのまま渡して**通した ([付録](#付録-windows-11-の実機での検証記録-2026-09-29))
+    - 通したもの: Windows 導入の手順 1・3〜11 (scoop が入っていたので手順 2 は飛ばした)、取り込みの手順 2、更新の手順 2・4、ロールバックの手順 5・6
+    - 確かめたこと:
+      - `lazy-lock.json` の版に揃うこと、Mason の 12 個、treesitter のパーサー 31 個とハイライト、`checkhealth` の ERROR が 0 件
+      - `/kensaku` の検索、`<Tab>` の候補、保存時の整形、`<C-j>` と lualine の `あ` / `A`、カーソルのすぐ下の表示、検索の sticky
+      - 取り込みの手順 2 を、変更がある状態・push していないコミットがある状態・`lazy-lock.json` が書き換わった状態で通すこと
+    - **確かめていないこと**:
+      - 本物の IME の切り替え (zenhan は、呼び出しを記録するモックに差し替えた。本物は前面のウィンドウの IME を切り替えるため)
+      - Neovide の画面 (未確定文字列の表示は、Neovide と同じ形でハンドラを呼んで確かめた)
+      - scoop の導入 (Windows 導入の手順 2) と、ロールバックの手順 7
   - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
 | 項目 | AlmaLinux 10 | Windows 11 |
 |---|---|---|
-| 検証 | x86_64 のコンテナ (AlmaLinux 10.2) で通した | 通していない (構文のみ) |
+| 検証 | x86_64 のコンテナ (AlmaLinux 10.2) で通した | 実機 (Windows 11 Pro) で、置き場所を差し替えて通した |
 | パッケージマネージャ | dnf + EPEL、Neovim・lazygit・フォントは Homebrew (7.0.7) | scoop |
-| Neovim | Homebrew の `neovim` (0.12.5) | scoop の `neovim` |
-| IME | ibus 1.5.32 + ibus-anthy 1.5.17 (`busctl` / `gdbus` で制御) | zenhan (任意) |
+| Neovim | Homebrew の `neovim` (0.12.5) | scoop の `neovim` (0.12.5) |
+| IME | ibus 1.5.32 + ibus-anthy 1.5.17 (`busctl` / `gdbus` で制御) | zenhan 0.0.1 (任意。検証ではモック) |
 | フォント | Homebrew の cask `font-hackgen-nerd` (2.10.0) | リリースの zip から手で入れる |
 | 設定の置き場所 | `~/.config/nvim` | `%LOCALAPPDATA%\nvim` |
 
@@ -807,7 +822,7 @@
 | [fd](https://github.com/sharkdp/fd) | ファイルピッカーと explorer | Windows で必須 / Linux では推奨 |
 | C コンパイラ (gcc または MSVC の cl) | treesitter のパーサーのビルド | 必須 |
 | tree-sitter CLI | treesitter のパーサーのビルド。PATH に無ければ LazyVim が Mason で入れる | 必須 (自動で入る) |
-| curl / tar / gzip / unzip | treesitter と Mason の取得・展開 | 必須 |
+| curl / tar / gzip / unzip | treesitter と Mason の取得・展開 | 必須 (Windows 11 は同梱の curl と tar だけでよい。[Windows 導入の手順 6](#windows-11-に導入する-1-度だけ) の補足) |
 | [Node.js](https://nodejs.org/) (node + npm) | Mason が npm で入れる LSP・整形ツール | 必須 |
 | Nerd Font ([HackGen Console NF](https://github.com/yuru7/HackGen)) | アイコン表示と `guifont` | 実質必須 (無いと記号が豆腐になる) |
 | ibus + ibus-anthy、`busctl` か `gdbus` | 日本語入力 (Linux)。global engine を切り替える | Linux で必須 |
@@ -872,6 +887,9 @@
 - **保存しても Markdown が整形されない / lint が出ない**: `markdownlint-cli2` と `markdown-toc` は npm のパッケージ
   - node を入れ替えたり消したりすると、Mason で入れたものごと壊れる
   - `:Mason` で状態を見て、`:MasonInstall markdownlint-cli2 markdown-toc` で入れ直す
+- **Windows で `<leader>cp` のプレビューが開かない (`node:internal/modules/cjs/loader` のエラー)**: markdown-preview.nvim のバイナリ (`app\bin\markdown-preview-win.exe`) が入っていない
+  - この設定の build は、Windows では `install.cmd` を `cmd.exe` で実行する (`shell` の PowerShell からは、カレントディレクトリの `install.cmd` を実行できないため)。この形になる前に入れたマシンでは、バイナリが入っていない
+  - Neovim で `:Lazy build markdown-preview.nvim` を実行して入れ直す。20 秒ほどかかる
 - **`/` からの日本語検索が効かない**: `:checkhealth luamigemo` で、同梱の辞書と LuaJIT を確かめる
   - ローマ字として読めない入力 (`search` のような英単語、空白や記号を含むもの) は、わざと変換しない
   - まず `/kensaku` のような純粋なローマ字で試す
@@ -968,3 +986,42 @@
 - Windows 11 の手順の通し (scoop の導入から `checkhealth` まで)
 - Neovim 0.11 系で、`lazy-lock.json` の nvim-treesitter が動かないこと
 - 取り込みの手順 1 と更新の手順 3 を、実際に変更がある状態で通すこと (検証では変更が無い状態で通した)
+
+### 付録: Windows 11 の実機での検証記録 (2026-09-29)
+
+- **環境**: Windows 11 Pro 10.0.26200 (x64)。scoop・Git for Windows 2.55・Microsoft Store 版の PowerShell 7.6.6 が入っている、常用のマシン
+  - 手順書の 7 つの scoop のアプリは、どれもバケットの最新だった (neovim 0.12.5、ripgrep 15.2.0、fd 10.5.0、gcc 15.2.0、nodejs 26.10.0、zenhan 0.0.1、lazygit 0.65.1)
+  - 各ブロックを Windows PowerShell 5.1.26100 に `-File` で渡した。環境変数はレジストリから組み立て、PATH には Machine の値と、手順書で scoop が入れるものだけを載せた (shim は手順書の 7 つと scoop・7zip)
+  - `LOCALAPPDATA` と `TEMP` を一時的な場所に差し替えたので、`%LOCALAPPDATA%\nvim` などは常用の設定とは別の場所になる。退避を見るため、そこに仮の `nvim` と `nvim-data` を置いてから始めた
+  - 画面の要る手順 (手順 9・11) は、headless の nvim の `:terminal` (ConPTY) で nvim を起動し、キーを送って画面と状態を読んだ
+  - zenhan は、状態をファイルに持って呼び出しを記録するモック (出力と終了コードは本物と同じ) に差し替えた。本物は前面のウィンドウ (検証中はロック画面) の IME を切り替えるため
+- **構文**: Windows の 17 個のブロックは、Windows PowerShell 5.1 と PowerShell 7.6.6 のパーサーでエラーが無く、`&&` / `||` も無かった
+- **Windows 導入の手順 1〜7**: 手順 1 で `scoop.ps1` の行が出たので、手順 2 は飛ばした。手順 3 は `The 'extras' bucket already exists.` の WARN だけだった
+  - 手順 4 は `moved: …\nvim` と `moved: …\nvim-data`、手順 5 は `custom` を出した
+  - 手順 6 は何も出さなかった (7 つとも導入済み。scoop は複数を並べると WARN を出さない)。手順 7 は `NVIM v0.12.5` と 7 つの場所を出した
+- **プラグイン** (Windows 導入の手順 8): 1 行目は 19 秒。`lazy-lock.json` の 6 個 (AlmaLinux 10 と同じ SchemaStore.nvim など) が書き換わり、restore の後は 38 個とも記録の版で、`git status --short` は何も出さなかった
+  - 1 行目で markdown-preview.nvim の build が `install.cmd : 用語 'install.cmd' は…認識されません` で失敗し、`[markdown-preview]: install fail` と出た。lazy.nvim の表示は成功で、`<leader>cp` は `node:internal/modules/cjs/loader` のエラーで開かなかった
+  - 原因は、`shell` の PowerShell がカレントディレクトリの `install.cmd` を実行しないこと。Windows では `cmd.exe` で `install.cmd` を実行する build に改めた。改めた後は、初回の導入で 17 秒ほどかけてバイナリが入り、`<leader>cp` でプレビューのサーバーが起動した
+- **初回起動と確認** (Windows 導入の手順 9〜11): 開いてから 45 秒で Mason の 12 個、60 秒で treesitter のパーサー 31 個が揃い、ハイライトが効いた
+  - Mason の展開に `gzip` / `unzip` / `7z` は要らなかった (zip は `Expand-Archive`、`.tar.gz` は同梱の `tar`)。`7z` を PATH から外して tree-sitter-cli と shellcheck を入れ直しても入った
+  - 手順 9 の `Set-Content -Encoding UTF8` (5.1) は、BOM 付き・CRLF のファイルを作る。`fenc=utf-8`・`bomb`・`ff=dos` と判定され、`:w` の後も BOM と CRLF は残った
+  - `checkhealth` は ERROR 0 件、WARNING は `fzf` の 1 件だった
+  - 手順 11 の確認は 38 項目とも通った: `/kensaku` で 3 行目の「検索」と `[1/1]`、`<Tab>` で「検索」、`:w` で `# 動作確認`、`<C-j>` で `あ` とカーソルのすぐ下の表示 (約 1 秒で消える)、`<Esc>` で `A`、検索の sticky、ピッカーのアイコン
+  - モックの呼び出しは `get,1,0,1,0,…` で、操作と 1 対 1 に対応し、余計な呼び出しは無かった
+- **IME の不具合** (確認項目の外で見つけた): 挿入モードで日本語のまま、`<C-End>`・`<C-Home>`・`<C-o>zz` などで画面が 2 行以上動くと、挿入モードのまま英数に落ちた
+  - snacks.nvim のスムーズスクロールが、アニメーションの 1 コマごとに `:normal!` を実行し、`ModeChanged` の `i:n` / `n:i` が数十回起きていた (`<C-End>` で 91 回)
+  - `lua/config/autocmds.lua` で、`state()` に `m` が立つ `i:n` は抜けたと見なさないように直した。直した後は、境界の確認 31 項目 (`<C-c>`・`<C-o>`・`<C-r>=`・置換・端末・ピッカー・終了時の復帰など) のうち、ピッカーの入力欄の `<C-j>` (snacks の既定で候補の移動) を除いて通った
+- **シェル**: Store 版の pwsh はアプリ実行エイリアスで、`executable("pwsh")` が 0 になり、`shell` は `powershell` (5.1) になった。pwsh の中から起動すると `pwsh` になった
+  - どちらのシェルでも、`system()`・`:!`・`:read !`・`:grep`・`:make` の日本語と終了コードは正しかった
+- **取り込み・更新・ロールバック**: 取り込みの手順 2 は、別の clone で lock を更新して push した状態で `Fast-forward` し、6 個を記録の版に揃えた
+  - push していないコミットがあると、`fatal: Not possible to fast-forward, aborting.` で止まり、restore は走らなかった
+  - `lazy-lock.json` が書き換わっていると、git の既定の設定では `Your local changes … lazy-lock.json` で止まった (`pull.autostash` を true にしていると止まらない)
+  - 更新の手順 2 は、7 つとも `(latest version)` と出て `Latest versions for all apps are installed!` で終わった。手順 4 は `lazy-lock.json` だけを変えた
+  - ロールバックの手順 5 は、変更と push していないコミットをそれぞれ示した。手順 6 は 401 MB の `nvim-data` を消して、`restored: …` を 2 行出した
+
+#### 未確認事項 (Windows 11)
+
+- 本物の IME (zenhan) での切り替えと、OS 側で切り替えたときの lualine の表示
+- Neovide の画面での未確定文字列の表示 (ハンドラを呼ぶ形でだけ確かめた)
+- scoop の導入 (Windows 導入の手順 2) と、ロールバックの手順 7
+- scoop も Git for Windows も無い、素の Windows 11 からの通し
