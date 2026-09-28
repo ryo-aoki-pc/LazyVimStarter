@@ -53,6 +53,31 @@ local specs = {
   },
 }
 
+-- Windows では markdown-preview.nvim のビルド (プレビュー用のバイナリの取得) を cmd.exe で直接走らせる。
+-- extra 既定の build は mkdp#util#install() で、app/ に lcd してから "install.cmd v<版>" を 'shell' の端末で
+-- 実行する。この設定は Windows の 'shell' を PowerShell にしている (lua/config/options.lua) が、PowerShell は
+-- カレントディレクトリのコマンドを .\ 無しでは実行しないので、install.cmd が見つからずに終わる。しかも build は
+-- 端末を開いた時点で戻るため、lazy.nvim には成功と表示される。バイナリが無いと <leader>cp は node での起動に
+-- 落ち、その依存 (app/node_modules) も入っていないので、プレビューは開かない。
+-- ここでは終わるまで待つので、失敗は :Lazy の build の失敗として出る (headless の初回導入でも打ち切られない)。
+if vim.fn.has("win32") == 1 then
+  table.insert(specs, {
+    "iamcco/markdown-preview.nvim",
+    optional = true,
+    build = function(plugin)
+      local version = vim.json.decode(table.concat(vim.fn.readfile(plugin.dir .. "/package.json"), "\n")).version
+      -- /d: AutoRun (レジストリの cmd.exe の起動時コマンド) を走らせない
+      local res = vim
+        .system({ "cmd.exe", "/d", "/c", "install.cmd", "v" .. version }, { cwd = plugin.dir .. "/app", text = true })
+        :wait()
+      -- install.cmd は取得や展開に失敗しても 0 で終わることがあるので、バイナリの有無でも確かめる
+      if res.code ~= 0 or vim.fn.executable(plugin.dir .. "/app/bin/markdown-preview-win.exe") == 0 then
+        error(("install.cmd v%s failed (exit %d)\n%s%s"):format(version, res.code, res.stdout or "", res.stderr or ""))
+      end
+    end,
+  })
+end
+
 -- disabled_rules が空の間は以下は丸ごと不要 (設定ファイルを生成せず、lint/整形とも
 -- stock の引数のまま動かす)。ルールを追加した時だけ生成と --config の受け渡しを有効化する。
 if #disabled_rules > 0 then
