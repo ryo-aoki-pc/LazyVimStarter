@@ -84,8 +84,9 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   IME デーモンが居ない / headless / Windows でコマンドが無い環境では **静かに no-op** になる。
 - **`lua/config/autocmds.lua`** — モード遷移の配線。`InsertLeave` ではなく `ModeChanged` の
   パターン (`i*:n` `R*:n` `*:c*` `c*:i*`) で拾う (`<C-c>` を取りこぼさず `i_CTRL-O` を除外する
-  ため)。`i_CTRL-O` に入る時 (`i*:ni*` `R*:ni*`) は切り替えずに sticky だけ記録し直す (戻る時にも
-  `InsertEnter` が発火するため)。端末モードは `TermEnter` / `TermLeave`、終了・中断時は起動前の
+  ため)。`i_CTRL-O` に入る時 (`i*:ni*` `R*:ni*`) と挿入からコマンドラインに入る時 (`<C-r>=` など) は
+  sticky を記録し直す (戻る時に古い sticky で切り替わらないように)。コマンドラインから挿入以外へ抜ける時は
+  `c*:*` で遷移先を見て英数に戻す。端末モードは `TermEnter` / `TermLeave`、終了・中断時は起動前の
   engine に戻す。理由はすべてファイル内のコメントにある。
 - **`lua/plugins/ime.lua`** — lualine の `あ` / `A` 表示だけ。lualine の `opts` は LazyVim の
   `ui.lua` が所有しているため、表示の追加はプラグイン spec 側でしか行えない。lualine は前もって
