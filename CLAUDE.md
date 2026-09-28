@@ -88,7 +88,9 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   `InsertEnter` が発火するため)。端末モードは `TermEnter` / `TermLeave`、終了・中断時は起動前の
   engine に戻す。理由はすべてファイル内のコメントにある。
 - **`lua/plugins/ime.lua`** — lualine の `あ` / `A` 表示だけ。lualine の `opts` は LazyVim の
-  `ui.lua` が所有しているため、表示の追加はプラグイン spec 側でしか行えない。
+  `ui.lua` が所有しているため、表示の追加はプラグイン spec 側でしか行えない。lualine は前もって
+  組み立てた文字列を 1 秒ごとのタイマーかカーソル移動などでしか作り直さないので、`ime.lua` が
+  状態変化のたびに出す `User ImeStateChanged` を受けて即座に作り直させる。
 - **`lua/config/ime_indicator.lua`** — 状態が変わった瞬間にカーソルの直下へ `あ` / `A` を約 1 秒出す
   浮動ウィンドウ。`ime.lua` の `observe()` (値が実際に変わったときだけ通る) から呼ばれ、挿入・置換・
   端末モード以外では出さない (`<Esc>` の英数化は観測時点でノーマルモードなので出ない)。窓は開いた時点の
@@ -144,7 +146,9 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   prettier を `table.insert` するため、`lang-markdown.lua` でのリスト置換の**後から**追記されて
   prettier が復活する。追加する際は必ず markdown の整形連鎖を確認する。
 - extra は `:LazyExtras` ではなく `lua/config/lazy.lua` の import で足す (前述)。
-- lualine への追加は `lua/config/` ではなくプラグイン spec の `opts` 関数で行う。
+- lualine への追加は `lua/config/` ではなくプラグイン spec の `opts` 関数で行う。autocmd を張るのも
+  `opts` の中にする: lazy.nvim が spec をまたいで合成するのは `opts` / `dependencies` / `cmd` /
+  `event` / `ft` / `keys` だけで、`init` / `config` を書くと LazyVim 側の spec を丸ごと上書きする。
 - IME 連携を触るときは、対応環境が無くても静かに無効化される性質を壊さないこと
   (headless やコンテナで設定全体が落ちる)。
 

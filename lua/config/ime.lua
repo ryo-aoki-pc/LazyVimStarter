@@ -325,7 +325,11 @@ local function observe(value)
   if M.config.indicator and (state.desired == nil or state.desired == value) then
     pcall(indicator.show, M.status(), M.is_ja())
   end
-  -- lualine は既定 1 秒タイマで再描画するが、状態変化は即座に見せたい。
+  -- ステータスラインにも即座に反映する。lualine は前もって組み立てた文字列を 1 秒ごとのタイマーか
+  -- カーソル移動などのイベントでしか作り直さず、redrawstatus だけでは古い文字列を描き直すだけで
+  -- あ / A が最大 1 秒遅れる。そこで User ImeStateChanged を出して作り直させ (受け側は
+  -- lua/plugins/ime.lua)、その結果を描き直す。
+  pcall(vim.api.nvim_exec_autocmds, "User", { pattern = "ImeStateChanged", modeline = false })
   pcall(vim.cmd.redrawstatus)
 end
 
