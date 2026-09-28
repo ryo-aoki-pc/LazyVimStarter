@@ -228,6 +228,9 @@ tmux でカーソル色を使うなら[カーソル色を tmux で効かせる (
      ひらがな⇔Latin モードを切り替えるもので、D-Bus から観測できない。残したままだと
      lualine の表示が実際とズレるうえ、`Ctrl+J` が anthy に食われて Neovim の `<C-j>` が届かない。
 
+   Windows で Neovide を使うなら **Neovide 0.16 以上 + Neovim 0.12 以上**にする。それより古いと
+   IME の未確定文字列が確定するまで一切表示されない (Neovide 既定の挙動で、この設定が補っている)。
+
    実装と運用上の注意 (変換中の `<Esc>` は 2 回、nvim を 2 つ起動したときの既知の制限など) は
    [README の日本語入力・検索](../README.md#日本語入力検索)にある。
 
@@ -431,6 +434,7 @@ mv ~/.cache/nvim.bak       ~/.cache/nvim
 | Nerd Font ([HackGen Console NF](https://github.com/yuru7/HackGen)) | アイコン表示と `guifont` | 実質必須 (無いと記号が豆腐になる) |
 | ibus + ibus-anthy | 日本語入力 (Linux)。global engine を切り替える | Linux で必須 |
 | [zenhan](https://github.com/iuchim/zenhan) または im-select | 日本語入力 (Windows) | 任意 (無ければ IME 連携のみ無効) |
+| [Neovide](https://neovide.dev/) 0.16 以上 | GUI クライアント。IME の未確定文字列の表示には Neovim 0.12 以上も要る | 任意 (端末で使うなら不要) |
 | lazygit | `<leader>gg` | 任意 (無ければキーマップが定義されないだけ) |
 | ネットワーク | 初回のプラグイン取得、Mason、treesitter パーサー | 初回のみ必須 |
 

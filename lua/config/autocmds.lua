@@ -45,6 +45,11 @@ vim.api.nvim_create_autocmd({ "FileType", "BufWinEnter" }, {
 local ime = require("config.ime")
 ime.setup()
 
+-- Neovide では IME の未確定文字列をカーソル位置に描く (既定では確定するまで何も出ない)。
+-- IME の状態制御 (上の ime.setup) とは独立で、zenhan が無くても効く。Neovide 以外では何もしない。
+-- 実体は lua/config/ime_preedit.lua。
+require("config.ime_preedit").setup()
+
 local ime_group = vim.api.nvim_create_augroup("user_ime", { clear = true })
 
 -- 挿入を抜けたら必ず英数に戻す。ノーマルモードのキー (dd, ciw, ...) が IME に食われない
