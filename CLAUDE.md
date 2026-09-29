@@ -246,6 +246,7 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
     差し替えて Windows PowerShell 5.1 に渡して通した (手順 2 とロールバックの手順 7 は未実行。IME の切り替えは
     モックの zenhan で確かめた。Neovide 0.16.2 の画面は、未確定文字列のハンドラを呼ぶ形で確かめ、本物の IME での入力は未確認)。
     markdown-preview.nvim と markdown-toc を外し GitLab プレビュー・img-clip.nvim・GLFM のスニペットを足した変更は、
-    Windows 11 の実機で置き場所を差し替え、模擬の GitLab API と headless の Edge で確かめた (本物の GitLab・
-    本物のクリップボードの画像・トークンの節の実行・AlmaLinux 10 での通しは未確認)
+    Windows 11 の実機で置き場所を差し替え、模擬の GitLab API と headless の Edge で確かめた。本物のクリップボードの
+    画像・既定のブラウザ・トークンの節の Windows の手順 (模擬のトークン)・gitlab.com の 401 も確かめた
+    (本物の GitLab での描画と AlmaLinux 10 での通しは未確認)
 - `README.md` — この設定で何ができるかの説明。機能の挙動と設計上の判断、運用上の注意。

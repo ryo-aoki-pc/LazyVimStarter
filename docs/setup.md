@@ -29,7 +29,7 @@
 - この設定で何ができるかは [README](../README.md)。外部コマンドの用途は[必要なもの一覧](#必要なもの一覧)
 
 > [!WARNING]
-> **AlmaLinux 10 の手順は x86_64 のコンテナでのみ通した**。GNOME の画面と aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは本物の GitLab では確かめていない** (模擬の API で確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
+> **AlmaLinux 10 の手順は x86_64 のコンテナでのみ通した**。GNOME の画面と aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは、本物の GitLab での描画を確かめていない** (描画は模擬の API で確かめた。gitlab.com には、模擬のトークンが拒まれるところまで送った)。範囲は[対象と検証環境](#対象と検証環境)。
 
 ### AlmaLinux 10 に導入する (1 度だけ)
 
@@ -660,14 +660,16 @@
    ```
 
    - `GitLab のトークン: ` と出るので、トークンを貼って Enter を押す (画面には `*` で出る)
+   - Enter の後、プロンプトが戻るまで 2 秒ほどかかる
    - 前に設定した値があれば、置き換わる
-   - **次の手順は、トークンを入力してから貼る**
+   - **次の手順は、トークンを入力し、プロンプトが戻ってから貼る**
 
    <details>
    <summary>補足: トークンの置き場所</summary>
 
    - ユーザーの環境変数は、レジストリ (`HKCU\Environment`) に平文で入る。ほかのユーザーからは読めない
    - 設定した後に起動したアプリ (端末・スタートメニューから開く Neovide) にだけ渡る。開いたままの端末には渡らない
+   - 時間がかかるのは、変えたことを開いている全てのウィンドウに知らせ終わるまで戻らないため (検証した PC では 1 回 2 秒ほど)
 
    </details>
 
@@ -679,7 +681,8 @@
 
    - `https://gitlab.example.com` のように入力する (ホスト名だけでもよい)
    - 空のまま Enter を押すと、`GITLAB_HOST` を消す。送り先は gitlab.com になる
-   - **次の手順は、URL を入力してから貼る**
+   - Enter の後、プロンプトが戻るまで 2 秒ほどかかる
+   - **次の手順は、URL を入力し、プロンプトが戻ってから貼る**
 
 1. AlmaLinux 10 では、新しい端末でこの設定の README を開き、プレビューで確かめる。
 
@@ -715,6 +718,7 @@
    foreach ($n in 'GITLAB_TOKEN', 'GITLAB_HOST') { [Environment]::SetEnvironmentVariable($n, $null, 'User') }
    ```
 
+   - プロンプトが戻るまで 4 秒ほどかかる (2 つ消すので、この節の手順 3 の倍)
    - GitLab の側でも、「アクセストークン」からそのトークンを取り消す
 
 ---
@@ -897,10 +901,13 @@
     - 確かめたこと:
       - プラグインの導入と `lazy-lock.json` の版 (38 個、lock は 39 行のまま)、Mason の 11 個、`checkhealth` の ERROR が 0 件
       - GitLab プレビューを、GitLab の形の HTML を返す模擬の API と headless の Edge で (送信の条件・ページの描画・ライブの更新・スクロール・近似表示・閉じ込め・トークンを残さないこと)
-      - img-clip.nvim を、クリップボードを読むだけの確認と、読み出しを差し替えた貼り付けで。GLFM のスニペットを blink.cmp の一覧で
+      - img-clip.nvim を、本物のクリップボードの画像で (`shell` が `powershell` と `pwsh` の両方。クリップボードの中身は退避して戻した)。GLFM のスニペットを blink.cmp の一覧で
+      - `<leader>cp` で既定のブラウザ (Edge) が開いてページがつながること、止めて開き直すと同じタブがつながり直すこと
+      - トークンの節の Windows の手順 3・4・8 を、Windows PowerShell 5.1 の画面に打ち込んで (模擬のトークン。最後に消した)
+      - gitlab.com が模擬のトークンを 401 で拒み、近似表示に切り替わってそれ以上送らないこと
     - **確かめていないこと**:
-      - 本物の GitLab (gitlab.com・社内の GitLab) での描画と、トークンの節の手順 (ユーザーの環境変数と `~/.bashrc` を書き換えるので、構文だけを確かめた)
-      - 本物のクリップボードの画像の貼り付け (検証中は PC がロックされていて、Windows がクリップボードを開かせなかった)
+      - 本物の GitLab (gitlab.com・社内の GitLab) での描画 (本物のトークンが要る)
+      - トークンの節の AlmaLinux 10 の手順 (`HOME` を差し替えて Windows の bash で実行しただけ)
   - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
 | 項目 | AlmaLinux 10 | Windows 11 |
@@ -1201,12 +1208,22 @@
   - クリップボードそのものは、PC のロック中で Windows が開かせなかった (`Requested Clipboard operation did not succeed.`。この設定と関係の無い PowerShell からも同じ)
 - **手順書のブロック**: トークンの節の PowerShell の 4 個は、Windows PowerShell 5.1 と PowerShell 7.6.6 のパーサーでエラーが無く、`&&` / `||` も無かった
   - bash の 4 個は `bash -n` を通した。Windows の bash で `HOME` を差し替えて実行し、記号を含むトークンが `~/.bashrc` を通してそのまま戻ること、2 回実行しても 1 行だけになること、消せることを確かめた
+- **ロックを解いた後の確認** (同じ日、同じ置き場所の差し替えで):
+  - 本物のクリップボードの画像: 先にクリップボードの中身 (text/html・HTML Format・UnicodeText・Text) をファイルに退避し、64×40 の画像を置いた
+    - `<leader>ci` → ファイル名は空のまま Enter で、`docs/assets/<日時>.png` に同じ大きさ・同じ色の PNG ができ、`![](assets/<日時>.png)` が入った
+    - `shell` が `powershell` (5.1) でも、`pwsh` (7.6.6。PATH に本物の `pwsh.exe` を載せた) でも同じだった
+    - 終わった後にクリップボードの中身を戻し、文字列のハッシュと 4 つの形式が元どおりなことを確かめた。Windows のクリップボードの履歴には、試験の画像が残る
+  - 既定のブラウザ: `vim.g.gitlab_preview_browser` を付けずに `:GitLabPreview` を打つと、`vim.ui.open` が 1 回呼ばれて Edge (既定のブラウザ) にタブが開き、そのタブの EventSource がつながった
+    - `:GitLabPreviewStop` の後に `:GitLabPreview` を打つと、同じ URL で開き、開いたままのタブがつながり直した。新しいタブは開かなかった
+  - トークンの節の Windows の手順 3・4・8: headless の nvim の `:terminal` (ConPTY) で Windows PowerShell 5.1 を開き、文書のブロックをそのまま打ち込んだ。トークンは模擬の値で、始める前に `GITLAB_*` のユーザーの環境変数が無いことを確かめた
+    - 手順 3 は `GitLab のトークン: ` を出して入力を `*` で隠し、`HKCU\Environment` に `GITLAB_TOKEN` が入った。値は画面に出なかった
+    - 手順 4 は URL を入れると `GITLAB_HOST` が入り、空のまま Enter で消えた。手順 8 で 2 つとも消えた
+    - `SetEnvironmentVariable(…, 'User')` は 1 回 2 秒ほどかかった (変えたことを全てのウィンドウに知らせ終わるまで戻らない)。プロンプトが戻る前に次を打つと待たされるので、手順の箇条書きに書いた
+  - gitlab.com: 模擬のトークンで Markdown API を呼ぶと、`401` と `{"message":"401 Unauthorized"}` が返った (Cloudflare の 403 ではない)。プレビューは `トークンが拒否された (HTTP 401)` の近似表示になり、その後の編集では curl を呼ばなかった
 
 #### 未確認事項 (GitLab プレビューなど)
 
-- 本物の GitLab (gitlab.com・社内の GitLab) での描画と、GitLab の版による HTML の違い (`data-canonical-src`・アラート・`data-sourcepos`)
+- 本物の GitLab (gitlab.com・社内の GitLab) での描画 (本物のトークンが要る) と、GitLab の版による HTML の違い (`data-canonical-src`・アラート・`data-sourcepos`)
 - 非公開のプロジェクトの `/uploads/` の画像、`::include`、PlantUML / Kroki の図
-- 本物のクリップボードからの画像の貼り付け (Windows・Linux とも)
-- `vim.ui.open` で既定のブラウザが開くこと (検証ではブラウザを開かず、URL を Edge に渡した)
-- トークンの節の Windows の手順 (ユーザーの環境変数を書き換えるので、構文だけを確かめた)
-- AlmaLinux 10 での、この変更の後の通し (`wl-clipboard` の導入、Wayland と tmux での `<leader>ci`)
+- Linux での画像の貼り付け (`wl-clipboard`、Wayland と tmux)
+- AlmaLinux 10 での、この変更の後の通し (`wl-clipboard` の導入、トークンの節の AlmaLinux の手順)
