@@ -30,7 +30,7 @@
 - この設定で何ができるかは [README](../README.md)。外部コマンドの用途は[必要なもの一覧](#必要なもの一覧)
 
 > [!WARNING]
-> **AlmaLinux 10 の手順は x86_64 のコンテナでのみ通した**。GNOME の画面と aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、実物の WezTerm では確かめていない** (tmux に OSC 52 を受けさせて確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
+> **AlmaLinux 10 の手順は x86_64 のコンテナでのみ通した**。GNOME の画面と aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、Windows の WezTerm と GNOME の画面では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
 
 ### AlmaLinux 10 に導入する (1 度だけ)
 
@@ -762,7 +762,8 @@
    <summary>補足: 仕組みと、手元から Neovim への向き</summary>
 
    - ヤンクや削除のたびに、Neovim が OSC 52 (中身を base64 にしたエスケープシーケンス) を画面に書き、WezTerm がそれを手元のクリップボードに入れる。SSH は画面の出力として運ぶだけ
-   - LazyVim は SSH のシェルでは `clipboard` を空にして、Neovim の OSC 52 の自動検出に任せる。WezTerm では自動検出が noice に邪魔されて効かないので、この設定は `lua/config/options.lua` で OSC 52 を明示し、`clipboard` をローカルと同じ `unnamedplus` にしている
+   - LazyVim は SSH のシェルでは `clipboard` を空にするので、そのままでは `yy` が手元に入らない (WezTerm の nightly なら、`"+yy` は入る)
+   - Neovim は `clipboard` が空のときしか OSC 52 を自動で選ばない。この設定は `lua/config/options.lua` で OSC 52 を明示し、`clipboard` をローカルと同じ `unnamedplus` にしている
    - `p` は端末に問い合わせず、この Neovim が最後に送った内容を貼る (行単位・矩形の形も保つ)。OSC 52 の読み出しには WezTerm も Windows Terminal も応えず、Neovim の内蔵の読み出しは 1 回ごとに 10 秒待つため
    - 手元でコピーしたものは、WezTerm の貼り付け (Ctrl+Shift+V) で入れる。Neovim には貼り付け (bracketed paste) として届き、挿入モードでもノーマルモードでもカーソルの後ろに入る。レジスタには入らない
    - ローカル (GNOME の端末や Neovide) で起動したときは、これまでどおり `wl-copy` などを使う (`SSH_CONNECTION` が無いので、この節の設定は効かない)
@@ -962,13 +963,23 @@
   - **SSH 越しのクリップボード ([SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)) は、x86_64 のコンテナで、tmux を手元の端末の代わりにして確かめた (2026-09-29)** ([付録](#付録-ssh-越しのクリップボードの検証記録-2026-09-29))
     - Neovim 0.12.5 (公式の Linux 版のリリース) にこの設定とプラグイン 38 個を入れ、`SSH_CONNECTION` を付けて tmux の中で起動した。tmux (`set-clipboard on`) が OSC 52 を受けて作るペーストバッファを、手元のクリップボードの代わりに見た
     - 確かめたこと:
-      - 変更前は、SSH のシェルで `yy` も `"+yy` も OSC 52 を出さない (`clipboard` が空で、クリップボードの提供元が無い)
+      - 変更前は、tmux の中の SSH のシェルで `yy` も `"+yy` も OSC 52 を出さない (`clipboard` が空で、tmux では OSC 52 が検出されず、クリップボードの提供元が無い)
       - 変更後は、`yy`・`"+yy`・矩形・文字単位のヤンクで OSC 52 が出て、日本語を含めて中身が一致する。`p` は待たずに元の形 (行単位・矩形) で貼る
       - まだ何も送っていないときの `p` は、待たずに、前に使ったレジスタから貼る (無ければ `E353`)。`SSH_CONNECTION` が無ければ、OSC 52 を出さない (これまでどおり)
       - [SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 1・2 のブロック (手順 2 は tmux の中で、`yy`・`p`・`:set clipboard?`)
+    - 実物の WezTerm と AlmaLinux 10 での通しは、次の記録で確かめた
+  - **SSH 越しのクリップボードは、AlmaLinux 10 の実機で、WezTerm の nightly から ssh して通した (2026-09-29)** ([付録](#付録-almalinux-10-の実機での-ssh-越しのクリップボードの検証記録-2026-09-29))
+    - AlmaLinux 10.2 (x86_64) の上で、WezTerm 20260928 (nightly。利用者の設定ファイルのまま) を画面の無い mutter 49.4 で動かした
+    - その WezTerm から sshd に ssh し、ログインしたシェルに[SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)の**手順 1・2 のブロックをそのまま貼って**通した
+    - 確かめたこと:
+      - 手順 1 の出力 (`SSH_CONNECTION` の 4 つの値と `OSC 52 (copy only)`)、手順 2 の `yy`・`p`・`:set clipboard?`
+      - 続けて 5 回ヤンクしても、毎回その内容が手元のクリップボードに入ること
+      - 大きな範囲の `ggyG` (日本語の 8 万行、6.9 MB まで) が、ファイルとバイト単位で一致すること。矩形・文字単位の形
+      - 変更前は `yy` が入らず、`"+p` が 10 秒待って失敗すること (`"+yy` は入る。WezTerm の nightly は DA1 に `52` を出すので、noice があっても検出される)
     - **確かめていないこと**:
-      - 実物の WezTerm (nightly) と ssh で、手元のクリップボードに入ること ([SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 2)
-      - AlmaLinux 10 での通し
+      - Windows の WezTerm と、Windows Terminal など WezTerm 以外の端末
+      - GNOME にログインした画面の WezTerm (同じ版の mutter を、画面無しで動かして代えた)
+      - PAM を通すシステムの sshd でのログイン (同じ `/usr/sbin/sshd` を、検証用の設定で自分のユーザーのまま立てた)
   - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
 | 項目 | AlmaLinux 10 | Windows 11 |
@@ -1049,7 +1060,8 @@
 - **SSH 越しのクリップボードは OSC 52 にし、向きは Neovim → 手元だけにする** ([SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)): 端末が運ぶので、手元にも AlmaLinux 10 にもソフトを足さずに済む
   - X11 転送 (`ssh -X` と xclip) は、手元に X サーバーが要る。lemonade などの中継は、転送したポートを同じサーバーのほかのユーザーも使える
   - 手元 → Neovim の向きには OSC 52 の読み出しが要るが、WezTerm (nightly を含む) と Windows Terminal は応えない。端末の貼り付けで足りるので扱わない
-  - Neovim の OSC 52 の自動検出は、noice が XTGETTCAP の応答を受け取らせないので当てにできない (folke/noice.nvim#1229)。`lua/config/options.lua` で明示する
+  - Neovim が OSC 52 を自動で選ぶのは `clipboard` が空のときだけで、`"+y` のように明示したときしか入らない。`y` でも入れるため、`lua/config/options.lua` で明示して `unnamedplus` にする
+  - 明示すれば、端末の検出にも頼らない。WezTerm の nightly は DA1 に `52` を出すので検出されるが、出さない端末では XTGETTCAP の応答頼みになり、noice がその応答を受け取らせない (folke/noice.nvim#1229)
 
 ### 完了時点の状態
 
@@ -1145,7 +1157,7 @@
 - [img-clip.nvim](https://github.com/HakonHarnes/img-clip.nvim): 画像の貼り付けの設定項目
 - [Neovim の clipboard-osc52](https://neovim.io/doc/user/provider/#clipboard-osc52): OSC 52 の提供元と、自動検出が効く条件 (`clipboard` が空のときだけ)
 - [wezterm#5917](https://github.com/wezterm/wezterm/issues/5917): 設定ファイルがあると OSC 52 が効かない (nightly で直った)
-- [folke/noice.nvim#1229](https://github.com/folke/noice.nvim/issues/1229): noice が XTGETTCAP の応答を受け取らせず、OSC 52 の自動検出が効かない
+- [folke/noice.nvim#1229](https://github.com/folke/noice.nvim/issues/1229): noice が XTGETTCAP の応答を受け取らせず、DA1 に `52` を出さない端末では OSC 52 の自動検出が効かない
 - [README](../README.md): この設定で何ができるか、IME 連携の設計と運用上の注意
 
 ### 付録: コンテナでの検証記録 (2026-09-28)
@@ -1330,3 +1342,42 @@
 - 実物の WezTerm (nightly) と ssh で、手元のクリップボードに入ること。日本語と、大きな範囲 (`ggyG` など) の送り方
 - AlmaLinux 10 での通し (SSH のサーバーと、ログインしたシェルの `SSH_CONNECTION`)
 - Windows Terminal など、WezTerm 以外の端末
+
+### 付録: AlmaLinux 10 の実機での SSH 越しのクリップボードの検証記録 (2026-09-29)
+
+- **対象**: 上の付録と同じ変更 (20cf960)。上の付録の未確認事項のうち、実物の WezTerm と AlmaLinux 10 での通し
+- **環境**: AlmaLinux 10.2 (x86_64) の実機。Neovim 0.12.5 (Homebrew)、WezTerm 20260928_051827_7a370108 (nightly の RPM)、mutter 49.4、OpenSSH 9.9p1
+  - 利用者の GNOME の画面とクリップボードに触れないよう、専用のセッションバスの中で `mutter --headless --wayland --no-x11` を起動し、その上で WezTerm を動かした
+  - WezTerm の設定は、利用者の `~/.config/wezterm` のまま (設定ファイルがあると OSC 52 を捨てる wezterm#5917 の条件)
+  - クリップボードは、その mutter の RemoteDesktop の D-Bus (`EnableClipboard` / `SelectionRead`) で読んだ。seat にキーボードを持たせるため、同じ API の仮想キーボードを使った
+  - sshd は、同じ `/usr/sbin/sshd` を自分のユーザーのまま `127.0.0.1:2222` に立てた (検証用の鍵と設定、`UsePAM no`)。システムの sshd の設定と `~/.ssh` は変えていない
+  - この設定は PR のブランチを worktree に置き、ssh したシェルで `XDG_CONFIG_HOME` などを一時的な場所に向けた。プラグインは `~/.local/share/nvim` を写し、`Lazy! restore` で lock に揃えた
+  - 最初は一時的な場所のパスが長く、`vim.loader` のキャッシュのファイル名が上限を超えて (`ENAMETOOLONG`) `lazyvim.plugins` が読めなかった (noice も入らない)。短いパスに置き直した
+- **手順書のブロック**: ssh したシェルに、手順 1・2 のブロックをそのまま貼った
+  - ログインしたシェルの `SSH_CONNECTION` は `127.0.0.1 51210 127.0.0.1 2222`、`TERM` は `xterm-256color` で、`TMUX` は無かった。手順 1 の 2 行目は `OSC 52 (copy only)` だった
+  - 手順 2 の `yy` で、クリップボードが `SSH 越しのヤンクを試す。` と改行 (35 バイト、UTF-8) になった
+  - `p` は 0.02 秒で同じ行を下に貼り、`:set clipboard?` は noice の窓に `clipboard=unnamedplus` を出した
+  - Neovim の中では noice が読み込まれ、`g:termfeatures` は `{ osc52 = true }`、クリップボードの提供元は `OSC 52 (copy only)` だった
+- **変更後** (キーは仮想キーボードで WezTerm に打った):
+  - 違う文の 5 行を、1 行ずつ `yy` で 5 回続けてヤンクすると、毎回その行がクリップボードに入った
+  - `ggyG` で、日本語の 2,000 行 (170,893 B)・2 万行 (1,728,894 B)・8 万行 (6,948,894 B) のファイルが、ファイルとバイト単位で一致した
+  - 矩形 (`<C-v>`) は `A \nB \nC ` で、`getregtype('+')` は `\0222`。`p` で矩形のまま貼れた。`yiw` は `回目` だけが入った
+  - ShaDa の無い新しい状態で、何も送らずに `p` を押すと、1 秒以内に `E353: Nothing in register "` を出した
+- **変更前** (`custom` の aa95dab。同じ WezTerm と ssh):
+  - `yy` では、クリップボードは変わらなかった (`clipboard` は空)
+  - noice は読み込まれていたが、`g:termfeatures` は `{ osc52 = true }` で、`"+yy` はクリップボードに入った
+  - `"+p` は 10.3 秒待ってから `Timed out waiting for a clipboard response from the terminal` を出した (WezTerm は OSC 52 の読み出しに応えない)
+- **調べて分かったこと** (本文・方針・README・`lua/config/options.lua` のコメントを直した):
+  - WezTerm の nightly は DA1 に `\E[?65;4;6;18;22;52c` を返し、XTGETTCAP の `Ms` にも OSC 52 の形を返した。Neovim の検出は DA1 で済むので、noice#1229 (XTGETTCAP の応答が届かない) にかからない
+  - 上の付録で変更前の `"+yy` が出なかったのは、手元の端末の代わりにした tmux で OSC 52 が検出されなかったため
+  - この変更が要る理由は、`clipboard` が空で `y` が入らないことと、`"+p` の 10 秒の待ち。検出の失敗は、DA1 に `52` を出さない端末でだけ起きる
+- **検証の仕方で起きたこと** (この設定の問題ではない):
+  - 仮想キーボードを足す前の mutter では、WezTerm が OSC 52 を受けた時点で落ちた (`window/src/os/wayland/copy_and_paste.rs:96` の `unwrap()`。seat にキーボードが無く、データデバイスが無い)
+  - キーを `wezterm cli send-text` で pty に直接送ると、Wayland のキー入力が無いので WezTerm の serial が変わらない。mutter は新しくない serial の `set_selection` を無視するので、続けたヤンクが 1 回おきに前の内容のままになった
+  - キーを仮想キーボードで打つと serial が毎回新しくなり、起きなかった
+
+#### 未確認事項 (AlmaLinux 10 の実機での SSH 越しのクリップボード)
+
+- Windows の WezTerm (nightly) からの ssh と、Windows Terminal など WezTerm 以外の端末
+- GNOME にログインした画面の WezTerm (同じ版の mutter を、画面無しで動かして代えた)
+- PAM を通すシステムの sshd でのログイン (`UsePAM no` で、自分のユーザーのまま立てた sshd で代えた)

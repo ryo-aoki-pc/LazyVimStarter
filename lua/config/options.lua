@@ -74,9 +74,10 @@ vim.opt.matchpairs:append({ "（:）", "「:」", "『:』", "【:】" })
 
 -- SSH 越しに起動したときは、ヤンク・削除を SSH クライアントの端末のクリップボードへ OSC 52 で送る
 -- (向きは Neovim → 手元だけ。手元から入れるのは端末の貼り付け (bracketed paste) に任せる)。
--- LazyVim は SSH の中では 'clipboard' を空にして Neovim の OSC 52 の自動検出に任せるが、
--- 自動検出は DA1 に 52 を出さない端末 (WezTerm など) では XTGETTCAP の応答頼みで、noice が
--- messages / cmdline を扱っている間はその応答が届かず、検出されない (folke/noice.nvim#1229)。
+-- LazyVim は SSH の中では 'clipboard' を空にするので、そのままでは y がクリップボードに入らない。
+-- Neovim が OSC 52 を自動で選ぶのは 'clipboard' が空のときだけ ("+y などで明示したときだけ) で、
+-- 検出も端末頼み (WezTerm の nightly は DA1 に 52 を出すので検出される。出さない端末では XTGETTCAP の
+-- 応答頼みで、noice が messages / cmdline を扱っている間はその応答が届かない。folke/noice.nvim#1229)。
 -- そのため g:clipboard で OSC 52 を明示し、'clipboard' もローカルと同じ unnamedplus にする
 -- (LazyVim は 'clipboard' を退避して VeryLazy で戻すので、ここで代入すれば効く)。
 -- 貼り付け (p) は端末に問い合わせず、この Neovim が最後に送った内容を返す。OSC 52 の読み出しは

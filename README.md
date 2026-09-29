@@ -202,7 +202,8 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   `clipboard=unnamedplus`)。手元にもサーバーにも足すソフトは無いが、端末が OSC 52 の書き込みに対応している必要がある
   (WezTerm の nightly など。GNOME Terminal と Ptyxis は非対応)。向きは Neovim → 手元だけで、`p` は端末に問い合わせず
   この Neovim が最後に送った内容を貼る (OSC 52 の読み出しは WezTerm も Windows Terminal も応えず、10 秒待たされるため)。
-  手元でコピーしたものは端末の貼り付けで入れる。LazyVim 既定の自動検出は noice に邪魔されて効かないので、
+  手元でコピーしたものは端末の貼り付けで入れる。LazyVim 既定のままでは SSH の中の `clipboard` が空で `y` が
+  入らず (Neovim は `clipboard` が空のときしか OSC 52 を自動で選ばない)、`"+p` も 10 秒待つので、
   `lua/config/options.lua` で明示している。手順は
   [docs/setup.md の SSH の節](docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)
 
