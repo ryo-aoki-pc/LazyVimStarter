@@ -23,6 +23,9 @@
 --  - 端末や GUI のフォーカスが外れている間も出さない。ibus の engine は全体で 1 つなので、
 --    他のアプリ (や別の nvim) での切り替えも watcher 経由で届き、見ていない nvim に出てしまう。
 --    フォーカスの通知が来ない環境 (tmux の focus-events が off など) では常に出すだけになる。
+--  - 外れている間に状態が変わっていたら、フォーカスが戻ったときに今の状態を出す。GNOME の Super+Space は
+--    切り替えの間キーボードを掴むので、端末 (WezTerm を直接) には FocusLost → 切り替え → FocusGained の順で
+--    届くことがあり、そのままでは Super+Space の表示が一度も出ない (実機で確認)。
 -- 1 が消える条件: DURATION_MS が経つか、次の入力 (カーソル移動・検索欄の変化)・モードの変化・ウィンドウの
 -- 移動の早い方。浮動ウィンドウは開いた時点の位置に固定されて付いてこないので、打ち進めたら消す。
 -- 2 は検索のコマンドラインに入ってから抜けるまで出し、状態が変わるたびに observe() から書き換える。
@@ -59,6 +62,8 @@ local shown = 0
 
 -- 端末や GUI にフォーカスがあるか (FocusLost / FocusGained で追う。理由は冒頭)。
 local focused = true
+-- フォーカスが外れている間に 1 を出さずに済ませたか (戻ったときに出し直す。理由は冒頭)。
+local missed = false
 
 -- 検索のコマンドライン (/ ?) か。
 local function is_search()
@@ -96,7 +101,11 @@ end
 ---@return boolean opened 出したか (検索欄に出したときは画面にも出してある)
 local function popup(text, ja)
   -- 前の表示を閉じられなかったときは出さない (重ねて開くと古い方が残る)。
-  if win or not focused or text == "" then
+  if win or text == "" then
+    return false
+  end
+  if not focused then
+    missed = true
     return false
   end
   -- 文字を打つモードだけ。ノーマルモード (<C-o> 中の niI を含む)・ビジュアル・検索以外の
@@ -300,6 +309,7 @@ function M.setup()
     group = group,
     callback = function()
       focused = false
+      missed = false
       M.close(true)
     end,
   })
@@ -307,6 +317,13 @@ function M.setup()
     group = group,
     callback = function()
       focused = true
+      if missed then
+        missed = false
+        -- 外れている間の切り替え (Super+Space など) を、戻った時点の状態で出す。出す場面かは popup() が見る。
+        -- ime.lua はこのモジュールを読み込む側なので、ここで読むときにはもう読み込み済み。
+        local ime = require("config.ime")
+        M.show(ime.status(), ime.is_ja())
+      end
     end,
   })
 end

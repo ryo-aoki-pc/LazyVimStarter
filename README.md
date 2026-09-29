@@ -48,7 +48,9 @@ OS の IME (Linux: ibus/anthy、Windows: zenhan) を Neovim のモードに追�
   打っている間の視線から遠いため。`<C-j>`・Super+Space のほか、日本語のまま抜けたバッファで
   挿入モードに入ったときの自動復帰でも出る。約 1 秒か、次の入力・モードの離脱で消える。
   出すのは挿入・置換・端末モードと検索 (`/` `?`) で状態が変わったときだけで (検索では検索欄の
-  カーソルのすぐ上)、`<Esc>` で英数に戻るときや `:` では出さない。実装は `lua/config/ime_indicator.lua`
+  カーソルのすぐ上)、`<Esc>` で英数に戻るときや `:` では出さない。端末のフォーカスが外れている間も
+  出さず、外れている間に変わっていたらフォーカスが戻ったときに出す (GNOME の Super+Space は切り替えの間
+  キーボードを掴むので、WezTerm などにはフォーカスの出入りを挟んで届く)。実装は `lua/config/ime_indicator.lua`
   (表示時間は `DURATION_MS`、不要なら `lua/config/ime.lua` の `indicator = false`。次の項の表示も消える)。
 - **検索している間は検索欄の右端に `あ` / `A` を出し続ける** — 検索 (`/` `?`) の間は lualine が見えない。
   noice を使うと Neovim が `cmdheight` を 0 にするので lualine が画面の最下段に来て、同じ最下段に出る
@@ -79,7 +81,8 @@ OS の IME (Linux: ibus/anthy、Windows: zenhan) を Neovim のモードに追�
 
 Linux では **GNOME の入力ソース登録と anthy のショートカット調整が必要**。
 手順は [docs/setup.md の AlmaLinux 導入の手順 13〜15](docs/setup.md#almalinux-10-に導入する-1-度だけ)
-にある (この 2 つをやらないと `<C-j>` が anthy に食われる)。
+にある (この 2 つをやらないと `<C-j>` が anthy に食われる)。設定は `/usr/bin/gsettings` で書くこと
+(Homebrew の glib が入っていると、PATH の先頭の `gsettings` は GNOME の設定に書かないので効かない)。
 日本語が一切入力できなくなった場合の切り分けは
 [注意点](docs/setup.md#注意点)を参照。
 
@@ -92,6 +95,9 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   (もう一度押せば揃う)。`<C-j>` は nvim が直接切り替えるので常に意図どおり動く。
   なお nvim を抜けた時点では上記の復帰処理で必ず整合が取れるため、OS 側の切替が
   壊れたままになることはない。
+  GNOME 49 では、[docs/setup.md の上部バーの節](docs/setup.md#gnome-の上部バーを-ime-連携に合わせる-任意)で
+  GNOME Shell の拡張 (`gnome-shell/ibus-engine-follow@ryo-aoki-pc.github.com`) を入れると、上部バーと
+  Super+Space の順番が nvim の切り替えに付いてくるので、このずれは起きない。
 - **変換中の `<Esc>` は 2 回**: 1 回目は anthy が変換のキャンセルに使うため、
   Neovim には届かない。これは IME 側の仕様。
 - **カーソル色**: 挿入モードとコマンドライン (検索中を含む) のカーソル色も IME 状態で変わるが、

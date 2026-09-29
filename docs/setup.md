@@ -8,7 +8,7 @@
 > - **Windows 11 では、管理者ではない PowerShell で実行する**
 > - **対話入力がある**: AlmaLinux 導入の手順 3 (`[y/N]` と EPEL の鍵)、手順 8 (Homebrew の `RETURN` と `sudo` のパスワード)、手順 10 (`brew` の `[y/n]`)、[GitLab プレビューのトークンの節](#gitlab-プレビューのトークンを設定する-任意)の手順 1〜4 (トークンと GitLab の URL)。答えてから次の手順を貼る
 > - **Neovim の画面が開く**: AlmaLinux 導入の手順 17・19、Windows 導入の手順 9・11、[SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 2。`:qa` で閉じてから次の手順を貼る
-> - **AlmaLinux 導入の手順 15 の後で、ログアウトしてログインし直す** (入れた ibus-anthy と入力ソースを読み直させる)
+> - **AlmaLinux 導入の手順 15 の後で、ログアウトしてログインし直す** (入れた ibus-anthy と入力ソースを読み直させる)。[上部バーの節](#gnome-の上部バーを-ime-連携に合わせる-任意)の手順 2 でも、拡張を読ませるためにログインし直す
 
 | シナリオ | 頻度 | 内容 |
 |---|---|---|
@@ -16,6 +16,7 @@
 | [Windows 11 に導入する](#windows-11-に導入する-1-度だけ) | マシンごとに 1 度 | scoop で外部コマンド・Neovim・zenhan を入れ、この設定を clone して初回起動する |
 | [ほかのマシンの変更を取り込む](#ほかのマシンの変更を取り込む-繰り返し) | 繰り返し | 別のマシンで push した設定と `lazy-lock.json` を取り込み、プラグインの版を揃える |
 | [カーソル色を tmux で効かせる (任意)](#カーソル色を-tmux-で効かせる-任意) | 任意、1 度だけ | tmux の中でも、挿入モードのカーソル色を IME の状態で変える (AlmaLinux 10) |
+| [GNOME の上部バーを IME 連携に合わせる (任意)](#gnome-の上部バーを-ime-連携に合わせる-任意) | 任意、1 度だけ | Neovim が IME を切り替えても、GNOME の上部バーと Super+Space の順番がずれないようにする (AlmaLinux 10 + GNOME 49) |
 | [GitLab プレビューのトークンを設定する (任意)](#gitlab-プレビューのトークンを設定する-任意) | 任意、1 度だけ | `<leader>cp` のプレビューを GitLab 本体に描かせるため、アクセストークン (と GitLab の URL) を環境変数にする |
 | [SSH 越しのヤンクを手元のクリップボードに送る (任意)](#ssh-越しのヤンクを手元のクリップボードに送る-任意) | 任意、1 度だけ | 手元の WezTerm から ssh した AlmaLinux 10 の Neovim で、ヤンクが OSC 52 で手元のクリップボードに入ることを確かめる (向きは Neovim → 手元だけ) |
 | [更新](#更新) | 更新のたび | Neovim・外部コマンド・プラグインを上げる |
@@ -30,7 +31,7 @@
 - この設定で何ができるかは [README](../README.md)。外部コマンドの用途は[必要なもの一覧](#必要なもの一覧)
 
 > [!WARNING]
-> **AlmaLinux 10 の手順は x86_64 のコンテナでのみ通した**。GNOME の画面と aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、Windows の WezTerm と GNOME の画面では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
+> **AlmaLinux 10 の手順は x86_64 のコンテナで通した。GNOME の実機では、導入済みの PC で AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 だけを通した** (手順 1〜15 は、システムを変えずに到達点を確かめただけ)。aarch64 では通していない。**上部バーの節は、画面の無い gnome-shell でだけ確かめた** (本物のログインでは通していない)。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、Windows の WezTerm と GNOME の画面では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
 
 ### AlmaLinux 10 に導入する (1 度だけ)
 
@@ -254,15 +255,16 @@
 
    ```bash
    export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
-   gsettings get org.gnome.desktop.input-sources sources
-   gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'us'), ('ibus', 'anthy')]"
-   gsettings get org.gnome.desktop.input-sources sources
+   /usr/bin/gsettings get org.gnome.desktop.input-sources sources
+   /usr/bin/gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'us'), ('ibus', 'anthy')]"
+   /usr/bin/gsettings get org.gnome.desktop.input-sources sources
    ```
 
    - 最後の行が `[('xkb', 'us'), ('ibus', 'anthy')]` になればよい
    - 最初の行は変える前の値。ほかの入力ソースは消える
    - 日本語と英数の切り替えは Super+Space になる
    - **注意**: JIS 配列のキーボードでも `us` にする。IME 連携が英数を `xkb:us::eng` に固定しているため (この手順の補足)
+   - `gsettings` は `/usr/bin/gsettings` と場所まで書く。Homebrew の `gsettings` は GNOME の設定 (dconf) に書かない (この手順の補足)
 
    <details>
    <summary>補足: 入力ソースを 2 つとも登録する理由</summary>
@@ -271,6 +273,7 @@
    - 英数のエンジン名は `ime.lua` の中で `xkb:us::eng` に固定してある。入力ソースを `('xkb', 'jp')` にすると、Neovim が英数に戻すたびに US 配列のエンジンになる (コードから読んだもので、JIS 配列では試していない)
    - 先頭の `export` は tmux の中で貼るときのため。tmux の中では `DBUS_SESSION_BUS_ADDRESS` が無いことがあり、そのとき `gsettings` は既定値しか読めず、書き込みも黙って効かない
    - GNOME の端末ではもともと同じ値が入っているので、`export` しても変わらない
+   - **`/usr/bin/gsettings` と書く理由**: Homebrew の glib (cairo・ffmpeg・imagemagick・gnupg などの依存で入る) にも `gsettings` があり、`brew shellenv` の後は PATH の先頭に来る。これは dconf を使えず、`~/.config/glib-2.0/settings/keyfile` に黙って書くので、GNOME も Anthy も読まない (AlmaLinux 10 の実機で、この節の手順 13〜15 が効いていなかった)
    - Neovim から ibus への通信には `busctl` (systemd) か `gdbus` (glib2) を使う。`gdbus` があれば OS 側の切り替えも検知できるので、lualine の `あ` / `A` がずれない
    - 実装と運用上の注意 (変換中の `<Esc>` は 2 回、Neovim を 2 つ起動したときの制限など) は [README の日本語入力・検索](../README.md#日本語入力検索)
 
@@ -279,7 +282,7 @@
 1. Anthy の `on_off` のキーから `Ctrl+J` と `Ctrl+space` を外した値を作る。
 
    ```bash
-   ANTHY_SHORTCUT=$(gsettings get org.freedesktop.ibus.engine.anthy.shortcut default | sed "s/'on_off': <\['Zenkaku_Hankaku', 'Ctrl+space', 'Ctrl+J'\]>/'on_off': <['Zenkaku_Hankaku']>/")
+   ANTHY_SHORTCUT=$(/usr/bin/gsettings get org.freedesktop.ibus.engine.anthy.shortcut default | sed "s/'on_off': <\['Zenkaku_Hankaku', 'Ctrl+space', 'Ctrl+J'\]>/'on_off': <['Zenkaku_Hankaku']>/")
    printf '%s\n' "${ANTHY_SHORTCUT}" | grep -o "'on_off': <\[[^]]*\]>"
    ```
 
@@ -300,8 +303,8 @@
 1. 作った値を Anthy の設定に書き戻す。
 
    ```bash
-   gsettings set org.freedesktop.ibus.engine.anthy.shortcut default "${ANTHY_SHORTCUT:?AlmaLinux 導入の手順 14 の ANTHY_SHORTCUT が空のまま。AlmaLinux 導入の手順 14 を貼り直す}"
-   gsettings get org.freedesktop.ibus.engine.anthy.shortcut default | grep -o "'on_off': <\[[^]]*\]>"
+   /usr/bin/gsettings set org.freedesktop.ibus.engine.anthy.shortcut default "${ANTHY_SHORTCUT:?AlmaLinux 導入の手順 14 の ANTHY_SHORTCUT が空のまま。AlmaLinux 導入の手順 14 を貼り直す}"
+   /usr/bin/gsettings get org.freedesktop.ibus.engine.anthy.shortcut default | grep -o "'on_off': <\[[^]]*\]>"
    ```
 
    - `'on_off': <['Zenkaku_Hankaku']>` と出ればよい
@@ -345,7 +348,8 @@
    ```
 
    - 画面の下に `Downloading tree-sitter-…` などの通知が流れる
-   - `:Mason` を開き、Installed が 11 個になり、導入中のものが無くなるまで待つ (`q` で閉じる)
+   - `Error running markdownlint-cli2: ENOENT` が 1 回出てもよい (Mason が入れ終わる前に lint が走っただけ)
+   - `:Mason` を開き、Installed が 11 個になり、導入中のものが無くなるまで待つ (`q` で閉じる。tree-sitter の CLI を別に入れてあれば 10 個)
    - 待ったら `:qa` で閉じる
    - **次の手順は、`:qa` で閉じてから貼る** (続けて貼ると Neovim への入力として食われる)
 
@@ -354,11 +358,13 @@
 
    - ファイルを開くのは、LSP のサーバーがファイルを開いたとき (`LazyFile`) に初めて入るため
    - Mason が入れるのは 11 個: `bash-language-server` / `json-lsp` / `lua-language-server` / `markdownlint-cli2` / `marksman` / `shellcheck` / `shfmt` / `stylua` / `taplo` / `tree-sitter-cli` / `yaml-language-server`
+   - tree-sitter の CLI が PATH にあると (Homebrew の `tree-sitter-cli` など)、LazyVim は Mason で `tree-sitter-cli` を入れないので 10 個になる
    - そのうち 4 個 (`bash-language-server` / `json-lsp` / `markdownlint-cli2` / `yaml-language-server`) は npm で入る
    - コンテナでは、開いてから 15 秒ほどで揃い、`:Mason` に `Installed (12)` と出た (markdown-toc を外す前の記録。今は 11 個)
    - 途中で閉じても、次に起動したときに足りないものが入る (コンテナで確認)
    - treesitter のパーサーは GitHub の archive から取得し、`gcc` でビルドする
-   - 検証環境ではパーサーの取得がプロキシに拒まれ、パーサーの導入は確かめていない ([付録](#付録-コンテナでの検証記録-2026-09-28))
+   - コンテナではパーサーの取得がプロキシに拒まれた ([付録](#付録-コンテナでの検証記録-2026-09-28))。AlmaLinux 10 の実機では、開いてから 13 秒で 30 個が入り、ハイライトが効いた ([付録](#付録-almalinux-10-の実機での導入と取り込みの検証記録-2026-09-29))
+   - `ENOENT` の通知は、markdownlint-cli2 が入る前に開いたファイルを lint しようとしたもの。入った後の起動では出ない
 
    </details>
 
@@ -371,7 +377,7 @@
    ```
 
    - `mason/bin` に `markdownlint-cli2` / `marksman` / `stylua` / `tree-sitter` などが並ぶ
-   - `grep` の結果が `` WARNING `fzf` is not installed `` の 1 行だけならよい (無視してよい)
+   - `grep` が何も出さないか、`` WARNING `fzf` is not installed `` の 1 行だけならよい (無視してよい。fzf が入っていれば出ない)
    - `ERROR` が出たら[注意点](#注意点)
 
    <details>
@@ -621,6 +627,76 @@
 
 ---
 
+## GNOME の上部バーを IME 連携に合わせる (任意)
+
+- Neovim がモードに合わせて IME を切り替えても、GNOME の上部バーの表示と Super+Space の順番がずれないようにする
+- GNOME Shell は ibus の engine が外から変わっても、上部バーと Super+Space が基準にする「今の入力ソース」を更新しない。そのため、この節を行わないと Neovim を開いた時点で上部バーがずれ、最初の Super+Space が空振りする
+- この設定のリポジトリにある GNOME Shell の拡張 (`gnome-shell/ibus-engine-follow@ryo-aoki-pc.github.com`) を有効にする。engine が変わったときに「今の入力ソース」を合わせるだけで、engine やキー配列は変えない
+- AlmaLinux 10 + GNOME 49 のときだけ行う。拡張は GNOME Shell の内部の関数を使うので、GNOME を上げたらこの節の手順 4 で確かめる
+- **この節の手順 2 で、ログアウトしてログインし直す**
+
+1. 拡張を、GNOME Shell が拡張を探す場所につなぐ。
+
+   ```bash
+   mkdir -p ~/.local/share/gnome-shell/extensions
+   ln -sfn ~/.config/nvim/gnome-shell/ibus-engine-follow@ryo-aoki-pc.github.com ~/.local/share/gnome-shell/extensions/
+   ls -l ~/.local/share/gnome-shell/extensions/
+   ```
+
+   - `ibus-engine-follow@ryo-aoki-pc.github.com -> …/.config/nvim/gnome-shell/ibus-engine-follow@ryo-aoki-pc.github.com` と出ればよい
+   - つないでおくので、[取り込み](#ほかのマシンの変更を取り込む-繰り返し)で拡張が変わると、次のログインから新しい方が使われる
+
+1. ログアウトしてログインし直す。
+
+   - GNOME Shell (Wayland) は、新しい拡張をログインのときにしか探さない
+   - **次の手順は、ログインし直した後の端末で貼る**
+
+1. 拡張を有効にする。
+
+   ```bash
+   gnome-extensions enable ibus-engine-follow@ryo-aoki-pc.github.com
+   gnome-extensions info ibus-engine-follow@ryo-aoki-pc.github.com | grep -E 'Enabled|State'
+   ```
+
+   - `Enabled: Yes` と `State: ACTIVE` が出ればよい
+   - `doesn't exist` と出たら、この節の手順 1 のつなぎ先が無い (設定を取り込んでいない) か、ログインし直していない
+   - `State: OUT OF DATE` と出たら、GNOME Shell の版が拡張の `metadata.json` の `shell-version` に無い
+
+1. Neovim を開き、上部バーが Neovim の IME の状態に付いてくることを確かめる。
+
+   ```bash
+   printf '%s\n' '#動作確認' '' '日本語の検索を試す。' > /tmp/lazyvim-check.md
+   nvim /tmp/lazyvim-check.md
+   ```
+
+   - 開いた時点で、上部バーの入力ソースが英語 (US) になる (Neovim がノーマルモードで英数にするため)
+   - `o` → `<C-j>` で、上部バーが Anthy (`あ`) になる。`<Esc>` で英語 (US) に戻る
+   - ノーマルモードで Super+Space を 1 回押すと、上部バーと lualine の `あ` / `A` が一緒に変わる (空振りしない)
+   - `:qa!` で閉じる
+
+   <details>
+   <summary>補足: 拡張がしていること</summary>
+
+   - GNOME Shell 49.4 の `ui/status/keyboard.js` は、自分で入力ソースを切り替えたとき (`activateInputSource()`) だけ「今の入力ソース」を書き換える。`misc/ibusManager.js` は、ibus の `GlobalEngineChanged` を受けても engine の名前を控えるだけ
+   - 拡張は同じシグナルを受け、今の入力ソースが engine と違えば、`InputSourceManager` の `_currentInputSourceChanged()` (内部の関数) で今の入力ソース・上部バーの表示・Super+Space の順番 (MRU) を更新する
+   - `activateInputSource()` を呼ばないのは、キーボードを一時的に掴むため。掴むと端末にフォーカスの出入りが届き、engine も設定し直してしまう
+   - GNOME Shell 自身の切り替え (Super+Space) では、シグナルが届く前に今の入力ソースが更新済みなので何もしない。ibus は同じ engine を設定し直してもシグナルを出さないので、行き来は起きない
+   - パスワード欄にいる間 (GNOME Shell が ibus を止めて英数に切り替えている間) は何もしない
+   - 内部の関数が無くなったら何もしない (上部バーがずれるだけの、この節を行う前の状態に戻る)
+
+   </details>
+
+1. 元に戻すときは、拡張を無効にして、つなぎを外す。
+
+   ```bash
+   gnome-extensions disable ibus-engine-follow@ryo-aoki-pc.github.com
+   rm ~/.local/share/gnome-shell/extensions/ibus-engine-follow@ryo-aoki-pc.github.com
+   ```
+
+   - 上部バーは、Neovim が切り替えた後もそれまでの入力ソースのまま残るようになる (この節を行う前と同じ)
+
+---
+
 ## GitLab プレビューのトークンを設定する (任意)
 
 - `<leader>cp` のプレビューを、GitLab 本体の描画 (GitLab の Markdown API) で見るための設定。しなくても、プレビューは近似表示で動く
@@ -860,13 +936,13 @@
 
    ```bash
    export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
-   gsettings reset org.gnome.desktop.input-sources sources
-   gsettings reset org.freedesktop.ibus.engine.anthy.shortcut default
-   gsettings get org.freedesktop.ibus.engine.anthy.shortcut default | grep -o "'on_off': <\[[^]]*\]>"
+   /usr/bin/gsettings reset org.gnome.desktop.input-sources sources
+   /usr/bin/gsettings reset org.freedesktop.ibus.engine.anthy.shortcut default
+   /usr/bin/gsettings get org.freedesktop.ibus.engine.anthy.shortcut default | grep -o "'on_off': <\[[^]]*\]>"
    ```
 
    - `'on_off': <['Zenkaku_Hankaku', 'Ctrl+space', 'Ctrl+J']>` と出ればよい
-   - 入力ソースは既定 (空) に戻る。導入の前の値に戻すなら、[AlmaLinux 導入の手順 13](#almalinux-10-に導入する-1-度だけ) の最初の行に出た値を `gsettings set` で書く
+   - 入力ソースは既定 (空) に戻る。導入の前の値に戻すなら、[AlmaLinux 導入の手順 13](#almalinux-10-に導入する-1-度だけ) の最初の行に出た値を `/usr/bin/gsettings set` で書く
 
 1. AlmaLinux 10 で、Homebrew で入れたものも消すときだけ、消す。
 
@@ -989,11 +1065,30 @@
       - 1 回目の `restore` は、起動時に img-clip.nvim を入れたときに lock が古い版で書き直され、更新した 6 個が古い版のまま、`git status --short` が `M lazy-lock.json` を出した
       - lock を `checkout` で戻して `restore` をもう一度実行すると、`git status --short` は何も出さず、38 個 (無効にした render-markdown.nvim 以外) が lock の版に揃った
       - 節のリードの `:Lazy clean` (4 個のディレクトリを消した) と `:MasonUninstall markdown-toc` を headless で実行しても、lock は変わらなかった。`checkhealth lazyvim luamigemo` の ERROR は 0 件
+  - **AlmaLinux 10 の実機 (GNOME) では、導入済みの PC で、AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 を通した (2026-09-29)。手順 1〜15 は、システムを変えずに到達点を確かめただけ** ([付録](#付録-almalinux-10-の実機での導入と取り込みの検証記録-2026-09-29))
+    - 手順 1〜15 は、確認のコマンド (`rpm -q`・`command -v`・`fc-match`・`gsettings get` など) だけを実行した。dnf と brew の導入・退避・`~/.bashrc` への追記は実行していない
+    - 確認の `gsettings get` は Homebrew の `gsettings` (dconf を使わない) を読んでいて、手順 15 は dconf に入っていなかった。利用者の本物のキーでの確認で見つけ、`/usr/bin/gsettings` で手順 14・15 を入れ直した (手順 13〜15 とロールバックのブロックを `/usr/bin/gsettings` に直した)
+    - 手順 6・16〜19 は、`XDG_CONFIG_HOME` などを一時的な場所に差し替え、文書のブロックのパスだけを変えて通した。画面の要る手順は tmux の中で起動し、キーを送って状態を読んだ
+    - 取り込みの手順 1 は、差し替えた環境で、変更がある状態 (ca6adf3 → ea7bea7。lock の 6 行) を通した。常用の環境では、上の取り込みの後に `Already up to date.` の状態で通した
+    - 確かめたこと:
+      - `lazy-lock.json` の版に揃うこと (38 個)、Mason の 10 個 (tree-sitter の CLI が PATH にあるため。手順どおりなら 11 個)、treesitter のパーサー 30 個とハイライト、`checkhealth` の ERROR と WARNING が 0 件
+      - AlmaLinux 導入の手順 19 の全項目を、本物の ibus-anthy で (カーソルのすぐ下の表示・検索中の表示・コマンドラインのカーソル色と、終了すると起動前の engine に戻ること)。キーは Neovim に直接送った (IBus を通らない)
+      - 外から engine を切り替えたときの lualine の追従 (Super+Space の代わりに `busctl` で)
+      - LSP の 6 つ、flash の `s`、`*`、GLFM のスニペット、img-clip.nvim の画像の貼り付け (`wl-clipboard`)、GitLab プレビューの近似表示と閉じ込め、既定のブラウザ (Firefox) でページがつながること
+      - 常用の環境で、取り込みの手順 1・`:Lazy clean`・`:MasonUninstall markdown-toc` の後に、残骸が無く、起動してもエラーが出ないこと
+      - 画面での、ピッカーのアイコンの字形と Firefox のプレビューの表示 (利用者が WezTerm と Firefox で見て確かめた)
+      - 利用者が WezTerm (tmux なし) で本物のキーを打って: 手順 15 を入れ直した後は、日本語のときも `<C-j>` で毎回 `あ` / `A` が切り替わり、カーソルのすぐ下にも出ること
+      - [上部バーの節](#gnome-の上部バーを-ime-連携に合わせる-任意)の拡張を、画面の無い gnome-shell 49.4 (閉じたセッションバスと自前の ibus-daemon) で。外から engine を切り替えるたびに、今の入力ソースが付いてきた
+    - **確かめていないこと**:
+      - 手順 1〜15 の実行と、ログインし直しての ibus の読み直し
+      - 上部バーの節を、本物のログインで通すこと (拡張を入れて有効にしたが、ログインし直していない)。本物の Super+Space で空振りしなくなること
+      - Super+Space で切り替えたときの、カーソルのすぐ下の表示 (フォーカスが戻ったときに出すように直した。本物のキーでは確かめていない)
+      - 画面でのカーソルの色の見え方、トークンの節の AlmaLinux の手順と本物の GitLab、tmux の節 (カーソル色)
   - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
 | 項目 | AlmaLinux 10 | Windows 11 |
 |---|---|---|
-| 検証 | x86_64 のコンテナ (AlmaLinux 10.2) で通した | 実機 (Windows 11 Pro) で、置き場所を差し替えて通した |
+| 検証 | x86_64 のコンテナ (AlmaLinux 10.2) で通した。GNOME の実機では、手順 16〜19 と取り込みだけを通した | 実機 (Windows 11 Pro) で、置き場所を差し替えて通した |
 | パッケージマネージャ | dnf + EPEL、Neovim・lazygit・フォントは Homebrew (7.0.7) | scoop |
 | Neovim | Homebrew の `neovim` (0.12.5) | scoop の `neovim` (0.12.5) |
 | IME | ibus 1.5.32 + ibus-anthy 1.5.17 (`busctl` / `gdbus` で制御) | zenhan 0.0.1 (任意。検証ではモック) |
@@ -1037,6 +1132,7 @@
 | GitLab の個人アクセストークン (`read_api`) | GitLab プレビューで、GitLab 本体に描かせる ([トークンの節](#gitlab-プレビューのトークンを設定する-任意)) | 任意 (無ければ近似表示になる) |
 | ブラウザ | GitLab プレビューのページ | 任意 (プレビューを使うときだけ) |
 | wl-clipboard (`wl-paste`) | `<leader>ci` での画像の貼り付け (Linux) | 任意 (無ければ `<leader>ci` だけが使えない) |
+| GNOME Shell 49 | [上部バーの節](#gnome-の上部バーを-ime-連携に合わせる-任意)の拡張 (上部バーと Super+Space の順番を Neovim の IME の切り替えに合わせる) | 任意 (無ければ上部バーが Neovim の切り替えに付いてこないだけ) |
 | OSC 52 の書き込みに対応した端末 (WezTerm の nightly など) | SSH 越しのヤンクを手元のクリップボードに入れる ([SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)) | 任意 (SSH で使うときだけ) |
 | ネットワーク | 初回のプラグイン取得、Mason、treesitter のパーサー。GitLab プレビューでは GitLab と cdn.jsdelivr.net | 初回のみ必須 |
 
@@ -1084,6 +1180,7 @@
 | `~/.bashrc` | `eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"` の 1 行 (Linux)。トークンの節を行ったときは `GITLAB_TOKEN` (と `GITLAB_HOST`) の行も |
 | `org.gnome.desktop.input-sources sources` | `[('xkb', 'us'), ('ibus', 'anthy')]` (Linux) |
 | `org.freedesktop.ibus.engine.anthy.shortcut default` | `on_off` が `['Zenkaku_Hankaku']` だけ (Linux) |
+| `~/.local/share/gnome-shell/extensions/ibus-engine-follow@ryo-aoki-pc.github.com` | [上部バーの節](#gnome-の上部バーを-ime-連携に合わせる-任意)を行ったとき、`~/.config/nvim/gnome-shell/` の拡張へのつなぎ。`org.gnome.shell enabled-extensions` にも入る (Linux) |
 | `*.bak` | 退避した以前の設定とデータ (あった場合だけ) |
 
 - Windows のプラグインと Mason のツールは `%LOCALAPPDATA%\nvim-data` に入る
@@ -1128,6 +1225,17 @@
   - この設定は両方を narrow 側 (`single` / `treat_east_asian_ambiguous_width_as_wide=false`) に揃えてある。端末側だけを wide にしない
 - **`lazy-lock.json` が勝手に変わる**: `:Lazy sync` / `:Lazy update` は最新に上げる。揃えるだけなら `:Lazy restore`
   - 初めてのマシンの初回起動でも変わる ([AlmaLinux 導入の手順 16](#almalinux-10-に導入する-1-度だけ) の補足)
+- **日本語のときに `<C-j>` で英数に戻らない (Linux)**: Anthy の `on_off` に `Ctrl+J` が残っていて、Neovim に届く前に Anthy の中のひらがなと英字が切り替わっている
+  - 打った英字が、そのまま出たり「あ」になったりと、日本語の中で入力が揺れるのが特徴
+  - AlmaLinux 導入の手順 13〜15 を Homebrew の `gsettings` で実行すると、dconf ではなく `~/.config/glib-2.0/settings/keyfile` に書かれて効かない (手順 13 の補足)
+  - `/usr/bin/gsettings` で確かめ、`Ctrl+J` が残っていれば手順 14・15 を貼り直す (今の手順は `/usr/bin/gsettings` を使う)
+
+  ```bash
+  /usr/bin/gsettings get org.freedesktop.ibus.engine.anthy.shortcut default | grep -o "'on_off': <\[[^]]*\]>"
+  ```
+
+- **GNOME の上部バーが Neovim の `あ` / `A` とずれる・最初の Super+Space が空振りする**: GNOME Shell は、Neovim が切り替えた engine に上部バーを合わせない
+  - [上部バーの節](#gnome-の上部バーを-ime-連携に合わせる-任意)の拡張を入れると揃う。入れない場合は、Neovim の中では `<C-j>` を使う (README の補足)
 - **日本語が一切入力できない (Linux)**: ibus のエンジン自体が起動に失敗している可能性がある
   - Neovim の中だけでなく、OS 全体で打てなくなるのが特徴
   - ibus はエンジンの起動に失敗しても黙って英数のままになる。`ibus engine` は `anthy` を返すのに変換だけが効かない、という見え方になる
@@ -1390,3 +1498,92 @@
 - Windows の WezTerm (nightly) からの ssh と、Windows Terminal など WezTerm 以外の端末
 - GNOME にログインした画面の WezTerm (同じ版の mutter を、画面無しで動かして代えた)
 - PAM を通すシステムの sshd でのログイン (`UsePAM no` で、自分のユーザーのまま立てた sshd で代えた)
+
+### 付録: AlmaLinux 10 の実機での導入と取り込みの検証記録 (2026-09-29)
+
+- **対象**: `custom` の ca6adf3 (#34 のマージの直後) と、検証中に入った ea7bea7 (#35。lock の 6 行)。上の付録の未確認事項のうち、GNOME の実機での通し・カーソルのすぐ下の表示・treesitter のパーサー・検索中の表示・AlmaLinux 10 での GitLab プレビューなどの通し・取り込みの手順 1 を変更がある状態で通すこと
+- **環境**: AlmaLinux 10.2 (x86_64) の実機、GNOME (Wayland)。常用の端末は WezTerm (フォントは HackGen Console NF) の中の tmux (el10 の 3.3a)
+  - AlmaLinux 導入の手順 1〜15 は、この PC で前に済ませてあった。git 2.52.0、gcc 14.3.1、nodejs 22.23.2 (nodejs-npm 10.9.8)、ibus 1.5.32 + ibus-anthy 1.5.17、wl-clipboard 2.2.1、Homebrew 7.0.6 (neovim 0.12.5_1、lazygit 0.65.1)
+  - 手順書と違うところ: ripgrep 15.2.0 と fd 10.5.0 は Homebrew で入っていて、dnf の `ripgrep` / `fd-find` は無い。Homebrew の `tree-sitter-cli` 0.27.0・`fzf`・`curl` 8.22.0 も入っている
+  - フォントは cask ではなく `~/.local/share/fonts/HackGen` に 2 ファイル (HackGen35 は無い)。`~/.tmux.conf` は無い (tmux の節は行っていない)
+- **手順 1〜15 (確認だけ)**: システムを変えるコマンド (dnf と brew の導入、`gsettings set`、`mv`、`~/.bashrc` への追記) は実行せず、確認のコマンドだけを実行した
+  - 手順 1 は `epel` の行を出した。手順 4 の `rpm -q` は `ripgrep` と `fd-find` の 2 行が `not installed` で、ほかは入っていた。`node --version` は `v22.23.2`、`command -v` は 5 つとも場所を出した
+  - 手順 7・9・11 は `brew` の場所・`brew shellenv` の行・`NVIM v0.12.5` と 2 つの場所。手順 12 の `fc-match` は `HackGenConsoleNF-Regular.ttf: "HackGen Console NF" "Regular"`
+  - 手順 13 の `gsettings get` は `[('xkb', 'us'), ('ibus', 'anthy')]`。手順 14 で作った値と手順 15 の `gsettings get` は、どちらも `'on_off': <['Zenkaku_Hankaku']>`
+  - ただし、この `gsettings` は PATH の先頭の Homebrew のもので、dconf ではなく `~/.config/glib-2.0/settings/keyfile` (2026-09-21 に作られていた) を読んでいた。dconf の `on_off` は既定のまま `Ctrl+J` を含んでいた (下の「本物のキーでの確認」で見つけた。入力ソースは dconf にも同じ値が入っていた)
+  - `which python3` は `/usr/bin/python3` だった (Homebrew の python@3.14 は依存として入っていて、link されていない)
+- **差し替えた環境での導入** (手順 6・16〜19):
+  - `XDG_CONFIG_HOME` / `XDG_DATA_HOME` / `XDG_STATE_HOME` / `XDG_CACHE_HOME` と npm のキャッシュを一時的な場所に向けて nvim を起動した。IME 連携は ibus のバスを `~/.config/ibus/bus` から引くので、本物の ibus-anthy を使った
+  - 画面の要る手順は、専用の tmux サーバーの中で `--listen` を付けて起動し、キーを `--remote-send` で送り、状態を `--remote-expr` で読んだ
+  - 手順 6: GitHub から clone して `custom`、ca6adf3
+  - 手順 16: 1 行目は 22 秒で、38 個が入った。終わりに `Neovim exited while the following packages were installing` (Mason の 4 個) と `Error in command line` が出た
+    - tree-sitter の CLI が PATH にあるので、`Unmet requirements for nvim-treesitter` は出ず、パーサーの取得が始まって終了で打ち切られた
+    - lock は既知の 6 行 (SchemaStore.nvim・gitsigns.nvim・mason-lspconfig.nvim・mini.icons・nvim-lspconfig・nvim-treesitter) が変わった。戻して `restore` (1 秒) の後、`git status --short` は空で、38 個とも記録の版だった
+  - 手順 17: 開いてから 13 秒で、Mason の 10 個とパーサー 30 個 (`Installed 30/30 languages`) が揃った
+    - Mason に `tree-sitter-cli` は入らなかった。LazyVim は PATH に `tree-sitter` があれば Mason で入れない
+    - この 1 回だけ、`Error running markdownlint-cli2: ENOENT` の通知が出た (Mason が入れ終わる前に lint が走った)
+    - 起動前の engine は `anthy` で、起動で `xkb:us::eng` になり、`:qa` で `anthy` に戻った
+  - 手順 18: `grep` は何も出さなかった (fzf が入っているので、`fzf` の WARNING も出ない)
+  - 手順 19 (2 回目の起動):
+    - `/kensaku` で 3 行目の「検索」に移って `[1/1]`。`/kensaku<Tab>` でコマンドラインが「検索」になった
+    - `:w` で `#動作確認` が `# 動作確認` になり、markdownlint の診断が 2 件から 0 件になった (見出しとしてハイライトされる)
+    - `o` → `<C-j>` で engine が `anthy`、lualine が `あ` になり、カーソルの 1 行下の同じ桁に `あ` の窓が出て、1.5 秒後には消えていた。`<Esc>` で `xkb:us::eng` と `A` に戻った
+    - `/` で最下段の右端に `A` が出た。`<C-j>` で `あ` になり、検索欄のカーソルのすぐ上にも `あ` が出た。カーソル色 (`IMECursor`) は `#ff9e64` になった
+    - `<Esc>` の後の `/` は `あ` で始まった (検索の sticky)。`<C-j>` で `A` に戻して抜けた
+    - Space 2 回で Files のピッカーとプレビューが開き、アイコンの文字 (Nerd Font の私用領域) が入っていた
+  - 追加の確認:
+    - ノーマルモードで外から `busctl` で engine を `anthy` → `xkb:us::eng` → `anthy` と 1.5 秒おきに変えると、lualine が `あ` / `A` に追従した
+    - flash: `s` → `nihon` → `;` で「日本」の後ろにラベル `s` が出て、`s` で 3 行目の先頭へ飛んだ
+    - `*`: 「検索する」の「検索」の上で押すと、`@/` が `\V検索` になり、次の行の「日本語検索」の中へ移った
+    - GLFM のスニペット: markdown のスニペット 97 個のうち `gl` で始まる 21 個が、`gl` と打った blink.cmp の一覧に全部出た
+    - LSP: marksman・lua_ls・bashls・jsonls・yamlls・taplo がそれぞれのファイルに付き、ハイライトも効いた。markdownlint の MD040 と、bashls 経由の shellcheck の診断が出た
+    - img-clip.nvim: `wl-copy` で 64×40 の PNG をクリップボードに置き、`<leader>ci` → ファイル名は空のまま Enter で、`docs/assets/<日時>.png` (画素まで同じ) ができて `![](assets/<日時>.png)` が入った。貼った後は挿入モードになる (img-clip の既定)。クリップボードは空に戻した
+    - GitLab プレビュー (`GITLAB_TOKEN` 無し): ページは 200 (CSP 付き)、token 違いは 404、Host の偽装・`Sec-Fetch-Site: cross-site`・`..`・`.git/HEAD` は 403、POST は 405、`%2e%2e` は 404、画像は 200 で ETag を付けると 304
+    - SSE は `retry: 1000` と、近似表示 (`GITLAB_TOKEN が未設定`) の `render` を送った。編集すると描き直しが届き、止めると `stop` が届いた。GitLab へは送らなかった
+    - `:checkhealth` を全部流すと、ERROR は lazy の luarocks と、snacks の画像の外部ツール (tectonic / pdflatex・mmdc・kitty の画像) だけで、この設定の機能に関わるものは無かった
+  - 取り込みの手順 1 (ea7bea7 へ): このホストの常用の環境と同じく、lock に古い 3 行 (denops.vim・vim-kensaku・vim-kensaku-search) を足し、`pull.autostash` を true にして貼った
+    - `Created autostash` → `Fast-forward` (lock の 6 行) → `Applied autostash` → `restore` (2 秒) で、`git status --short` は空だった (restore が lock を spec のとおりに書き直し、古い 3 行も消えた)
+    - 差し替えた環境には img-clip.nvim が入っていて、起動時に入れるものが無かったので、1 回目の `restore` で揃った (入れるものがあると lock が古い版で書き直される。上の状態の行の取り込みの記録)
+    - 38 個とも新しい記録の版で、手順 18 の `grep` は何も出さず、LSP とハイライトも同じだった
+- **常用の環境**:
+  - 検証の途中で、常用の設定は別の作業 (上の状態の行の取り込みの記録) で ea7bea7 に揃えられていた (img-clip.nvim が入り、lock の古い 3 行も消えた)。このため、変更がある状態の取り込みは、差し替えた環境で確かめた
+  - 取り込みの手順 1 のブロックは、`Already up to date.` と `restore` (4 秒) で、`git status --short` は空だった
+  - `nvim --headless "+Lazy! clean" +qa` は、外したプラグインの 4 個 (denops.vim・markdown-preview.nvim・vim-kensaku・vim-kensaku-search) だけを消した。`lazy/` は 38 個になり、lock は変わらなかった
+  - 画面 (`-i NONE`) で `:MasonUninstall markdown-toc` を打つと、Mason は 10 個になり、`mason/bin` からも消えた
+  - 起動してもエラーの通知は無く、パーサーは 30 個のままだった。`/kensaku`・`:w` の整形・`<C-j>` は差し替えた環境と同じだった。`checkhealth img-clip` は、img-clip を読み込んでから流すと `wl-clipboard` が OK だった
+  - `<leader>cp` で既定のブラウザ (Firefox 156) にタブが開き、約 1 秒でページの EventSource がつながった
+- **利用者の目視** (WezTerm で常用の環境の nvim を開き、AlmaLinux 導入の手順 17 と同じ試験用の Markdown で):
+  - Space 2 回のピッカーで、アイコンが豆腐にならずに出た
+  - `<leader>cp` で、Firefox のタブに近似表示のプレビュー (上の帯、見出しと本文) が出た
+  - 「Super+Space と上部バー」「カーソルのすぐ下の `あ`」は、おかしいという報告だった (次の項目)
+- **本物のキーでの確認** (利用者の報告の後。WezTerm で tmux を通さずに起動した nvim に、フォーカス・モード・IME の状態・表示の呼び出し・受け取ったキーを記録させ、利用者に打ってもらった):
+  - 日本語のときの `<C-j>` は、3 回とも Neovim に届かなかった。続けて打った `a` は、そのまま `a` で届いたり「あ」で届いたりした (Anthy の中のひらがなと英字が `Ctrl+J` で切り替わっていた)
+  - Anthy の設定を Anthy 自身の読み方 (`AnthyPrefs`) で読むと、`on_off` が `['Zenkaku_Hankaku', 'Ctrl+space', 'Ctrl+J']` のままで、dconf にも利用者の値が無かった。手順 13〜15 が Homebrew の `gsettings` で keyfile に書かれていた (Homebrew の glib は cairo・ffmpeg-full・imagemagick-full などの依存で入っていた)
+  - `/usr/bin/gsettings` で手順 14・15 を入れ直すと (`Ctrl+J` は `commit` だけに残る。未確定の文字が無ければ Anthy は `Ctrl+J` を通す)、日本語のときも `<C-j>` で毎回 `あ` / `A` が切り替わり、カーソルのすぐ下にも出た (利用者が確かめた)
+  - Neovim を開いた時点で上部バーがずれていて、最初の Super+Space では engine が変わらなかった (すでに `xkb:us::eng` だった)。GNOME Shell 49.4 の `ui/status/keyboard.js` と `misc/ibusManager.js` を読むと、外からの engine の変更で「今の入力ソース」と Super+Space の順番 (MRU) を更新しない。そのため[上部バーの節](#gnome-の上部バーを-ime-連携に合わせる-任意)の拡張を足した
+  - Super+Space では、GNOME Shell がキーボードを掴むので、WezTerm から FocusLost → engine の切り替え → FocusGained の順で届くことがあった (記録の 23:36:15.715 → 16.198 → 16.200)。カーソルのすぐ下の表示は、フォーカスが外れている間は出さないので、Super+Space の表示が出なかった。`lua/config/ime_indicator.lua` を、外れている間に変わっていたら FocusGained で出すように直した
+- **上部バーの拡張の確認**: 画面の無い gnome-shell 49.4 を、閉じたセッションバス (`dbus-run-session`)・一時的な XDG の置き場所・`GSETTINGS_BACKEND=keyfile` で起動し、拡張を有効にして確かめた
+  - gnome-shell が自前の ibus-daemon を起動し、拡張は `enabled` になった
+  - `ibus engine` で `anthy` → `xkb:us::eng` → `anthy` → `xkb:us::eng` と切り替えると、そのたびに今の入力ソースが `anthy` / `us` に付いてきた (検証用の環境変数で出したログ)
+  - ibus は、同じ engine を設定し直してもシグナルを出さなかった (拡張が行き来を起こさない根拠)
+  - 利用者の PC には、拡張を worktree へつないで `org.gnome.shell enabled-extensions` に足した (有効になるのは次のログインから)
+- **カーソルのすぐ下の表示の直しの確認**: 直した設定を一時的な `XDG_CONFIG_HOME` で起動し、`doautocmd FocusLost` → 外から `anthy` → `doautocmd FocusGained` とすると、戻った時点で `あ` の窓が出た。変化が無いとき・ノーマルモードのときは出ず、フォーカスがあるときの `<C-j>` は今までどおり出た
+- **調べて分かったこと**:
+  - ノーマルモードで外から `anthy` にした後に、`:qa<CR>` を一度に送ると、engine は `xkb:us::eng` のまま残った。`:` で英数に切り替える要求の完了より先に、終了時の復帰が走る
+    - `ZQ` で抜けるか、`:` の後に 0.3 秒おいてから `qa` と打つと、`anthy` に戻った。人の打鍵より速い入力 (マクロや `nvim_input`) でだけ起きる
+- **検証の仕方で起きたこと** (この設定の問題ではない):
+  - 最初は一時的な場所のパスが長く、`vim.loader` のキャッシュのファイル名が上限の 255 バイトを超えて (`ENAMETOOLONG`)、mason.nvim などのモジュールが読めなかった。手順 16 の 1 行目は、headless では完了まで待つ `:MasonUpdate` が返らず、580 秒で打ち切った。短いパス (`/run/user/<uid>` の下) に置き直すと 22 秒で終わった
+  - el10 の tmux 3.3a は、`capture-pane -p` で落ちた (ASCII だけの画面でも)。画面は Neovim の `screenstring()` で読んだ
+  - `wl-copy` は常駐してクリップボードを配るので、出力をパイプにつないで呼ぶと、呼び出し元がクリップボードを空に戻すまで終わらない
+  - `:checkhealth` を全部流すと、Neovim 0.12 の vim.pack の検査が空の `site/pack/core/opt` を作り、lazy の検査が `found existing packages` と警告する
+  - 最初の確認では、キーを RPC で Neovim に直接送ったので IBus を通らず、`Ctrl+J` が Anthy に食われることに気付けなかった
+  - 画面の無い gnome-shell は、つながっている USB のボリュームを自動でマウントしようとした (ntfs3 が無くて失敗し、何も変わらなかった)。次に行うときは `org.gnome.desktop.media-handling automount` を false にする
+
+#### 未確認事項 (AlmaLinux 10 の実機での導入と取り込み)
+
+- AlmaLinux 導入の手順 1〜15 の実行 (この PC では済んでいた) と、ログインし直しての ibus の読み直し
+- 上部バーの節を本物のログインで通すこと (拡張は入れたが、ログインし直していない)。本物の Super+Space で上部バーと lualine が揃うこと
+- Super+Space で切り替えたときの、カーソルのすぐ下の表示 (直しは擬似のフォーカスの出入りで確かめた)
+- 画面でのカーソルの色の見え方
+- トークンの節の AlmaLinux の手順と、本物の GitLab での表示
+- tmux の節 (カーソル色)、JIS 配列のキーボード、aarch64
