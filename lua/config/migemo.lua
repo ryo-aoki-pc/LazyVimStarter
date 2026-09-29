@@ -35,6 +35,15 @@ local function engine()
   return ok and mod or nil
 end
 
+--- luamigemo で変換する。失敗したら nil。
+local function query(mod, word, rxop)
+  local ok, pattern = pcall(mod.query, word, rxop)
+  if not ok or type(pattern) ~= "string" or pattern == "" then
+    return nil
+  end
+  return pattern
+end
+
 --- 入力を Migemo 正規表現に変換する。
 --- 変換対象でない (ローマ字でない)、エンジンが無い、変換に失敗した場合は nil を返し、
 --- 呼び出し側は入力をそのまま使う (無ければ何もしない、の流儀は ime.lua と同じ)。
@@ -47,10 +56,83 @@ function M.convert(input, flavor)
   if not mod then
     return nil
   end
-  local rxop = flavor == "rg" and mod.RXOP_PCRE or mod.RXOP_VIM
-  local ok, pattern = pcall(mod.query, word, rxop)
-  if not ok or type(pattern) ~= "string" or pattern == "" then
+  return query(mod, word, flavor == "rg" and mod.RXOP_PCRE or mod.RXOP_VIM)
+end
+
+-- まだ音節になっていない打ちかけの子音 (k・sh・ky・tt・ts など)。
+local CONSONANTS = "bcdfghjklmnpqrstvwxyz"
+
+-- 辞書を引いた正規表現がこれより長い入力は、まずかなだけで探す (convert_incremental 参照)。
+-- 超えるのは shi・ka・a など、その音節で始まる語がとても多い入力で、画面に一致が 100 件を超えやすく、
+-- flash の 1 打鍵に 100〜200ms かかる (実測。2000 文字以下なら 1 画面の照合は 30ms 以下)。
+local MAX_INCREMENTAL_PATTERN = 2000
+
+-- 辞書を引かず、打ちかけのローマ字を「かな」だけに広げる (k → か き く け こ … カ キ ク …)。
+-- luamigemo の予測変換 (get().processor) とカタカナ変換を使う。カタカナ変換は内部モジュールなので、
+-- 版が変わって使えなくなったら nil を返し、呼び出し側は辞書を引く変換に戻る。
+local function kana_only(mod, word)
+  local ok, pattern = pcall(function()
+    local hira2kata = require("luamigemo.character_converter").hira2kata
+    local predicted = mod.get().processor:romaji_to_hiragana_predictively(word)
+    local alts = { word }
+    for _, suffix in ipairs(predicted.suffixes) do
+      local hiragana = predicted.prefix .. suffix
+      if hiragana ~= "" then
+        alts[#alts + 1] = hiragana
+        alts[#alts + 1] = hira2kata(hiragana)
+      end
+    end
+    return "\\%(" .. table.concat(alts, "\\|") .. "\\)"
+  end)
+  return ok and pattern or nil
+end
+
+--- 1 文字打つたびに照合し直すインクリメンタルな検索 (flash.nvim の s) 向けの、Vim 正規表現への変換。
+--- 打っている途中のローマ字は、末尾がまだ音節になっていない (nihon の途中の nih、kensaku の途中の
+--- k や kens) ことが多い。convert() はこれを変換しないため、日本語の文章では途中で一致が 0 件に
+--- なって flash が終了していた。
+---  - 末尾の打ちかけの子音 (3 文字まで) を除けばローマ字として読める入力は、全体を luamigemo に
+---    渡す。luamigemo は打ちかけの子音を予測で補う (kens → 検索 / けんさ …)。
+---  - ただし辞書を引くと重い入力は、まずかなだけ (k → か き く け こ … カ キ ク …) で探し、辞書を引いた
+---    広いパターンは 2 つ目の戻り値 (関数) で渡す。呼び出し側は、かなだけでは画面に一致が無いときに
+---    それを使う (かなが無く漢字だけ、の画面で一致が 0 件になって終了しないように)。重いのは:
+---     - 子音だけの入力 (k・sh・ky・n など。s を押した直後の 1 文字目)。辞書を引くと k だけで約 1 万文字の
+---       正規表現になり、1 画面の照合に 200ms 以上かかる (実測。かなだけなら 4ms)
+---     - 辞書を引いた正規表現が MAX_INCREMENTAL_PATTERN を超える入力 (shi・ka・a など)
+---    漢字は次の 1 文字で語が絞られたところで出る (shi → shin で 新・心 など)。
+---  - それ以外 (英単語・記号・数字・日本語を含む入力) は nil。呼び出し側はリテラルとして探す。
+---@param input string
+---@return string|nil pattern
+---@return (fun(): string|nil)|nil broader pattern で画面に一致が無いときに使う、辞書を引いたパターン
+function M.convert_incremental(input)
+  local word = input:lower()
+  local mod = engine()
+  if not mod or not word:match("^[a-z%-]+$") then
     return nil
+  end
+  local head, pending = word:match("^(.-)([" .. CONSONANTS .. "]*)$")
+  if #pending > 3 then
+    return nil
+  end
+  local function dictionary()
+    return query(mod, word, mod.RXOP_VIM)
+  end
+  if head == "" then
+    local kana = kana_only(mod, word)
+    if not kana then
+      return dictionary()
+    end
+    return kana, dictionary
+  end
+  if not (M.romaji(word) or M.romaji(head)) then
+    return nil
+  end
+  local pattern = dictionary()
+  local kana = pattern and #pattern > MAX_INCREMENTAL_PATTERN and kana_only(mod, word)
+  if kana then
+    return kana, function()
+      return pattern
+    end
   end
   return pattern
 end
