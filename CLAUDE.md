@@ -81,7 +81,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
 
 OS の IME を Neovim のモードに追従させる仕組み。Neovim には `imactivatefunc` /
 `imstatusfunc` が無いため、外部プロセス経由で IME デーモンを叩く自前実装になっている。
-6 ファイルに分かれる。
+7 ファイルに分かれる。
 
 - **`lua/config/ime.lua`** — 本体 (約 740 行)。ibus の global engine 名
   (`anthy` = 日本語 / `xkb:us::eng` = 英数) **だけ**を状態の真実とし、`busctl` / `gdbus` /
@@ -102,10 +102,20 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   `ui.lua` が所有しているため、表示の追加はプラグイン spec 側でしか行えない。lualine は前もって
   組み立てた文字列を 1 秒ごとのタイマーかカーソル移動などでしか作り直さないので、`ime.lua` が
   状態変化のたびに出す `User ImeStateChanged` を受けて即座に作り直させる。
-- **`lua/config/ime_indicator.lua`** — 状態が変わった瞬間にカーソルの直下へ `あ` / `A` を約 1 秒出す
-  浮動ウィンドウ。`ime.lua` の `observe()` (値が実際に変わったときだけ通る) から呼ばれ、挿入・置換・
-  端末モード以外では出さない (`<Esc>` の英数化は観測時点でノーマルモードなので出ない)。窓は開いた時点の
-  カーソル位置に固定されるため、`CursorMovedI`・`ModeChanged`・`WinLeave` で早めに消す。
+- **`lua/config/ime_indicator.lua`** — `あ` / `A` の浮動ウィンドウを 2 つ持つ。`ime.lua` の `observe()`
+  (値が実際に変わったときだけ通る) から呼ばれる。
+  - 状態が変わった瞬間にカーソルの直下へ約 1 秒出す。挿入・置換・端末モードと検索 (`/` `?`) 以外では
+    出さない (`<Esc>` の英数化は観測時点でノーマルモードなので出ない)。検索では noice の検索欄の窓に
+    `bufpos` で合わせ、カーソルの 1 行上に出す。窓は開いた時点の位置に固定されるため、`CursorMovedI`・
+    `CmdlineChanged`・`ModeChanged`・`WinLeave` で早めに消す。
+  - 検索している間は、検索欄の右端に出し続ける。noice が ext_messages を使うと Neovim が `cmdheight` を
+    0 にし (`ui.c` の `ui_refresh`)、lualine が最下段に来て、同じ最下段に出る noice の検索欄 (LazyVim の
+    `bottom_search`) に覆われるため。`CmdlineEnter` / `CmdlineLeave` で開け閉めする (noice は検索欄を
+    後から描くので、窓ができるまで少し待つ)。
+  - コマンドラインの入力中は画面が自動で描き直されないので、開け閉めのたびに `noice_cmdline.redraw()` で描く。
+- **`lua/config/noice_cmdline.lua`** — noice が描くコマンドラインの窓とカーソル位置の取得
+  (`require("noice").api.get_cmdline_position()`) と、カーソルを検索欄に保ったままの描き直し
+  (`nvim__redraw`)。`ime_preedit.lua` と `ime_indicator.lua` が使う。
 - **`lua/config/keymaps.lua`** — `<C-j>` トグル。**挿入モードとコマンドラインのみ**に張る
   (ノーマルモードの `<C-j>` は LazyVim のウィンドウ移動)。
 - **`lua/config/ime_preedit.lua`** — Neovide 専用 (他では no-op)。Neovide は既定で IME の
@@ -115,8 +125,8 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   (即座に消すと空白のフレームが、消さないと二重表示のフレームが一瞬描かれる)。描画は
   `vim.schedule` に回すので確定文字列の入力に追い越されうる。Neovide から届いた順をハンドラ内で
   数え (`commit_handler` も包む)、確定より前に送られた preedit は描かない。
-  コマンドラインでは noice の cmdline バッファ (`require("noice").api.get_cmdline_position()`) に
-  同じ extmark を置き、`nvim__redraw` で描く (c モードでは通常のウィンドウが自動で描き直されない)。
+  コマンドラインでは noice の cmdline バッファ (`noice_cmdline.cursor()`) に同じ extmark を置き、
+  `noice_cmdline.redraw()` で描く (c モードでは通常のウィンドウが自動で描き直されない)。
   確定時は `CmdlineChanged` で消す。noice が無ければ描かない。
 
 コマンドライン (`:` `/`) は英数で始めるため、日本語の検索はローマ字のまま日本語に
@@ -203,6 +213,9 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   (headless やコンテナで設定全体が落ちる)。
 - タイマーなどから `:normal` を実行するプラグインは、挿入モードのまま `ModeChanged` の `i:n` / `n:i` を
   起こす (`InsertLeave` / `InsertEnter` は発火しない)。モード遷移に処理を張るときは `state()` の `m` で見分ける。
+- noice (ext_messages) を使うと Neovim が `cmdheight` を 0 にするので、lualine は画面の最下段に来る。検索中は
+  noice の検索欄 (`bottom_search`) が同じ最下段に重なって lualine を丸ごと覆う (zindex を上げても変わらない)。
+  検索中に見せたい情報は lualine ではなく検索欄の側に出す (`ime_indicator.lua` の常時表示が実例)。
 - Windows の `shell` は PowerShell なので、プラグインが `shell` 経由でカレントディレクトリのスクリプト
   (`install.cmd` など) を実行する処理は動かない (PowerShell は `.\` 無しでは実行しない)。build が失敗しても
   成功と表示されることがある。逆に img-clip.nvim は、`shell` が PowerShell なら PowerShell のコマンドを
@@ -242,9 +255,10 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
     「注意点」「参照」「付録」。付録 (検証記録) は書き直さない
   - 状態の要約 (補足の状態行を変えたらここも直す): AlmaLinux 10 は x86_64 のコンテナでのみ、文書のブロックを
     そのまま貼って通した (treesitter のパーサー・GNOME の画面・aarch64 は未確認。検証した設定は PR #26 より前で、
-    カーソル直下の `あ` / `A` の表示も未確認)。Windows 11 は実機 (Windows 11 Pro) で、設定とデータの置き場所を
+    カーソル直下の `あ` / `A` の表示も、検索中の表示も未確認)。Windows 11 は実機 (Windows 11 Pro) で、設定とデータの置き場所を
     差し替えて Windows PowerShell 5.1 に渡して通した (手順 2 とロールバックの手順 7 は未実行。IME の切り替えは
-    モックの zenhan で確かめた。Neovide 0.16.2 の画面は、未確定文字列のハンドラを呼ぶ形で確かめ、本物の IME での入力は未確認)。
+    モックの zenhan で確かめた。Neovide 0.16.2 の画面は、未確定文字列のハンドラを呼ぶ形で確かめ、本物の IME での入力は未確認。
+    検索中の表示は、手順を通した後に Neovide と端末で個別に確かめた)。
     markdown-preview.nvim と markdown-toc を外し GitLab プレビュー・img-clip.nvim・GLFM のスニペットを足した変更は、
     Windows 11 の実機で置き場所を差し替え、模擬の GitLab API と headless の Edge で確かめた。本物のクリップボードの
     画像・既定のブラウザ・トークンの節の Windows の手順 (模擬のトークン)・gitlab.com の 401 も確かめ、本物の GitLab で
