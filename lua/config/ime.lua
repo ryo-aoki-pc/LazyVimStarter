@@ -37,11 +37,12 @@ M.config = {
   -- "poll"  : 挿入モードの間だけ 400ms 間隔で問い合わせる (monitor が使えない環境の保険)。
   -- "off"   : 自前の書き込み結果だけを信じる (OS 側の切り替えは検知できない)。
   watch = "signal",
-  -- guicursor で挿入モードのカーソル色を変える。
+  -- guicursor で挿入モードとコマンドラインのカーソル色を変える。
   -- 注: tmux-256color には Cs/Cr が無く Neovim は OSC 12 を出さないため、tmux 越しでは
   --     terminal-overrides の設定が別途必要 (docs/setup.md 参照)。無くても無害な no-op。
   cursor = true,
-  -- 状態が変わった瞬間に、カーソルのすぐ下へ あ / A を短時間だけ出す (挿入・置換・端末モードのみ)。
+  -- 状態が変わった瞬間に、カーソルのすぐそばへ あ / A を短時間だけ出す (挿入・置換・端末モードと、
+  -- 検索の / ?)。検索している間は検索欄の右端にも出し続ける (検索欄が lualine を覆うため)。
   -- lualine は入力中の視線から遠く、カーソル色は tmux 越しでは効かないため。実体は lua/config/ime_indicator.lua。
   indicator = true,
   ibus = { ja = "anthy", ascii = "xkb:us::eng" },
@@ -322,10 +323,10 @@ local function observe(value)
   if M.config.cursor then
     M.apply_cursor()
   end
-  -- 変わった瞬間をカーソルのそばにも出す (ノーマルモードなどで出さない判定は show() 側)。
-  -- 別の値への切り替えがまだ控えている途中経過は出さない (<Esc>o を素早く打つと、英数化の完了が
-  -- 挿入モードに戻った後になり、A を出した直後に あ を出し直すことになる)。pump() は完了した
-  -- 値を observe() してから desired を消すので、最後の要求の完了はここを通る。
+  -- 変わった瞬間をカーソルのそばにも出し、検索中なら検索欄の右端の表示も書き換える (ノーマルモード
+  -- などで出さない判定は show() 側)。別の値への切り替えがまだ控えている途中経過は出さない (<Esc>o を
+  -- 素早く打つと、英数化の完了が挿入モードに戻った後になり、A を出した直後に あ を出し直すことになる)。
+  -- pump() は完了した値を observe() してから desired を消すので、最後の要求の完了はここを通る。
   -- 表示の失敗で IME の制御まで止めないよう pcall で包む。
   if M.config.indicator and (state.desired == nil or state.desired == value) then
     pcall(indicator.show, M.status(), M.is_ja())
@@ -547,6 +548,8 @@ end
 
 -- カーソル色。guicursor からは固定のハイライトグループ (IMECursor) を参照させ、
 -- 状態変化ではそのグループの定義だけを差し替える ('guicursor' 文字列を組み立て直さない)。
+-- Neovim はカーソルが参照するグループが変わるとその場でカーソルの見た目を UI に送り直す
+-- (highlight_group.c の ui_mode_info_set) ので、画面が描き直されないコマンドラインの入力中でも色が変わる。
 function M.apply_cursor()
   if M.is_ja() then
     vim.api.nvim_set_hl(0, "IMECursor", { bg = "#ff9e64", fg = "#1a1b26" })
@@ -694,9 +697,11 @@ function M.setup(opts)
 
   if M.config.cursor then
     -- 既定の guicursor は "n-v-c-sm:block,i-ci-ve:ver25,r-cr-o:hor20" (+ 0.12 では
-    -- t:block-blinkon500-blinkoff500-TermCursor)。後勝ちなので
-    -- i-ci-ve を名前付きグループ付きで append すれば挿入モードのカーソルだけ色が付く。
-    vim.opt.guicursor:append("i-ci-ve:ver25-IMECursor")
+    -- t:block-blinkon500-blinkoff500-TermCursor)。後勝ちなので、形は既定のまま名前付きグループ付きで
+    -- append すれば、そのモードのカーソルだけ色が付く。挿入モード (i-ci-ve) に加えて、検索を日本語で
+    -- 打つこともあるのでコマンドラインにも付ける。コマンドラインのカーソルは、末尾で打っている間が c、
+    -- 途中が ci、上書き (<Insert>) が cr の形になる (cursor_shape.c)。
+    vim.opt.guicursor:append({ "i-ci-ve:ver25-IMECursor", "c:block-IMECursor", "cr:hor20-IMECursor" })
     M.apply_cursor()
     vim.api.nvim_create_autocmd("ColorScheme", {
       group = vim.api.nvim_create_augroup("user_ime_cursor", { clear = true }),

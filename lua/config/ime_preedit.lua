@@ -15,6 +15,9 @@
 -- バッファ自体は確定まで一切変えないので、undo 履歴・TextChanged・LSP・補完は未確定文字列を見ない。
 -- コマンドライン (/ ? : など) では、noice がコマンドラインを描いている浮動ウィンドウのバッファに
 -- 同じ extmark を置く (Neovim 本体のコマンドラインはバッファではないので、noice が無ければ描かない)。
+-- noice の窓と位置の取り方・描き直し方は lua/config/noice_cmdline.lua にある。
+
+local cmdline = require("config.noice_cmdline")
 
 local M = {}
 
@@ -25,46 +28,16 @@ local ns = vim.api.nvim_create_namespace("user_ime_preedit")
 --- 描いたときだけ持つ。
 local mark = nil
 
--- noice のコマンドラインのウィンドウを描き直し、カーソルを画面に出す。コマンドラインの入力中は
--- Neovim が通常のウィンドウを自動では描き直さない (noice もコマンドラインの内容が変わった時にしか
--- 描かない) ので自分で描く。noice は描くたびにウィンドウのカーソルを置いてから画面に出すが、
--- その後でウィンドウのカーソル自体は行頭に戻っていることがある (実測)。そのまま描き直すと
--- 画面のカーソルが行頭へ飛ぶので、noice と同じ位置 (noice の fix_cursor) に置き直してから描く。
-local function redraw_cmdline(win, row, col)
-  pcall(vim.api.nvim_win_set_cursor, win, { row + 1, col })
-  pcall(vim.api.nvim__redraw, { win = win, cursor = true, flush = true })
-end
-
 ---@param redraw? boolean コマンドラインに描いていた場合に、消した結果をすぐ画面へ出す
 local function clear(redraw)
   if mark then
     pcall(vim.api.nvim_buf_del_extmark, mark.buf, ns, mark.id)
     -- 取り消しではコマンドラインの内容が変わらず noice が描き直さないので、自分で描く。
     if redraw and mark.win and vim.api.nvim_win_is_valid(mark.win) then
-      redraw_cmdline(mark.win, mark.row, mark.col)
+      cmdline.redraw(mark.win, mark.row, mark.col)
     end
     mark = nil
   end
-end
-
--- noice が描いているコマンドラインの、カーソル位置のバッファ座標。描けないときは nil。
--- noice は読み込み済みのときだけ使う (無効にしている環境で require して読み込ませない)。
----@return integer|nil buf, integer|nil win, integer|nil row, integer|nil col (row / col は 0 始まり)
-local function cmdline_cursor()
-  local noice = package.loaded["noice"]
-  if not noice or vim.fn.getcmdtype() == "" then
-    return nil
-  end
-  local ok, pos = pcall(noice.api.get_cmdline_position)
-  -- position はコマンドラインを閉じても残る (次に開くまで古い値) ので、ウィンドウの生存も確かめる。
-  if not ok or not pos or not pos.buf or not pos.win then
-    return nil
-  end
-  if not vim.api.nvim_buf_is_valid(pos.buf) or not vim.api.nvim_win_is_valid(pos.win) then
-    return nil
-  end
-  -- noice は自分のカーソルを「バッファの最終行・pos.cursor バイト目」に置く (noice の fix_cursor)。
-  return pos.buf, pos.win, vim.api.nvim_buf_line_count(pos.buf) - 1, pos.cursor
 end
 
 -- winit の Ime::Preedit が渡すカーソル範囲は「バイト単位・[s, e)・UTF-8 の文字境界」で、
@@ -101,7 +74,7 @@ local function render(text, s, e)
     local cursor = vim.api.nvim_win_get_cursor(0)
     row, col = cursor[1] - 1, cursor[2]
   elseif mode:match("^c") then
-    buf, win, row, col = cmdline_cursor()
+    buf, win, row, col = cmdline.cursor()
   end
   if not buf then
     clear(true)
@@ -126,7 +99,7 @@ local function render(text, s, e)
   mark = { buf = buf, id = id, row = row, col = col, win = win }
   if win then
     -- 描き直して、カーソル (と Neovide の変換候補ウィンドウ) を未確定文字列の後ろへ動かす。
-    redraw_cmdline(win, row, col)
+    cmdline.redraw(win, row, col)
   end
 end
 
