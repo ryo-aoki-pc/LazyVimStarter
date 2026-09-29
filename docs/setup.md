@@ -30,7 +30,7 @@
 - この設定で何ができるかは [README](../README.md)。外部コマンドの用途は[必要なもの一覧](#必要なもの一覧)
 
 > [!WARNING]
-> **AlmaLinux 10 の手順は x86_64 のコンテナでのみ通した**。GNOME の画面と aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、Windows の WezTerm と GNOME の画面では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
+> **AlmaLinux 10 の手順は x86_64 のコンテナで通した。GNOME の実機では、導入済みの PC で AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 だけを通した** (手順 1〜15 は、システムを変えずに到達点を確かめただけ)。aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、Windows の WezTerm と GNOME の画面では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
 
 ### AlmaLinux 10 に導入する (1 度だけ)
 
@@ -345,7 +345,8 @@
    ```
 
    - 画面の下に `Downloading tree-sitter-…` などの通知が流れる
-   - `:Mason` を開き、Installed が 11 個になり、導入中のものが無くなるまで待つ (`q` で閉じる)
+   - `Error running markdownlint-cli2: ENOENT` が 1 回出てもよい (Mason が入れ終わる前に lint が走っただけ)
+   - `:Mason` を開き、Installed が 11 個になり、導入中のものが無くなるまで待つ (`q` で閉じる。tree-sitter の CLI を別に入れてあれば 10 個)
    - 待ったら `:qa` で閉じる
    - **次の手順は、`:qa` で閉じてから貼る** (続けて貼ると Neovim への入力として食われる)
 
@@ -354,11 +355,13 @@
 
    - ファイルを開くのは、LSP のサーバーがファイルを開いたとき (`LazyFile`) に初めて入るため
    - Mason が入れるのは 11 個: `bash-language-server` / `json-lsp` / `lua-language-server` / `markdownlint-cli2` / `marksman` / `shellcheck` / `shfmt` / `stylua` / `taplo` / `tree-sitter-cli` / `yaml-language-server`
+   - tree-sitter の CLI が PATH にあると (Homebrew の `tree-sitter-cli` など)、LazyVim は Mason で `tree-sitter-cli` を入れないので 10 個になる
    - そのうち 4 個 (`bash-language-server` / `json-lsp` / `markdownlint-cli2` / `yaml-language-server`) は npm で入る
    - コンテナでは、開いてから 15 秒ほどで揃い、`:Mason` に `Installed (12)` と出た (markdown-toc を外す前の記録。今は 11 個)
    - 途中で閉じても、次に起動したときに足りないものが入る (コンテナで確認)
    - treesitter のパーサーは GitHub の archive から取得し、`gcc` でビルドする
-   - 検証環境ではパーサーの取得がプロキシに拒まれ、パーサーの導入は確かめていない ([付録](#付録-コンテナでの検証記録-2026-09-28))
+   - コンテナではパーサーの取得がプロキシに拒まれた ([付録](#付録-コンテナでの検証記録-2026-09-28))。AlmaLinux 10 の実機では、開いてから 13 秒で 30 個が入り、ハイライトが効いた ([付録](#付録-almalinux-10-の実機での導入と取り込みの検証記録-2026-09-29))
+   - `ENOENT` の通知は、markdownlint-cli2 が入る前に開いたファイルを lint しようとしたもの。入った後の起動では出ない
 
    </details>
 
@@ -371,7 +374,7 @@
    ```
 
    - `mason/bin` に `markdownlint-cli2` / `marksman` / `stylua` / `tree-sitter` などが並ぶ
-   - `grep` の結果が `` WARNING `fzf` is not installed `` の 1 行だけならよい (無視してよい)
+   - `grep` が何も出さないか、`` WARNING `fzf` is not installed `` の 1 行だけならよい (無視してよい。fzf が入っていれば出ない)
    - `ERROR` が出たら[注意点](#注意点)
 
    <details>
@@ -989,11 +992,26 @@
       - 1 回目の `restore` は、起動時に img-clip.nvim を入れたときに lock が古い版で書き直され、更新した 6 個が古い版のまま、`git status --short` が `M lazy-lock.json` を出した
       - lock を `checkout` で戻して `restore` をもう一度実行すると、`git status --short` は何も出さず、38 個 (無効にした render-markdown.nvim 以外) が lock の版に揃った
       - 節のリードの `:Lazy clean` (4 個のディレクトリを消した) と `:MasonUninstall markdown-toc` を headless で実行しても、lock は変わらなかった。`checkhealth lazyvim luamigemo` の ERROR は 0 件
+  - **AlmaLinux 10 の実機 (GNOME) では、導入済みの PC で、AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 を通した (2026-09-29)。手順 1〜15 は、システムを変えずに到達点を確かめただけ** ([付録](#付録-almalinux-10-の実機での導入と取り込みの検証記録-2026-09-29))
+    - 手順 1〜15 は、確認のコマンド (`rpm -q`・`command -v`・`fc-match`・`gsettings get` など) だけを実行した。dnf と brew の導入・`gsettings set`・退避・`~/.bashrc` への追記は実行していない
+    - 手順 6・16〜19 は、`XDG_CONFIG_HOME` などを一時的な場所に差し替え、文書のブロックのパスだけを変えて通した。画面の要る手順は tmux の中で起動し、キーを送って状態を読んだ
+    - 取り込みの手順 1 は、差し替えた環境で、変更がある状態 (ca6adf3 → ea7bea7。lock の 6 行) を通した。常用の環境では、上の取り込みの後に `Already up to date.` の状態で通した
+    - 確かめたこと:
+      - `lazy-lock.json` の版に揃うこと (38 個)、Mason の 10 個 (tree-sitter の CLI が PATH にあるため。手順どおりなら 11 個)、treesitter のパーサー 30 個とハイライト、`checkhealth` の ERROR と WARNING が 0 件
+      - AlmaLinux 導入の手順 19 の全項目を、本物の ibus-anthy で (カーソルのすぐ下の表示・検索中の表示・コマンドラインのカーソル色と、終了すると起動前の engine に戻ること)
+      - 外から engine を切り替えたときの lualine の追従 (Super+Space の代わりに `busctl` で)
+      - LSP の 6 つ、flash の `s`、`*`、GLFM のスニペット、img-clip.nvim の画像の貼り付け (`wl-clipboard`)、GitLab プレビューの近似表示と閉じ込め、既定のブラウザ (Firefox) でページがつながること
+      - 常用の環境で、取り込みの手順 1・`:Lazy clean`・`:MasonUninstall markdown-toc` の後に、残骸が無く、起動してもエラーが出ないこと
+      - 画面での、ピッカーのアイコンの字形と Firefox のプレビューの表示 (利用者が WezTerm と Firefox で見て確かめた)
+    - **確かめていないこと**:
+      - 手順 1〜15 の実行と、ログインし直しての ibus の読み直し
+      - 本物の Super+Space と GNOME の上部バー、画面での `あ` / `A` の窓とカーソルの色の見え方
+      - トークンの節の AlmaLinux の手順と本物の GitLab、tmux の節 (カーソル色)
   - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
 | 項目 | AlmaLinux 10 | Windows 11 |
 |---|---|---|
-| 検証 | x86_64 のコンテナ (AlmaLinux 10.2) で通した | 実機 (Windows 11 Pro) で、置き場所を差し替えて通した |
+| 検証 | x86_64 のコンテナ (AlmaLinux 10.2) で通した。GNOME の実機では、手順 16〜19 と取り込みだけを通した | 実機 (Windows 11 Pro) で、置き場所を差し替えて通した |
 | パッケージマネージャ | dnf + EPEL、Neovim・lazygit・フォントは Homebrew (7.0.7) | scoop |
 | Neovim | Homebrew の `neovim` (0.12.5) | scoop の `neovim` (0.12.5) |
 | IME | ibus 1.5.32 + ibus-anthy 1.5.17 (`busctl` / `gdbus` で制御) | zenhan 0.0.1 (任意。検証ではモック) |
@@ -1390,3 +1408,75 @@
 - Windows の WezTerm (nightly) からの ssh と、Windows Terminal など WezTerm 以外の端末
 - GNOME にログインした画面の WezTerm (同じ版の mutter を、画面無しで動かして代えた)
 - PAM を通すシステムの sshd でのログイン (`UsePAM no` で、自分のユーザーのまま立てた sshd で代えた)
+
+### 付録: AlmaLinux 10 の実機での導入と取り込みの検証記録 (2026-09-29)
+
+- **対象**: `custom` の ca6adf3 (#34 のマージの直後) と、検証中に入った ea7bea7 (#35。lock の 6 行)。上の付録の未確認事項のうち、GNOME の実機での通し・カーソルのすぐ下の表示・treesitter のパーサー・検索中の表示・AlmaLinux 10 での GitLab プレビューなどの通し・取り込みの手順 1 を変更がある状態で通すこと
+- **環境**: AlmaLinux 10.2 (x86_64) の実機、GNOME (Wayland)。常用の端末は WezTerm (フォントは HackGen Console NF) の中の tmux (el10 の 3.3a)
+  - AlmaLinux 導入の手順 1〜15 は、この PC で前に済ませてあった。git 2.52.0、gcc 14.3.1、nodejs 22.23.2 (nodejs-npm 10.9.8)、ibus 1.5.32 + ibus-anthy 1.5.17、wl-clipboard 2.2.1、Homebrew 7.0.6 (neovim 0.12.5_1、lazygit 0.65.1)
+  - 手順書と違うところ: ripgrep 15.2.0 と fd 10.5.0 は Homebrew で入っていて、dnf の `ripgrep` / `fd-find` は無い。Homebrew の `tree-sitter-cli` 0.27.0・`fzf`・`curl` 8.22.0 も入っている
+  - フォントは cask ではなく `~/.local/share/fonts/HackGen` に 2 ファイル (HackGen35 は無い)。`~/.tmux.conf` は無い (tmux の節は行っていない)
+- **手順 1〜15 (確認だけ)**: システムを変えるコマンド (dnf と brew の導入、`gsettings set`、`mv`、`~/.bashrc` への追記) は実行せず、確認のコマンドだけを実行した
+  - 手順 1 は `epel` の行を出した。手順 4 の `rpm -q` は `ripgrep` と `fd-find` の 2 行が `not installed` で、ほかは入っていた。`node --version` は `v22.23.2`、`command -v` は 5 つとも場所を出した
+  - 手順 7・9・11 は `brew` の場所・`brew shellenv` の行・`NVIM v0.12.5` と 2 つの場所。手順 12 の `fc-match` は `HackGenConsoleNF-Regular.ttf: "HackGen Console NF" "Regular"`
+  - 手順 13 の `gsettings get` は `[('xkb', 'us'), ('ibus', 'anthy')]`。手順 14 で作った値と手順 15 の `gsettings get` は、どちらも `'on_off': <['Zenkaku_Hankaku']>`
+  - `which python3` は `/usr/bin/python3` だった (Homebrew の python@3.14 は依存として入っていて、link されていない)
+- **差し替えた環境での導入** (手順 6・16〜19):
+  - `XDG_CONFIG_HOME` / `XDG_DATA_HOME` / `XDG_STATE_HOME` / `XDG_CACHE_HOME` と npm のキャッシュを一時的な場所に向けて nvim を起動した。IME 連携は ibus のバスを `~/.config/ibus/bus` から引くので、本物の ibus-anthy を使った
+  - 画面の要る手順は、専用の tmux サーバーの中で `--listen` を付けて起動し、キーを `--remote-send` で送り、状態を `--remote-expr` で読んだ
+  - 手順 6: GitHub から clone して `custom`、ca6adf3
+  - 手順 16: 1 行目は 22 秒で、38 個が入った。終わりに `Neovim exited while the following packages were installing` (Mason の 4 個) と `Error in command line` が出た
+    - tree-sitter の CLI が PATH にあるので、`Unmet requirements for nvim-treesitter` は出ず、パーサーの取得が始まって終了で打ち切られた
+    - lock は既知の 6 行 (SchemaStore.nvim・gitsigns.nvim・mason-lspconfig.nvim・mini.icons・nvim-lspconfig・nvim-treesitter) が変わった。戻して `restore` (1 秒) の後、`git status --short` は空で、38 個とも記録の版だった
+  - 手順 17: 開いてから 13 秒で、Mason の 10 個とパーサー 30 個 (`Installed 30/30 languages`) が揃った
+    - Mason に `tree-sitter-cli` は入らなかった。LazyVim は PATH に `tree-sitter` があれば Mason で入れない
+    - この 1 回だけ、`Error running markdownlint-cli2: ENOENT` の通知が出た (Mason が入れ終わる前に lint が走った)
+    - 起動前の engine は `anthy` で、起動で `xkb:us::eng` になり、`:qa` で `anthy` に戻った
+  - 手順 18: `grep` は何も出さなかった (fzf が入っているので、`fzf` の WARNING も出ない)
+  - 手順 19 (2 回目の起動):
+    - `/kensaku` で 3 行目の「検索」に移って `[1/1]`。`/kensaku<Tab>` でコマンドラインが「検索」になった
+    - `:w` で `#動作確認` が `# 動作確認` になり、markdownlint の診断が 2 件から 0 件になった (見出しとしてハイライトされる)
+    - `o` → `<C-j>` で engine が `anthy`、lualine が `あ` になり、カーソルの 1 行下の同じ桁に `あ` の窓が出て、1.5 秒後には消えていた。`<Esc>` で `xkb:us::eng` と `A` に戻った
+    - `/` で最下段の右端に `A` が出た。`<C-j>` で `あ` になり、検索欄のカーソルのすぐ上にも `あ` が出た。カーソル色 (`IMECursor`) は `#ff9e64` になった
+    - `<Esc>` の後の `/` は `あ` で始まった (検索の sticky)。`<C-j>` で `A` に戻して抜けた
+    - Space 2 回で Files のピッカーとプレビューが開き、アイコンの文字 (Nerd Font の私用領域) が入っていた
+  - 追加の確認:
+    - ノーマルモードで外から `busctl` で engine を `anthy` → `xkb:us::eng` → `anthy` と 1.5 秒おきに変えると、lualine が `あ` / `A` に追従した
+    - flash: `s` → `nihon` → `;` で「日本」の後ろにラベル `s` が出て、`s` で 3 行目の先頭へ飛んだ
+    - `*`: 「検索する」の「検索」の上で押すと、`@/` が `\V検索` になり、次の行の「日本語検索」の中へ移った
+    - GLFM のスニペット: markdown のスニペット 97 個のうち `gl` で始まる 21 個が、`gl` と打った blink.cmp の一覧に全部出た
+    - LSP: marksman・lua_ls・bashls・jsonls・yamlls・taplo がそれぞれのファイルに付き、ハイライトも効いた。markdownlint の MD040 と、bashls 経由の shellcheck の診断が出た
+    - img-clip.nvim: `wl-copy` で 64×40 の PNG をクリップボードに置き、`<leader>ci` → ファイル名は空のまま Enter で、`docs/assets/<日時>.png` (画素まで同じ) ができて `![](assets/<日時>.png)` が入った。貼った後は挿入モードになる (img-clip の既定)。クリップボードは空に戻した
+    - GitLab プレビュー (`GITLAB_TOKEN` 無し): ページは 200 (CSP 付き)、token 違いは 404、Host の偽装・`Sec-Fetch-Site: cross-site`・`..`・`.git/HEAD` は 403、POST は 405、`%2e%2e` は 404、画像は 200 で ETag を付けると 304
+    - SSE は `retry: 1000` と、近似表示 (`GITLAB_TOKEN が未設定`) の `render` を送った。編集すると描き直しが届き、止めると `stop` が届いた。GitLab へは送らなかった
+    - `:checkhealth` を全部流すと、ERROR は lazy の luarocks と、snacks の画像の外部ツール (tectonic / pdflatex・mmdc・kitty の画像) だけで、この設定の機能に関わるものは無かった
+  - 取り込みの手順 1 (ea7bea7 へ): このホストの常用の環境と同じく、lock に古い 3 行 (denops.vim・vim-kensaku・vim-kensaku-search) を足し、`pull.autostash` を true にして貼った
+    - `Created autostash` → `Fast-forward` (lock の 6 行) → `Applied autostash` → `restore` (2 秒) で、`git status --short` は空だった (restore が lock を spec のとおりに書き直し、古い 3 行も消えた)
+    - 差し替えた環境には img-clip.nvim が入っていて、起動時に入れるものが無かったので、1 回目の `restore` で揃った (入れるものがあると lock が古い版で書き直される。上の状態の行の取り込みの記録)
+    - 38 個とも新しい記録の版で、手順 18 の `grep` は何も出さず、LSP とハイライトも同じだった
+- **常用の環境**:
+  - 検証の途中で、常用の設定は別の作業 (上の状態の行の取り込みの記録) で ea7bea7 に揃えられていた (img-clip.nvim が入り、lock の古い 3 行も消えた)。このため、変更がある状態の取り込みは、差し替えた環境で確かめた
+  - 取り込みの手順 1 のブロックは、`Already up to date.` と `restore` (4 秒) で、`git status --short` は空だった
+  - `nvim --headless "+Lazy! clean" +qa` は、外したプラグインの 4 個 (denops.vim・markdown-preview.nvim・vim-kensaku・vim-kensaku-search) だけを消した。`lazy/` は 38 個になり、lock は変わらなかった
+  - 画面 (`-i NONE`) で `:MasonUninstall markdown-toc` を打つと、Mason は 10 個になり、`mason/bin` からも消えた
+  - 起動してもエラーの通知は無く、パーサーは 30 個のままだった。`/kensaku`・`:w` の整形・`<C-j>` は差し替えた環境と同じだった。`checkhealth img-clip` は、img-clip を読み込んでから流すと `wl-clipboard` が OK だった
+  - `<leader>cp` で既定のブラウザ (Firefox 156) にタブが開き、約 1 秒でページの EventSource がつながった
+- **利用者の目視** (WezTerm で常用の環境の nvim を開き、AlmaLinux 導入の手順 17 と同じ試験用の Markdown で):
+  - Space 2 回のピッカーで、アイコンが豆腐にならずに出た
+  - `<leader>cp` で、Firefox のタブに近似表示のプレビュー (上の帯、見出しと本文) が出た
+- **調べて分かったこと**:
+  - ノーマルモードで外から `anthy` にした後に、`:qa<CR>` を一度に送ると、engine は `xkb:us::eng` のまま残った。`:` で英数に切り替える要求の完了より先に、終了時の復帰が走る
+    - `ZQ` で抜けるか、`:` の後に 0.3 秒おいてから `qa` と打つと、`anthy` に戻った。人の打鍵より速い入力 (マクロや `nvim_input`) でだけ起きる
+- **検証の仕方で起きたこと** (この設定の問題ではない):
+  - 最初は一時的な場所のパスが長く、`vim.loader` のキャッシュのファイル名が上限の 255 バイトを超えて (`ENAMETOOLONG`)、mason.nvim などのモジュールが読めなかった。手順 16 の 1 行目は、headless では完了まで待つ `:MasonUpdate` が返らず、580 秒で打ち切った。短いパス (`/run/user/<uid>` の下) に置き直すと 22 秒で終わった
+  - el10 の tmux 3.3a は、`capture-pane -p` で落ちた (ASCII だけの画面でも)。画面は Neovim の `screenstring()` で読んだ
+  - `wl-copy` は常駐してクリップボードを配るので、出力をパイプにつないで呼ぶと、呼び出し元がクリップボードを空に戻すまで終わらない
+  - `:checkhealth` を全部流すと、Neovim 0.12 の vim.pack の検査が空の `site/pack/core/opt` を作り、lazy の検査が `found existing packages` と警告する
+
+#### 未確認事項 (AlmaLinux 10 の実機での導入と取り込み)
+
+- AlmaLinux 導入の手順 1〜15 の実行 (この PC では済んでいた) と、ログインし直しての ibus の読み直し
+- 本物の Super+Space と GNOME の上部バーの表示 (`busctl` で代えた)
+- 画面での `あ` / `A` の窓とカーソルの色の見え方 (窓の位置と色の設定は、画面を文字として読んで確かめた)
+- トークンの節の AlmaLinux の手順と、本物の GitLab での表示
+- tmux の節 (カーソル色)、JIS 配列のキーボード、aarch64
