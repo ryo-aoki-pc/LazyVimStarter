@@ -21,6 +21,7 @@ Markdown (GLFM) 執筆を強化した Neovim 設定。
 | [Windows 11 に導入する](docs/setup.md#windows-11-に導入する-1-度だけ) | マシンごとに 1 度 | scoop で外部コマンド・Neovim・zenhan を入れ、この設定を clone して初回起動する |
 | [ほかのマシンの変更を取り込む](docs/setup.md#ほかのマシンの変更を取り込む-繰り返し) | 繰り返し | `git pull` と `:Lazy restore` で、設定とプラグインの版を揃える |
 | [カーソル色を tmux で効かせる (任意)](docs/setup.md#カーソル色を-tmux-で効かせる-任意) | 任意、1 度だけ | tmux の `terminal-overrides` に 1 行足す |
+| [GitLab プレビューのトークンを設定する (任意)](docs/setup.md#gitlab-プレビューのトークンを設定する-任意) | 任意、1 度だけ | GitLab のアクセストークン (と、gitlab.com 以外なら GitLab の URL) を環境変数にする |
 | [更新](docs/setup.md#更新) | 更新のたび | Neovim・外部コマンド・プラグインを上げる |
 | [ロールバック](docs/setup.md#ロールバック) | 戻すとき | この設定とプラグインを消し、退避した設定と入力ソースを戻す |
 
@@ -130,9 +131,46 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
 
 - LazyVim extra `lang.markdown` を有効化し、以下を上書き:
   - 整形連鎖から **prettier を除外** (GLFM の数式・脚注・`[[_TOC_]]` を壊すため)。
-    整形は markdownlint-cli2 `--fix` + markdown-toc のみ。
-  - render-markdown.nvim は無効化 (プレビューは markdown-preview.nvim を使用)。
+    整形は markdownlint-cli2 `--fix` のみ。
+  - **markdown-toc を外した** (npm の最終リリースが 2017 年で、更新が止まっている)。目次は GitLab が
+    `[[_TOC_]]` から描画のたびに作る。ファイルに書き込む目次が要るときは、marksman のコードアクション
+    (`<leader>ca` → Table of Contents。見出しの ID は GitLab の方式) で作る。
+  - **markdown-preview.nvim を外した** (2023-10 から更新が止まっており、GLFM 固有の記法を描けない。
+    Windows では build も通らなかった)。代わりに下の GitLab プレビューを使う。
+  - render-markdown.nvim は無効化 (記法をそのまま見て書き、見た目はプレビューで確かめる)。
   - 除外したい markdownlint ルールは `lua/plugins/lang-markdown.lua` の `disabled_rules` に列挙。
+- **GitLab プレビュー** (`<leader>cp` で切り替え、`:GitLabPreview` / `:GitLabPreviewStop`) — 編集中の内容を
+  GitLab の Markdown API に描かせて、ブラウザに出す。GitLab が描いた HTML をそのまま使うので、
+  `[[_TOC_]]`・`` $`…`$ ``・`>>>`・`{+ +}`・`[~]`・アラート・`#123` などの参照も GitLab と同じに見える。
+  - 打つたびに (約 0.3 秒ごと。保存しなくてよい) 描き直し、スクロールがカーソルの位置に付いてくる。
+    表示している markdown のバッファに追従する (別のファイルに移ると、ページもそちらになる)
+  - **内容を GitLab に送るのは、環境変数 `GITLAB_TOKEN` (`read_api` のアクセストークン) があるときだけ**。
+    送り先は `GITLAB_HOST` (無ければ gitlab.com) だけで、git の remote のホスト名からは決めない。
+    設定の手順は [GitLab プレビューのトークンを設定する](docs/setup.md#gitlab-プレビューのトークンを設定する-任意)
+  - git の remote (origin) のホストが送り先と同じなら、そのプロジェクトとして描かせる (`#123` などがリンクになる)。
+    違うとき、そのプロジェクトを読めないときは、プロジェクト無しで描かせる
+  - 画像と動画の相対リンクは手元のファイルを出す (push していない画像も見える)。ほかのファイルへの
+    リンクは GitLab の URL のまま (新しいタブで開く)
+  - トークンが無い・GitLab に届かないときは、markdown-it で描いた**近似表示**になり、理由をバナーに出す。
+    近似表示では inline diff・色見本・`>>>`・include・参照・絵文字の短縮記法・PlantUML は描かない。
+    描画用のライブラリ (cdn.jsdelivr.net) にも届かないときは、原文をそのまま出す
+  - 数式 (KaTeX) と図 (mermaid) は、GitLab と同じくブラウザが描く (ライブラリの版は GitLab とは違う)
+  - 安全策: 127.0.0.1 だけで待ち受け、URL に推測できない値を入れる。返すファイルはリポジトリの中だけで、
+    `.git` は返さない。トークンはコマンドラインにもファイルにも書かない
+  - 制限: 非公開のプロジェクトの `/uploads/` の画像は出ないことがある (ブラウザが GitLab のログインの Cookie を
+    送らないため)。`::include` は GitLab が既定のブランチの内容で展開する (手元の未 push の変更は入らない)
+  - ブラウザは OS の既定。変えるときは `vim.g.gitlab_preview_browser` に関数を入れる
+    (例: Edge の別窓なら `function(url) vim.system({ "cmd.exe", "/d", "/c", "start", "", "msedge", "--app=" .. url }) end`)
+  - 実装は `lua/config/gitlab_preview/` (配線は `lua/plugins/gitlab-preview.lua`)
+- **画像の貼り付け** ([img-clip.nvim](https://github.com/HakonHarnes/img-clip.nvim)、`<leader>ci`) — クリップボードの
+  画像 (スクリーンショットなど) を、.md と同じディレクトリの `assets/` に保存し、`![](assets/….png)` を入れる。
+  ファイル名を聞かれる (空のまま Enter で日時)。取り出しは Windows が PowerShell、Linux が wl-clipboard。
+  リポジトリに置かれた `.img-clip.lua` は読み込まない (貼り付けただけで、その Lua が走らないように)
+- **GLFM のスニペット** (`snippets/markdown.json`) — `gl` で始まる名前で補完に出る:
+  `gltoc` (`[[_TOC_]]`)・`glnote` / `gltip` / `glimportant` / `glwarning` / `glcaution` (アラート)・`gldetails` (折りたたみ)・
+  `glmath` / `glimath` (数式)・`glmermaid`・`glplantuml`・`glquote` (`>>>`)・`gladd` / `gldel` (`{+ +}` / `{- -}`)・
+  `glna` (`- [~]`)・`glfn` / `glfndef` (脚注)・`glfront` (front matter)・`glinclude`・`glcolor` (色見本)・`gldl` (定義リスト)。
+  `gldetails` はインライン HTML なので、markdownlint の MD033 に当たる
 - **記法の記号を隠さない** — LazyVim 既定の `conceallevel=2` では、コードフェンスの行・
   インラインコードの `` ` ``・強調の `*` `_`・リンクの URL などがカーソル行以外で隠れる。
   記法をそのまま見て書けるよう、markdown バッファでは常に表示する (`lua/config/autocmds.lua`)。
@@ -153,6 +191,8 @@ Neovim 0.12 以上のほかに、git / ripgrep / fd / C コンパイラ / curl�
 Node.js / Nerd Font / ibus + ibus-anthy (Linux) を前提にしている
 (`lazy-lock.json` の nvim-treesitter が Neovim 0.12 を要る。LazyVim 自身の下限は 0.11.2)。
 **足りなくてもエラーにならず静かに壊れる**ため、初回起動の前に揃えること。
+GitLab プレビューには GitLab のアクセストークン・curl 8.3 以上・ブラウザが、Linux での画像の貼り付けには
+wl-clipboard が要る (どれも任意。無ければその機能だけが使えない)。
 
 用途と必須かどうかの一覧、導入手順は
 [docs/setup.md](docs/setup.md#必要なもの一覧)にまとめてある。

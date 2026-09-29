@@ -42,7 +42,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
 :checkhealth lazyvim   " 外部コマンドと treesitter の C コンパイラ
 :checkhealth mason     " curl / tar / gzip と node / npm
 :Lazy                  " プラグインの状態。:Lazy update 後は lazy-lock.json をコミットする
-:Mason                 " markdownlint-cli2 / markdown-toc / marksman 等
+:Mason                 " markdownlint-cli2 / marksman 等
 ```
 
 - `:checkhealth lazyvim` の `fzf is not installed` 警告は無視してよい (ピッカーは
@@ -134,14 +134,41 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
 
 `lua/plugins/lang-markdown.lua` が extra `lang.markdown` を上書きする。
 
-- 整形連鎖から **prettier を除外**し、`markdownlint-cli2 --fix` + `markdown-toc` のみにする
-  (prettier は GLFM の数式 `$...$`・複数行脚注・`[[_TOC_]]` を壊すため)。
+- 整形連鎖から **prettier を除外**し、`markdownlint-cli2 --fix` だけにする
+  (prettier は GLFM の数式 `$...$`・複数行脚注・`[[_TOC_]]` を壊すため)。conform の
+  `formatters_by_ft` はリストが spec 間で置き換わるので、`markdown.mdx` の連鎖も全部書いている。
+- **markdown-toc は外した** (npm の最終リリースが 2017 年)。整形連鎖から抜くのに加え、Mason の
+  `ensure_installed` からも opts 関数で取り除く (LazyVim の mason.nvim の spec は `opts_extend` で
+  リストを連結するので、テーブルで書いても消せない)。
 - 除外したい markdownlint ルールはファイル冒頭の `disabled_rules` に列挙する。空でない
   ときだけ設定 JSON を `stdpath("cache")` に生成し、**lint (nvim-lint) と整形 (conform) の
   両方**に `--config` を渡す (片方だけだと整形が lint の無効化を直し返す)。
-- render-markdown.nvim は無効。プレビューは markdown-preview.nvim (`<leader>cp`)。Windows だけは
-  build を差し替え、`install.cmd` を `cmd.exe` で同期に実行する (extra 既定の `mkdp#util#install()` は
-  `shell` の端末で実行するので、PowerShell では見つからずに失敗し、しかも成功と表示される)。
+- render-markdown.nvim と **markdown-preview.nvim は無効** (後者は 2023-10 から更新が止まり、GLFM を描けない)。
+  `lazy-lock.json` から markdown-preview.nvim の行は手で消した (lazy.nvim は無効にしたプラグインの行を残し続ける)。
+- **プレビューは自作の GitLab プレビュー** (`<leader>cp`)。**`lua/config/gitlab_preview/`** が実体で、
+  編集中の内容を curl で GitLab の Markdown API (`POST /api/v4/markdown`) に送り、返ってきた HTML を
+  127.0.0.1 の HTTP サーバー (`vim.uv`) と SSE でブラウザのページに流す。分担と守ること:
+  - `gitlab.lua` — 送り先と curl。**本文を送るのは `GITLAB_TOKEN` があるときだけで、送り先は `GITLAB_HOST`
+    (無ければ gitlab.com) だけ**。git の remote のホスト名から送り先を推測しない (名前に gitlab を含む
+    無関係なホストへトークンを送らないため)。remote は `project` を決めるのに使うだけ (ホストが一致するとき)。
+    トークンは `--variable` で環境変数から curl に取り込ませ、コマンドラインにもファイルにも書かない (curl 8.3 以上)
+  - `server.lua` — 127.0.0.1 だけで待ち受け、URL に推測できない token を入れる。Host と `Sec-Fetch-Site` を確かめる。
+    リポジトリのファイルは `resolve()` で閉じ込める (`..`・`\`・ドライブ・デバイス名・`.git` を拒み、realpath が
+    ルートの内側にあることを確かめる)。**`vim.uv` のコールバックは fast context** なので、ここでは `vim.api` /
+    `vim.fn` / `vim.fs` を呼ばない (`vim.system` の終了のコールバックも同じ。`gitlab.lua` は `vim.schedule` で移す)
+  - `init.lua` — 状態・autocmd・描画のループ (300ms で間引き、送信中の変更は 1 回にまとめ、古い応答は捨てる)。
+    GitLab に送れないときは生の Markdown を送り、ページの markdown-it で近似表示にする
+  - `page/` — ブラウザ側。GitLab のフロントエンドがする処理 (KaTeX・mermaid・遅延読み込みの画像) と、
+    `data-canonical-src` (GitLab が残す書き換え前の相対リンク) を手元のファイルに戻す処理、スクロールの同期
+  - `libs.lua` — ページが jsDelivr から読むライブラリの版と SRI。CSP もここから組み立てるので、
+    **版を上げるときは url と sri を一緒に書き換える**
+  - 配線は `lua/plugins/gitlab-preview.lua` の **lazy.nvim の virtual spec** (取得も runtimepath への追加もせず、
+    lock にも載らない)。名前は `[1]` に書く (`name` だけだと lazy.nvim が不正な spec として捨てる)
+- 画像の貼り付けは `lua/plugins/img-clip.lua` (img-clip.nvim、`<leader>ci`)。`relative_to_current_file` で
+  .md の隣の `assets/` に保存する。ドラッグ & ドロップは切り、リポジトリの `.img-clip.lua` を dofile させない
+  ように `get_config` を差し替えている (img-clip の内部関数。上げたら効いているか確かめる)。
+- GLFM のスニペットは `snippets/markdown.json` (blink.cmp が `stdpath("config")/snippets` を自動で読む)。
+  friendly-snippets と重ならないよう、名前は `gl` で始める。
 - conceal も切っている (記法の記号を隠さない)。これだけは `lua/config/autocmds.lua` の
   `user_markdown_conceal` で、markdown を表示するウィンドウに `conceallevel=0` を setlocal する
   (`FileType` と `BufWinEnter` の両方で張る理由はコメント参照)。
@@ -178,7 +205,19 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   起こす (`InsertLeave` / `InsertEnter` は発火しない)。モード遷移に処理を張るときは `state()` の `m` で見分ける。
 - Windows の `shell` は PowerShell なので、プラグインが `shell` 経由でカレントディレクトリのスクリプト
   (`install.cmd` など) を実行する処理は動かない (PowerShell は `.\` 無しでは実行しない)。build が失敗しても
-  成功と表示されることがある。
+  成功と表示されることがある。逆に img-clip.nvim は、`shell` が PowerShell なら PowerShell のコマンドを
+  そのまま `vim.fn.system()` に渡すので、`shellcmdflag` の前置きの後ろに連結されて動いている。
+- lazy.nvim は、無効にした (`enabled = false`) プラグインの行を `lazy-lock.json` に残し続ける。
+  外したプラグインの行は手で消す。既に入っているマシンのディレクトリは `:Lazy clean` まで残る。
+- LazyVim の mason.nvim の `ensure_installed` は spec をまたいで連結される (`opts_extend`)。
+  ツールを外すときは opts 関数で取り除く。既に入っているツールは Mason が自動では消さない。
+- スニペットの JSON で文字の `$` は `\\$` と書く (Neovim のスニペットの文法では `$` がタブストップになる)。
+- `vim.uv` と `vim.system` のコールバックは fast context で走る。`vim.api` / `vim.fn` / `vim.fs` を呼ぶと
+  エラーになるので、`vim.schedule` で通常の文脈に移してから呼ぶ (`lua/config/gitlab_preview/` が実例)。
+- `lua/plugins/gitlab-preview.lua` の `virtual = true` は lazy.nvim の文書に無い機能。lazy.nvim を上げたら
+  `<leader>cp` と `:GitLabPreview` が生きているか確かめる (だめなら snacks.nvim の spec の keys に相乗りさせる)。
+- 長い日本語の文字列を含む行は、stylua の整形が 1 回で落ち着かないことがある (整形した結果を `--check` が
+  また直せと言う)。そのときは行を分けるか文字列を短くする。
 
 ## 既存ドキュメント
 
@@ -189,11 +228,13 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   `## 実施手順` の下を、シナリオの見出し (`###`、末尾の括弧に頻度) に分ける:
   「AlmaLinux 10 に導入する (1 度だけ)」手順 1〜19、「Windows 11 に導入する (1 度だけ)」手順 1〜11、
   「ほかのマシンの変更を取り込む (繰り返し)」手順 1〜2。後ろに「カーソル色を tmux で効かせる (任意)」
-  「更新」「ロールバック」(OS ごとの手順は「(この節の手順 N の代わりに)」) と `## 補足` を置く。
+  「GitLab プレビューのトークンを設定する (任意)」「更新」「ロールバック」(OS ごとの手順は
+  「(この節の手順 N の代わりに)」) と `## 補足` を置く。
   - 記法は `~/setup-notes` の CLAUDE.md の「手順の形」「表現の規則」と kvm-container の `docs/setup.md` に揃える:
     太字にしない 1 行の説明「〜する。」→ ブロック → 箇条書き (末尾に「。」を付けない) → 折り畳みの補足 1 つまで。
     止める手順は「**次の手順は、〜してから貼る**」で終える。アラートは最上位だけに 5 個まで
   - 変数は無い (設定の置き場所と clone 元の URL は変える必要が無いので、コマンドに直接書く)。
+    例外は GitLab プレビューのトークンの節だけで、トークンと GitLab の URL は文書に書かず、貼った人に入力させる。
     AlmaLinux 10 のブロックは bash、Windows 11 のブロックだけ PowerShell (5.1 でも通る書き方にし、`&&` / `||` を使わない)
   - 手順は「AlmaLinux 導入の手順 N」「Windows 導入の手順 N」「取り込みの手順 N」と呼び、シナリオの見出しへリンクする。
     番号を変えたら、本文・補足・付録・`> [!IMPORTANT]`・README・この欄を付け替える
@@ -203,5 +244,8 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
     そのまま貼って通した (treesitter のパーサー・GNOME の画面・aarch64 は未確認。検証した設定は PR #26 より前で、
     カーソル直下の `あ` / `A` の表示も未確認)。Windows 11 は実機 (Windows 11 Pro) で、設定とデータの置き場所を
     差し替えて Windows PowerShell 5.1 に渡して通した (手順 2 とロールバックの手順 7 は未実行。IME の切り替えは
-    モックの zenhan で確かめた。Neovide 0.16.2 の画面は、未確定文字列のハンドラを呼ぶ形で確かめ、本物の IME での入力は未確認)
+    モックの zenhan で確かめた。Neovide 0.16.2 の画面は、未確定文字列のハンドラを呼ぶ形で確かめ、本物の IME での入力は未確認)。
+    markdown-preview.nvim と markdown-toc を外し GitLab プレビュー・img-clip.nvim・GLFM のスニペットを足した変更は、
+    Windows 11 の実機で置き場所を差し替え、模擬の GitLab API と headless の Edge で確かめた (本物の GitLab・
+    本物のクリップボードの画像・トークンの節の実行・AlmaLinux 10 での通しは未確認)
 - `README.md` — この設定で何ができるかの説明。機能の挙動と設計上の判断、運用上の注意。

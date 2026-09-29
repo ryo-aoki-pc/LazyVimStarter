@@ -1,0 +1,107 @@
+{
+  "GLFM: 目次": {
+    "prefix": "gltoc",
+    "body": "[[_TOC_]]",
+    "description": "GLFM: 目次 ([[_TOC_]])。GitLab が見出しから目次を作る"
+  },
+  "GLFM: アラート (note)": {
+    "prefix": "glnote",
+    "body": ["> [!note]$1", "> $0"],
+    "description": "GLFM: アラート (note)。タイトルを付けるときは ] の後に空白を入れて書く"
+  },
+  "GLFM: アラート (tip)": {
+    "prefix": "gltip",
+    "body": ["> [!tip]$1", "> $0"],
+    "description": "GLFM: アラート (tip)。タイトルを付けるときは ] の後に空白を入れて書く"
+  },
+  "GLFM: アラート (important)": {
+    "prefix": "glimportant",
+    "body": ["> [!important]$1", "> $0"],
+    "description": "GLFM: アラート (important)。タイトルを付けるときは ] の後に空白を入れて書く"
+  },
+  "GLFM: アラート (warning)": {
+    "prefix": "glwarning",
+    "body": ["> [!warning]$1", "> $0"],
+    "description": "GLFM: アラート (warning)。タイトルを付けるときは ] の後に空白を入れて書く"
+  },
+  "GLFM: アラート (caution)": {
+    "prefix": "glcaution",
+    "body": ["> [!caution]$1", "> $0"],
+    "description": "GLFM: アラート (caution)。タイトルを付けるときは ] の後に空白を入れて書く"
+  },
+  "GLFM: 折りたたみ": {
+    "prefix": "gldetails",
+    "body": ["<details>", "<summary>${1:概要}</summary>", "", "$0", "", "</details>"],
+    "description": "GLFM: 折りたたみ (<details>)。インライン HTML なので markdownlint の MD033 に当たる"
+  },
+  "GLFM: 数式 (ブロック)": {
+    "prefix": "glmath",
+    "body": ["```math", "$0", "```"],
+    "description": "GLFM: 数式のブロック (```math)"
+  },
+  "GLFM: 数式 (文中)": {
+    "prefix": "glimath",
+    "body": "\\$`$1`\\$$0",
+    "description": "GLFM: 文中の数式 ($`…`$)"
+  },
+  "GLFM: mermaid": {
+    "prefix": "glmermaid",
+    "body": ["```mermaid", "${1:flowchart TD}", "  ${2:A --> B}", "```", "$0"],
+    "description": "GLFM: mermaid の図"
+  },
+  "GLFM: PlantUML": {
+    "prefix": "glplantuml",
+    "body": ["```plantuml", "@startuml", "${1:Alice -> Bob: hello}", "@enduml", "```", "$0"],
+    "description": "GLFM: PlantUML の図 (GitLab 側で PlantUML が有効なときだけ描かれる)"
+  },
+  "GLFM: 複数行の引用": {
+    "prefix": "glquote",
+    "body": [">>>", "$0", ">>>"],
+    "description": "GLFM: 複数行の引用 (>>> で囲む)"
+  },
+  "GLFM: 追加 (インラインの差分)": {
+    "prefix": "gladd",
+    "body": "{+ $1 +}$0",
+    "description": "GLFM: インラインの差分の追加 ({+ … +})"
+  },
+  "GLFM: 削除 (インラインの差分)": {
+    "prefix": "gldel",
+    "body": "{- $1 -}$0",
+    "description": "GLFM: インラインの差分の削除 ({- … -})"
+  },
+  "GLFM: 対象外のタスク": {
+    "prefix": "glna",
+    "body": "- [~] $0",
+    "description": "GLFM: 対象外のタスク (- [~])。GitLab は取り消し線で見せる"
+  },
+  "GLFM: 脚注の参照": {
+    "prefix": "glfn",
+    "body": "[^${1:1}]$0",
+    "description": "GLFM: 脚注の参照 ([^1])"
+  },
+  "GLFM: 脚注の定義": {
+    "prefix": "glfndef",
+    "body": "[^${1:1}]: $0",
+    "description": "GLFM: 脚注の定義 ([^1]: …)"
+  },
+  "GLFM: front matter": {
+    "prefix": "glfront",
+    "body": ["---", "${1:title}: $2", "---", "", "$0"],
+    "description": "GLFM: front matter (YAML)。ファイルの先頭に置く。GitLab は表にして見せる"
+  },
+  "GLFM: インクルード": {
+    "prefix": "glinclude",
+    "body": "::include{file=${1:path/to/file.md}}$0",
+    "description": "GLFM: 別のファイルの取り込み (Wiki とリポジトリのファイルで使える)"
+  },
+  "GLFM: 色見本": {
+    "prefix": "glcolor",
+    "body": "`#${1:1F75CB}`$0",
+    "description": "GLFM: 色見本 (`#RRGGBB` の横に色が付く)"
+  },
+  "GLFM: 定義リスト": {
+    "prefix": "gldl",
+    "body": ["${1:用語}", ": ${2:説明}", "$0"],
+    "description": "GLFM: 定義リスト (用語の次の行に : 説明)"
+  }
+}

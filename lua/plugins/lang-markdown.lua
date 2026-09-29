@@ -2,8 +2,9 @@
 -- extra 本体の有効化は lua/config/lazy.lua の import で行う (import 順序チェックのため
 -- extra は lazyvim.plugins の後・plugins の前に置く必要があり、plugins 配下のここでは遅すぎるため)。
 -- extra の内容: marksman LSP / markdownlint-cli2 + markdown-toc / conform (整形) /
---       nvim-lint + none-ls (lint 診断) / markdown-preview.nvim
---       (render-markdown.nvim も含まれるが、下で無効化している)
+--       nvim-lint + none-ls (lint 診断) / markdown-preview.nvim / render-markdown.nvim
+-- このうち markdown-preview.nvim・render-markdown.nvim・markdown-toc は下で外している。
+-- プレビューは GitLab の Markdown API で描く自作のもの (lua/plugins/gitlab-preview.lua)。
 
 -- markdownlint で無効化 (除外) したいルールをここに列挙する。
 -- 例:
@@ -18,19 +19,26 @@ local disabled_rules = {
 }
 
 local specs = {
-  -- Markdown プレビュー (markdown-preview.nvim) を使うため、extra の既定どおり有効のままにする。
-  -- <leader>cp キーマップ・:MarkdownPreview* コマンド・node 製プレビューアプリの build が登録される。
+  -- ブラウザのプレビュー (markdown-preview.nvim) は外す。2023-10 を最後に更新が止まっており、
+  -- node 製のプレビューアプリの build は Windows の 'shell' (PowerShell) では通らない。
+  -- 描画は markdown-it で、GLFM 固有の記法 ($`…`$・```math・>>>・アラート・[~] など) を描けない。
+  -- 代わりに GitLab 自身に描かせるプレビュー (lua/plugins/gitlab-preview.lua) を <leader>cp に置く。
+  -- enabled = false で extra の <leader>cp・:MarkdownPreview* コマンド・build も登録されなくなる。
+  { "iamcco/markdown-preview.nvim", enabled = false },
 
   -- バッファ内インラインレンダリング (render-markdown.nvim) は使わないため無効化する。
-  -- markdown-preview.nvim (ブラウザプレビュー) とは役割が重複するため、こちらを切る。
+  -- 記法をそのまま見て書き (conceal も切っている)、見た目はブラウザのプレビューで確かめる。
   { "MeanderingProgrammer/render-markdown.nvim", enabled = false },
 
   -- GLFM (GitLab Flavored Markdown) を壊さず整形するため、markdown の整形連鎖から
   -- prettier を除外する。prettier は数式 $...$ の \$ 化・複数行脚注の破壊・[[_TOC_]] の
   -- 再整形などで GLFM 固有構文を壊すため。代わりに GitLab 公式も採用する
   -- markdownlint-cli2 --fix に任せる (リント違反のみ修正し、本文や GLFM 構文は書き換えない)。
+  -- markdown-toc も外す。npm の最終リリースが 2017 年で更新が止まっている。GitLab は [[_TOC_]] で
+  -- 目次を描画時に作り、ファイルに書き込む目次が要るときは marksman のコードアクション
+  -- ("Table of Contents"。見出し ID は GitLab 方式) で作れる。
   -- formatters_by_ft の値はリストなので deep-merge で「置換」され、extra の連鎖を上書きする。
-  -- markdown.mdx (JSX 混在) は GLFM ではないため extra 既定 (prettier 含む) のまま残す。
+  -- そのため markdown.mdx (JSX 混在。GLFM ではないので prettier は残す) も連鎖を全部書く。
   --
   -- ★ 注意: extras の formatting.prettier を有効にすると、この上書きは無効化される。
   -- あちらは opts 関数の中で formatters_by_ft.markdown に prettier を table.insert するため、
@@ -47,36 +55,27 @@ local specs = {
     optional = true,
     opts = {
       formatters_by_ft = {
-        markdown = { "markdownlint-cli2", "markdown-toc" },
+        markdown = { "markdownlint-cli2" },
+        ["markdown.mdx"] = { "prettier", "markdownlint-cli2" },
       },
     },
   },
-}
 
--- Windows では markdown-preview.nvim のビルド (プレビュー用のバイナリの取得) を cmd.exe で直接走らせる。
--- extra 既定の build は mkdp#util#install() で、app/ に lcd してから "install.cmd v<版>" を 'shell' の端末で
--- 実行する。この設定は Windows の 'shell' を PowerShell にしている (lua/config/options.lua) が、PowerShell は
--- カレントディレクトリのコマンドを .\ 無しでは実行しないので、install.cmd が見つからずに終わる。しかも build は
--- 端末を開いた時点で戻るため、lazy.nvim には成功と表示される。バイナリが無いと <leader>cp は node での起動に
--- 落ち、その依存 (app/node_modules) も入っていないので、プレビューは開かない。
--- ここでは終わるまで待つので、失敗は :Lazy の build の失敗として出る (headless の初回導入でも打ち切られない)。
-if vim.fn.has("win32") == 1 then
-  table.insert(specs, {
-    "iamcco/markdown-preview.nvim",
+  -- extra が Mason に入れさせる markdown-toc を外す。LazyVim の mason.nvim の spec は
+  -- opts_extend = { "ensure_installed" } なので、テーブルで書くと各 spec のリストが連結されるだけで
+  -- 要素を消せない。opts 関数は、それまでの spec を合成した opts を受け取るので、そこから取り除く
+  -- (extra は plugins より先に import されるため、この関数は extra の追加より後に走る)。
+  -- 既に入っているマシンの markdown-toc は Mason が自動では消さない (:MasonUninstall markdown-toc)。
+  {
+    "mason-org/mason.nvim",
     optional = true,
-    build = function(plugin)
-      local version = vim.json.decode(table.concat(vim.fn.readfile(plugin.dir .. "/package.json"), "\n")).version
-      -- /d: AutoRun (レジストリの cmd.exe の起動時コマンド) を走らせない
-      local res = vim
-        .system({ "cmd.exe", "/d", "/c", "install.cmd", "v" .. version }, { cwd = plugin.dir .. "/app", text = true })
-        :wait()
-      -- install.cmd は取得や展開に失敗しても 0 で終わることがあるので、バイナリの有無でも確かめる
-      if res.code ~= 0 or vim.fn.executable(plugin.dir .. "/app/bin/markdown-preview-win.exe") == 0 then
-        error(("install.cmd v%s failed (exit %d)\n%s%s"):format(version, res.code, res.stdout or "", res.stderr or ""))
-      end
+    opts = function(_, opts)
+      opts.ensure_installed = vim.tbl_filter(function(name)
+        return name ~= "markdown-toc"
+      end, opts.ensure_installed or {})
     end,
-  })
-end
+  },
+}
 
 -- disabled_rules が空の間は以下は丸ごと不要 (設定ファイルを生成せず、lint/整形とも
 -- stock の引数のまま動かす)。ルールを追加した時だけ生成と --config の受け渡しを有効化する。
