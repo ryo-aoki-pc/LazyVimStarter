@@ -22,6 +22,7 @@ Markdown (GLFM) 執筆を強化した Neovim 設定。
 | [ほかのマシンの変更を取り込む](docs/setup.md#ほかのマシンの変更を取り込む-繰り返し) | 繰り返し | `git pull` と `:Lazy restore` で、設定とプラグインの版を揃える |
 | [カーソル色を tmux で効かせる (任意)](docs/setup.md#カーソル色を-tmux-で効かせる-任意) | 任意、1 度だけ | tmux の `terminal-overrides` に 1 行足す |
 | [GitLab プレビューのトークンを設定する (任意)](docs/setup.md#gitlab-プレビューのトークンを設定する-任意) | 任意、1 度だけ | GitLab のアクセストークン (と、gitlab.com 以外なら GitLab の URL) を環境変数にする |
+| [SSH 越しのヤンクを手元のクリップボードに送る (任意)](docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意) | 任意、1 度だけ | 手元の WezTerm から ssh した先の Neovim で、ヤンクが手元のクリップボードに入ることを確かめる |
 | [更新](docs/setup.md#更新) | 更新のたび | Neovim・外部コマンド・プラグインを上げる |
 | [ロールバック](docs/setup.md#ロールバック) | 戻すとき | この設定とプラグインを消し、退避した設定と入力ソースを戻す |
 
@@ -196,6 +197,14 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   `editor.dial` / `ui.treesitter-context` / `lang.git` / `util.dot`
   (`lua/config/lazy.lua` で import。`lazyvim.json` は gitignore のため import 方式で管理)
 - Windows では shell を PowerShell (pwsh 優先、UTF-8 入出力) に設定
+- **SSH 越しでは、ヤンク・削除を手元のクリップボードに送る** — ssh したシェル (`SSH_CONNECTION` がある) で起動すると、
+  `y` `d` などでレジスタに入れたものを OSC 52 で手元の端末に渡し、手元のクリップボードに入れる (ローカルと同じく
+  `clipboard=unnamedplus`)。手元にもサーバーにも足すソフトは無いが、端末が OSC 52 の書き込みに対応している必要がある
+  (WezTerm の nightly など。GNOME Terminal と Ptyxis は非対応)。向きは Neovim → 手元だけで、`p` は端末に問い合わせず
+  この Neovim が最後に送った内容を貼る (OSC 52 の読み出しは WezTerm も Windows Terminal も応えず、10 秒待たされるため)。
+  手元でコピーしたものは端末の貼り付けで入れる。LazyVim 既定の自動検出は noice に邪魔されて効かないので、
+  `lua/config/options.lua` で明示している。手順は
+  [docs/setup.md の SSH の節](docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)
 
 ## 外部依存
 
