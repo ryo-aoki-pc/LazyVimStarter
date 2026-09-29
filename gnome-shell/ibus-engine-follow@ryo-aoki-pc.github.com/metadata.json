@@ -1,0 +1,7 @@
+{
+  "uuid": "ibus-engine-follow@ryo-aoki-pc.github.com",
+  "name": "IBus engine follow",
+  "description": "ibus の engine が外から (Neovim の IME 連携などで) 変わったとき、上部バーの入力ソースと Super+Space の順番を実際の engine に合わせる",
+  "shell-version": ["49"],
+  "url": "https://github.com/ryo-aoki-pc/LazyVimStarter"
+}

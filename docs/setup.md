@@ -8,7 +8,7 @@
 > - **Windows 11 では、管理者ではない PowerShell で実行する**
 > - **対話入力がある**: AlmaLinux 導入の手順 3 (`[y/N]` と EPEL の鍵)、手順 8 (Homebrew の `RETURN` と `sudo` のパスワード)、手順 10 (`brew` の `[y/n]`)、[GitLab プレビューのトークンの節](#gitlab-プレビューのトークンを設定する-任意)の手順 1〜4 (トークンと GitLab の URL)。答えてから次の手順を貼る
 > - **Neovim の画面が開く**: AlmaLinux 導入の手順 17・19、Windows 導入の手順 9・11、[SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 2。`:qa` で閉じてから次の手順を貼る
-> - **AlmaLinux 導入の手順 15 の後で、ログアウトしてログインし直す** (入れた ibus-anthy と入力ソースを読み直させる)
+> - **AlmaLinux 導入の手順 15 の後で、ログアウトしてログインし直す** (入れた ibus-anthy と入力ソースを読み直させる)。[上部バーの節](#gnome-の上部バーを-ime-連携に合わせる-任意)の手順 2 でも、拡張を読ませるためにログインし直す
 
 | シナリオ | 頻度 | 内容 |
 |---|---|---|
@@ -16,6 +16,7 @@
 | [Windows 11 に導入する](#windows-11-に導入する-1-度だけ) | マシンごとに 1 度 | scoop で外部コマンド・Neovim・zenhan を入れ、この設定を clone して初回起動する |
 | [ほかのマシンの変更を取り込む](#ほかのマシンの変更を取り込む-繰り返し) | 繰り返し | 別のマシンで push した設定と `lazy-lock.json` を取り込み、プラグインの版を揃える |
 | [カーソル色を tmux で効かせる (任意)](#カーソル色を-tmux-で効かせる-任意) | 任意、1 度だけ | tmux の中でも、挿入モードのカーソル色を IME の状態で変える (AlmaLinux 10) |
+| [GNOME の上部バーを IME 連携に合わせる (任意)](#gnome-の上部バーを-ime-連携に合わせる-任意) | 任意、1 度だけ | Neovim が IME を切り替えても、GNOME の上部バーと Super+Space の順番がずれないようにする (AlmaLinux 10 + GNOME 49) |
 | [GitLab プレビューのトークンを設定する (任意)](#gitlab-プレビューのトークンを設定する-任意) | 任意、1 度だけ | `<leader>cp` のプレビューを GitLab 本体に描かせるため、アクセストークン (と GitLab の URL) を環境変数にする |
 | [SSH 越しのヤンクを手元のクリップボードに送る (任意)](#ssh-越しのヤンクを手元のクリップボードに送る-任意) | 任意、1 度だけ | 手元の WezTerm から ssh した AlmaLinux 10 の Neovim で、ヤンクが OSC 52 で手元のクリップボードに入ることを確かめる (向きは Neovim → 手元だけ) |
 | [更新](#更新) | 更新のたび | Neovim・外部コマンド・プラグインを上げる |
@@ -30,7 +31,7 @@
 - この設定で何ができるかは [README](../README.md)。外部コマンドの用途は[必要なもの一覧](#必要なもの一覧)
 
 > [!WARNING]
-> **AlmaLinux 10 の手順は x86_64 のコンテナで通した。GNOME の実機では、導入済みの PC で AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 だけを通した** (手順 1〜15 は、システムを変えずに到達点を確かめただけ)。aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、Windows の WezTerm と GNOME の画面では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
+> **AlmaLinux 10 の手順は x86_64 のコンテナで通した。GNOME の実機では、導入済みの PC で AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 だけを通した** (手順 1〜15 は、システムを変えずに到達点を確かめただけ)。aarch64 では通していない。**上部バーの節は、画面の無い gnome-shell でだけ確かめた** (本物のログインでは通していない)。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、Windows の WezTerm と GNOME の画面では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
 
 ### AlmaLinux 10 に導入する (1 度だけ)
 
@@ -254,15 +255,16 @@
 
    ```bash
    export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
-   gsettings get org.gnome.desktop.input-sources sources
-   gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'us'), ('ibus', 'anthy')]"
-   gsettings get org.gnome.desktop.input-sources sources
+   /usr/bin/gsettings get org.gnome.desktop.input-sources sources
+   /usr/bin/gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'us'), ('ibus', 'anthy')]"
+   /usr/bin/gsettings get org.gnome.desktop.input-sources sources
    ```
 
    - 最後の行が `[('xkb', 'us'), ('ibus', 'anthy')]` になればよい
    - 最初の行は変える前の値。ほかの入力ソースは消える
    - 日本語と英数の切り替えは Super+Space になる
    - **注意**: JIS 配列のキーボードでも `us` にする。IME 連携が英数を `xkb:us::eng` に固定しているため (この手順の補足)
+   - `gsettings` は `/usr/bin/gsettings` と場所まで書く。Homebrew の `gsettings` は GNOME の設定 (dconf) に書かない (この手順の補足)
 
    <details>
    <summary>補足: 入力ソースを 2 つとも登録する理由</summary>
@@ -271,6 +273,7 @@
    - 英数のエンジン名は `ime.lua` の中で `xkb:us::eng` に固定してある。入力ソースを `('xkb', 'jp')` にすると、Neovim が英数に戻すたびに US 配列のエンジンになる (コードから読んだもので、JIS 配列では試していない)
    - 先頭の `export` は tmux の中で貼るときのため。tmux の中では `DBUS_SESSION_BUS_ADDRESS` が無いことがあり、そのとき `gsettings` は既定値しか読めず、書き込みも黙って効かない
    - GNOME の端末ではもともと同じ値が入っているので、`export` しても変わらない
+   - **`/usr/bin/gsettings` と書く理由**: Homebrew の glib (cairo・ffmpeg・imagemagick・gnupg などの依存で入る) にも `gsettings` があり、`brew shellenv` の後は PATH の先頭に来る。これは dconf を使えず、`~/.config/glib-2.0/settings/keyfile` に黙って書くので、GNOME も Anthy も読まない (AlmaLinux 10 の実機で、この節の手順 13〜15 が効いていなかった)
    - Neovim から ibus への通信には `busctl` (systemd) か `gdbus` (glib2) を使う。`gdbus` があれば OS 側の切り替えも検知できるので、lualine の `あ` / `A` がずれない
    - 実装と運用上の注意 (変換中の `<Esc>` は 2 回、Neovim を 2 つ起動したときの制限など) は [README の日本語入力・検索](../README.md#日本語入力検索)
 
@@ -279,7 +282,7 @@
 1. Anthy の `on_off` のキーから `Ctrl+J` と `Ctrl+space` を外した値を作る。
 
    ```bash
-   ANTHY_SHORTCUT=$(gsettings get org.freedesktop.ibus.engine.anthy.shortcut default | sed "s/'on_off': <\['Zenkaku_Hankaku', 'Ctrl+space', 'Ctrl+J'\]>/'on_off': <['Zenkaku_Hankaku']>/")
+   ANTHY_SHORTCUT=$(/usr/bin/gsettings get org.freedesktop.ibus.engine.anthy.shortcut default | sed "s/'on_off': <\['Zenkaku_Hankaku', 'Ctrl+space', 'Ctrl+J'\]>/'on_off': <['Zenkaku_Hankaku']>/")
    printf '%s\n' "${ANTHY_SHORTCUT}" | grep -o "'on_off': <\[[^]]*\]>"
    ```
 
@@ -300,8 +303,8 @@
 1. 作った値を Anthy の設定に書き戻す。
 
    ```bash
-   gsettings set org.freedesktop.ibus.engine.anthy.shortcut default "${ANTHY_SHORTCUT:?AlmaLinux 導入の手順 14 の ANTHY_SHORTCUT が空のまま。AlmaLinux 導入の手順 14 を貼り直す}"
-   gsettings get org.freedesktop.ibus.engine.anthy.shortcut default | grep -o "'on_off': <\[[^]]*\]>"
+   /usr/bin/gsettings set org.freedesktop.ibus.engine.anthy.shortcut default "${ANTHY_SHORTCUT:?AlmaLinux 導入の手順 14 の ANTHY_SHORTCUT が空のまま。AlmaLinux 導入の手順 14 を貼り直す}"
+   /usr/bin/gsettings get org.freedesktop.ibus.engine.anthy.shortcut default | grep -o "'on_off': <\[[^]]*\]>"
    ```
 
    - `'on_off': <['Zenkaku_Hankaku']>` と出ればよい
@@ -624,6 +627,76 @@
 
 ---
 
+## GNOME の上部バーを IME 連携に合わせる (任意)
+
+- Neovim がモードに合わせて IME を切り替えても、GNOME の上部バーの表示と Super+Space の順番がずれないようにする
+- GNOME Shell は ibus の engine が外から変わっても、上部バーと Super+Space が基準にする「今の入力ソース」を更新しない。そのため、この節を行わないと Neovim を開いた時点で上部バーがずれ、最初の Super+Space が空振りする
+- この設定のリポジトリにある GNOME Shell の拡張 (`gnome-shell/ibus-engine-follow@ryo-aoki-pc.github.com`) を有効にする。engine が変わったときに「今の入力ソース」を合わせるだけで、engine やキー配列は変えない
+- AlmaLinux 10 + GNOME 49 のときだけ行う。拡張は GNOME Shell の内部の関数を使うので、GNOME を上げたらこの節の手順 4 で確かめる
+- **この節の手順 2 で、ログアウトしてログインし直す**
+
+1. 拡張を、GNOME Shell が拡張を探す場所につなぐ。
+
+   ```bash
+   mkdir -p ~/.local/share/gnome-shell/extensions
+   ln -sfn ~/.config/nvim/gnome-shell/ibus-engine-follow@ryo-aoki-pc.github.com ~/.local/share/gnome-shell/extensions/
+   ls -l ~/.local/share/gnome-shell/extensions/
+   ```
+
+   - `ibus-engine-follow@ryo-aoki-pc.github.com -> …/.config/nvim/gnome-shell/ibus-engine-follow@ryo-aoki-pc.github.com` と出ればよい
+   - つないでおくので、[取り込み](#ほかのマシンの変更を取り込む-繰り返し)で拡張が変わると、次のログインから新しい方が使われる
+
+1. ログアウトしてログインし直す。
+
+   - GNOME Shell (Wayland) は、新しい拡張をログインのときにしか探さない
+   - **次の手順は、ログインし直した後の端末で貼る**
+
+1. 拡張を有効にする。
+
+   ```bash
+   gnome-extensions enable ibus-engine-follow@ryo-aoki-pc.github.com
+   gnome-extensions info ibus-engine-follow@ryo-aoki-pc.github.com | grep -E 'Enabled|State'
+   ```
+
+   - `Enabled: Yes` と `State: ACTIVE` が出ればよい
+   - `doesn't exist` と出たら、この節の手順 1 のつなぎ先が無い (設定を取り込んでいない) か、ログインし直していない
+   - `State: OUT OF DATE` と出たら、GNOME Shell の版が拡張の `metadata.json` の `shell-version` に無い
+
+1. Neovim を開き、上部バーが Neovim の IME の状態に付いてくることを確かめる。
+
+   ```bash
+   printf '%s\n' '#動作確認' '' '日本語の検索を試す。' > /tmp/lazyvim-check.md
+   nvim /tmp/lazyvim-check.md
+   ```
+
+   - 開いた時点で、上部バーの入力ソースが英語 (US) になる (Neovim がノーマルモードで英数にするため)
+   - `o` → `<C-j>` で、上部バーが Anthy (`あ`) になる。`<Esc>` で英語 (US) に戻る
+   - ノーマルモードで Super+Space を 1 回押すと、上部バーと lualine の `あ` / `A` が一緒に変わる (空振りしない)
+   - `:qa!` で閉じる
+
+   <details>
+   <summary>補足: 拡張がしていること</summary>
+
+   - GNOME Shell 49.4 の `ui/status/keyboard.js` は、自分で入力ソースを切り替えたとき (`activateInputSource()`) だけ「今の入力ソース」を書き換える。`misc/ibusManager.js` は、ibus の `GlobalEngineChanged` を受けても engine の名前を控えるだけ
+   - 拡張は同じシグナルを受け、今の入力ソースが engine と違えば、`InputSourceManager` の `_currentInputSourceChanged()` (内部の関数) で今の入力ソース・上部バーの表示・Super+Space の順番 (MRU) を更新する
+   - `activateInputSource()` を呼ばないのは、キーボードを一時的に掴むため。掴むと端末にフォーカスの出入りが届き、engine も設定し直してしまう
+   - GNOME Shell 自身の切り替え (Super+Space) では、シグナルが届く前に今の入力ソースが更新済みなので何もしない。ibus は同じ engine を設定し直してもシグナルを出さないので、行き来は起きない
+   - パスワード欄にいる間 (GNOME Shell が ibus を止めて英数に切り替えている間) は何もしない
+   - 内部の関数が無くなったら何もしない (上部バーがずれるだけの、この節を行う前の状態に戻る)
+
+   </details>
+
+1. 元に戻すときは、拡張を無効にして、つなぎを外す。
+
+   ```bash
+   gnome-extensions disable ibus-engine-follow@ryo-aoki-pc.github.com
+   rm ~/.local/share/gnome-shell/extensions/ibus-engine-follow@ryo-aoki-pc.github.com
+   ```
+
+   - 上部バーは、Neovim が切り替えた後もそれまでの入力ソースのまま残るようになる (この節を行う前と同じ)
+
+---
+
 ## GitLab プレビューのトークンを設定する (任意)
 
 - `<leader>cp` のプレビューを、GitLab 本体の描画 (GitLab の Markdown API) で見るための設定。しなくても、プレビューは近似表示で動く
@@ -863,13 +936,13 @@
 
    ```bash
    export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
-   gsettings reset org.gnome.desktop.input-sources sources
-   gsettings reset org.freedesktop.ibus.engine.anthy.shortcut default
-   gsettings get org.freedesktop.ibus.engine.anthy.shortcut default | grep -o "'on_off': <\[[^]]*\]>"
+   /usr/bin/gsettings reset org.gnome.desktop.input-sources sources
+   /usr/bin/gsettings reset org.freedesktop.ibus.engine.anthy.shortcut default
+   /usr/bin/gsettings get org.freedesktop.ibus.engine.anthy.shortcut default | grep -o "'on_off': <\[[^]]*\]>"
    ```
 
    - `'on_off': <['Zenkaku_Hankaku', 'Ctrl+space', 'Ctrl+J']>` と出ればよい
-   - 入力ソースは既定 (空) に戻る。導入の前の値に戻すなら、[AlmaLinux 導入の手順 13](#almalinux-10-に導入する-1-度だけ) の最初の行に出た値を `gsettings set` で書く
+   - 入力ソースは既定 (空) に戻る。導入の前の値に戻すなら、[AlmaLinux 導入の手順 13](#almalinux-10-に導入する-1-度だけ) の最初の行に出た値を `/usr/bin/gsettings set` で書く
 
 1. AlmaLinux 10 で、Homebrew で入れたものも消すときだけ、消す。
 
@@ -993,20 +1066,24 @@
       - lock を `checkout` で戻して `restore` をもう一度実行すると、`git status --short` は何も出さず、38 個 (無効にした render-markdown.nvim 以外) が lock の版に揃った
       - 節のリードの `:Lazy clean` (4 個のディレクトリを消した) と `:MasonUninstall markdown-toc` を headless で実行しても、lock は変わらなかった。`checkhealth lazyvim luamigemo` の ERROR は 0 件
   - **AlmaLinux 10 の実機 (GNOME) では、導入済みの PC で、AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 を通した (2026-09-29)。手順 1〜15 は、システムを変えずに到達点を確かめただけ** ([付録](#付録-almalinux-10-の実機での導入と取り込みの検証記録-2026-09-29))
-    - 手順 1〜15 は、確認のコマンド (`rpm -q`・`command -v`・`fc-match`・`gsettings get` など) だけを実行した。dnf と brew の導入・`gsettings set`・退避・`~/.bashrc` への追記は実行していない
+    - 手順 1〜15 は、確認のコマンド (`rpm -q`・`command -v`・`fc-match`・`gsettings get` など) だけを実行した。dnf と brew の導入・退避・`~/.bashrc` への追記は実行していない
+    - 確認の `gsettings get` は Homebrew の `gsettings` (dconf を使わない) を読んでいて、手順 15 は dconf に入っていなかった。利用者の本物のキーでの確認で見つけ、`/usr/bin/gsettings` で手順 14・15 を入れ直した (手順 13〜15 とロールバックのブロックを `/usr/bin/gsettings` に直した)
     - 手順 6・16〜19 は、`XDG_CONFIG_HOME` などを一時的な場所に差し替え、文書のブロックのパスだけを変えて通した。画面の要る手順は tmux の中で起動し、キーを送って状態を読んだ
     - 取り込みの手順 1 は、差し替えた環境で、変更がある状態 (ca6adf3 → ea7bea7。lock の 6 行) を通した。常用の環境では、上の取り込みの後に `Already up to date.` の状態で通した
     - 確かめたこと:
       - `lazy-lock.json` の版に揃うこと (38 個)、Mason の 10 個 (tree-sitter の CLI が PATH にあるため。手順どおりなら 11 個)、treesitter のパーサー 30 個とハイライト、`checkhealth` の ERROR と WARNING が 0 件
-      - AlmaLinux 導入の手順 19 の全項目を、本物の ibus-anthy で (カーソルのすぐ下の表示・検索中の表示・コマンドラインのカーソル色と、終了すると起動前の engine に戻ること)
+      - AlmaLinux 導入の手順 19 の全項目を、本物の ibus-anthy で (カーソルのすぐ下の表示・検索中の表示・コマンドラインのカーソル色と、終了すると起動前の engine に戻ること)。キーは Neovim に直接送った (IBus を通らない)
       - 外から engine を切り替えたときの lualine の追従 (Super+Space の代わりに `busctl` で)
       - LSP の 6 つ、flash の `s`、`*`、GLFM のスニペット、img-clip.nvim の画像の貼り付け (`wl-clipboard`)、GitLab プレビューの近似表示と閉じ込め、既定のブラウザ (Firefox) でページがつながること
       - 常用の環境で、取り込みの手順 1・`:Lazy clean`・`:MasonUninstall markdown-toc` の後に、残骸が無く、起動してもエラーが出ないこと
       - 画面での、ピッカーのアイコンの字形と Firefox のプレビューの表示 (利用者が WezTerm と Firefox で見て確かめた)
+      - 利用者が WezTerm (tmux なし) で本物のキーを打って: 手順 15 を入れ直した後は、日本語のときも `<C-j>` で毎回 `あ` / `A` が切り替わり、カーソルのすぐ下にも出ること
+      - [上部バーの節](#gnome-の上部バーを-ime-連携に合わせる-任意)の拡張を、画面の無い gnome-shell 49.4 (閉じたセッションバスと自前の ibus-daemon) で。外から engine を切り替えるたびに、今の入力ソースが付いてきた
     - **確かめていないこと**:
       - 手順 1〜15 の実行と、ログインし直しての ibus の読み直し
-      - 本物の Super+Space と GNOME の上部バー、画面での `あ` / `A` の窓とカーソルの色の見え方
-      - トークンの節の AlmaLinux の手順と本物の GitLab、tmux の節 (カーソル色)
+      - 上部バーの節を、本物のログインで通すこと (拡張を入れて有効にしたが、ログインし直していない)。本物の Super+Space で空振りしなくなること
+      - Super+Space で切り替えたときの、カーソルのすぐ下の表示 (フォーカスが戻ったときに出すように直した。本物のキーでは確かめていない)
+      - 画面でのカーソルの色の見え方、トークンの節の AlmaLinux の手順と本物の GitLab、tmux の節 (カーソル色)
   - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
 | 項目 | AlmaLinux 10 | Windows 11 |
@@ -1055,6 +1132,7 @@
 | GitLab の個人アクセストークン (`read_api`) | GitLab プレビューで、GitLab 本体に描かせる ([トークンの節](#gitlab-プレビューのトークンを設定する-任意)) | 任意 (無ければ近似表示になる) |
 | ブラウザ | GitLab プレビューのページ | 任意 (プレビューを使うときだけ) |
 | wl-clipboard (`wl-paste`) | `<leader>ci` での画像の貼り付け (Linux) | 任意 (無ければ `<leader>ci` だけが使えない) |
+| GNOME Shell 49 | [上部バーの節](#gnome-の上部バーを-ime-連携に合わせる-任意)の拡張 (上部バーと Super+Space の順番を Neovim の IME の切り替えに合わせる) | 任意 (無ければ上部バーが Neovim の切り替えに付いてこないだけ) |
 | OSC 52 の書き込みに対応した端末 (WezTerm の nightly など) | SSH 越しのヤンクを手元のクリップボードに入れる ([SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)) | 任意 (SSH で使うときだけ) |
 | ネットワーク | 初回のプラグイン取得、Mason、treesitter のパーサー。GitLab プレビューでは GitLab と cdn.jsdelivr.net | 初回のみ必須 |
 
@@ -1102,6 +1180,7 @@
 | `~/.bashrc` | `eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"` の 1 行 (Linux)。トークンの節を行ったときは `GITLAB_TOKEN` (と `GITLAB_HOST`) の行も |
 | `org.gnome.desktop.input-sources sources` | `[('xkb', 'us'), ('ibus', 'anthy')]` (Linux) |
 | `org.freedesktop.ibus.engine.anthy.shortcut default` | `on_off` が `['Zenkaku_Hankaku']` だけ (Linux) |
+| `~/.local/share/gnome-shell/extensions/ibus-engine-follow@ryo-aoki-pc.github.com` | [上部バーの節](#gnome-の上部バーを-ime-連携に合わせる-任意)を行ったとき、`~/.config/nvim/gnome-shell/` の拡張へのつなぎ。`org.gnome.shell enabled-extensions` にも入る (Linux) |
 | `*.bak` | 退避した以前の設定とデータ (あった場合だけ) |
 
 - Windows のプラグインと Mason のツールは `%LOCALAPPDATA%\nvim-data` に入る
@@ -1146,6 +1225,17 @@
   - この設定は両方を narrow 側 (`single` / `treat_east_asian_ambiguous_width_as_wide=false`) に揃えてある。端末側だけを wide にしない
 - **`lazy-lock.json` が勝手に変わる**: `:Lazy sync` / `:Lazy update` は最新に上げる。揃えるだけなら `:Lazy restore`
   - 初めてのマシンの初回起動でも変わる ([AlmaLinux 導入の手順 16](#almalinux-10-に導入する-1-度だけ) の補足)
+- **日本語のときに `<C-j>` で英数に戻らない (Linux)**: Anthy の `on_off` に `Ctrl+J` が残っていて、Neovim に届く前に Anthy の中のひらがなと英字が切り替わっている
+  - 打った英字が、そのまま出たり「あ」になったりと、日本語の中で入力が揺れるのが特徴
+  - AlmaLinux 導入の手順 13〜15 を Homebrew の `gsettings` で実行すると、dconf ではなく `~/.config/glib-2.0/settings/keyfile` に書かれて効かない (手順 13 の補足)
+  - `/usr/bin/gsettings` で確かめ、`Ctrl+J` が残っていれば手順 14・15 を貼り直す (今の手順は `/usr/bin/gsettings` を使う)
+
+  ```bash
+  /usr/bin/gsettings get org.freedesktop.ibus.engine.anthy.shortcut default | grep -o "'on_off': <\[[^]]*\]>"
+  ```
+
+- **GNOME の上部バーが Neovim の `あ` / `A` とずれる・最初の Super+Space が空振りする**: GNOME Shell は、Neovim が切り替えた engine に上部バーを合わせない
+  - [上部バーの節](#gnome-の上部バーを-ime-連携に合わせる-任意)の拡張を入れると揃う。入れない場合は、Neovim の中では `<C-j>` を使う (README の補足)
 - **日本語が一切入力できない (Linux)**: ibus のエンジン自体が起動に失敗している可能性がある
   - Neovim の中だけでなく、OS 全体で打てなくなるのが特徴
   - ibus はエンジンの起動に失敗しても黙って英数のままになる。`ibus engine` は `anthy` を返すのに変換だけが効かない、という見え方になる
@@ -1420,6 +1510,7 @@
   - 手順 1 は `epel` の行を出した。手順 4 の `rpm -q` は `ripgrep` と `fd-find` の 2 行が `not installed` で、ほかは入っていた。`node --version` は `v22.23.2`、`command -v` は 5 つとも場所を出した
   - 手順 7・9・11 は `brew` の場所・`brew shellenv` の行・`NVIM v0.12.5` と 2 つの場所。手順 12 の `fc-match` は `HackGenConsoleNF-Regular.ttf: "HackGen Console NF" "Regular"`
   - 手順 13 の `gsettings get` は `[('xkb', 'us'), ('ibus', 'anthy')]`。手順 14 で作った値と手順 15 の `gsettings get` は、どちらも `'on_off': <['Zenkaku_Hankaku']>`
+  - ただし、この `gsettings` は PATH の先頭の Homebrew のもので、dconf ではなく `~/.config/glib-2.0/settings/keyfile` (2026-09-21 に作られていた) を読んでいた。dconf の `on_off` は既定のまま `Ctrl+J` を含んでいた (下の「本物のキーでの確認」で見つけた。入力ソースは dconf にも同じ値が入っていた)
   - `which python3` は `/usr/bin/python3` だった (Homebrew の python@3.14 は依存として入っていて、link されていない)
 - **差し替えた環境での導入** (手順 6・16〜19):
   - `XDG_CONFIG_HOME` / `XDG_DATA_HOME` / `XDG_STATE_HOME` / `XDG_CACHE_HOME` と npm のキャッシュを一時的な場所に向けて nvim を起動した。IME 連携は ibus のバスを `~/.config/ibus/bus` から引くので、本物の ibus-anthy を使った
@@ -1464,6 +1555,19 @@
 - **利用者の目視** (WezTerm で常用の環境の nvim を開き、AlmaLinux 導入の手順 17 と同じ試験用の Markdown で):
   - Space 2 回のピッカーで、アイコンが豆腐にならずに出た
   - `<leader>cp` で、Firefox のタブに近似表示のプレビュー (上の帯、見出しと本文) が出た
+  - 「Super+Space と上部バー」「カーソルのすぐ下の `あ`」は、おかしいという報告だった (次の項目)
+- **本物のキーでの確認** (利用者の報告の後。WezTerm で tmux を通さずに起動した nvim に、フォーカス・モード・IME の状態・表示の呼び出し・受け取ったキーを記録させ、利用者に打ってもらった):
+  - 日本語のときの `<C-j>` は、3 回とも Neovim に届かなかった。続けて打った `a` は、そのまま `a` で届いたり「あ」で届いたりした (Anthy の中のひらがなと英字が `Ctrl+J` で切り替わっていた)
+  - Anthy の設定を Anthy 自身の読み方 (`AnthyPrefs`) で読むと、`on_off` が `['Zenkaku_Hankaku', 'Ctrl+space', 'Ctrl+J']` のままで、dconf にも利用者の値が無かった。手順 13〜15 が Homebrew の `gsettings` で keyfile に書かれていた (Homebrew の glib は cairo・ffmpeg-full・imagemagick-full などの依存で入っていた)
+  - `/usr/bin/gsettings` で手順 14・15 を入れ直すと (`Ctrl+J` は `commit` だけに残る。未確定の文字が無ければ Anthy は `Ctrl+J` を通す)、日本語のときも `<C-j>` で毎回 `あ` / `A` が切り替わり、カーソルのすぐ下にも出た (利用者が確かめた)
+  - Neovim を開いた時点で上部バーがずれていて、最初の Super+Space では engine が変わらなかった (すでに `xkb:us::eng` だった)。GNOME Shell 49.4 の `ui/status/keyboard.js` と `misc/ibusManager.js` を読むと、外からの engine の変更で「今の入力ソース」と Super+Space の順番 (MRU) を更新しない。そのため[上部バーの節](#gnome-の上部バーを-ime-連携に合わせる-任意)の拡張を足した
+  - Super+Space では、GNOME Shell がキーボードを掴むので、WezTerm から FocusLost → engine の切り替え → FocusGained の順で届くことがあった (記録の 23:36:15.715 → 16.198 → 16.200)。カーソルのすぐ下の表示は、フォーカスが外れている間は出さないので、Super+Space の表示が出なかった。`lua/config/ime_indicator.lua` を、外れている間に変わっていたら FocusGained で出すように直した
+- **上部バーの拡張の確認**: 画面の無い gnome-shell 49.4 を、閉じたセッションバス (`dbus-run-session`)・一時的な XDG の置き場所・`GSETTINGS_BACKEND=keyfile` で起動し、拡張を有効にして確かめた
+  - gnome-shell が自前の ibus-daemon を起動し、拡張は `enabled` になった
+  - `ibus engine` で `anthy` → `xkb:us::eng` → `anthy` → `xkb:us::eng` と切り替えると、そのたびに今の入力ソースが `anthy` / `us` に付いてきた (検証用の環境変数で出したログ)
+  - ibus は、同じ engine を設定し直してもシグナルを出さなかった (拡張が行き来を起こさない根拠)
+  - 利用者の PC には、拡張を worktree へつないで `org.gnome.shell enabled-extensions` に足した (有効になるのは次のログインから)
+- **カーソルのすぐ下の表示の直しの確認**: 直した設定を一時的な `XDG_CONFIG_HOME` で起動し、`doautocmd FocusLost` → 外から `anthy` → `doautocmd FocusGained` とすると、戻った時点で `あ` の窓が出た。変化が無いとき・ノーマルモードのときは出ず、フォーカスがあるときの `<C-j>` は今までどおり出た
 - **調べて分かったこと**:
   - ノーマルモードで外から `anthy` にした後に、`:qa<CR>` を一度に送ると、engine は `xkb:us::eng` のまま残った。`:` で英数に切り替える要求の完了より先に、終了時の復帰が走る
     - `ZQ` で抜けるか、`:` の後に 0.3 秒おいてから `qa` と打つと、`anthy` に戻った。人の打鍵より速い入力 (マクロや `nvim_input`) でだけ起きる
@@ -1472,11 +1576,14 @@
   - el10 の tmux 3.3a は、`capture-pane -p` で落ちた (ASCII だけの画面でも)。画面は Neovim の `screenstring()` で読んだ
   - `wl-copy` は常駐してクリップボードを配るので、出力をパイプにつないで呼ぶと、呼び出し元がクリップボードを空に戻すまで終わらない
   - `:checkhealth` を全部流すと、Neovim 0.12 の vim.pack の検査が空の `site/pack/core/opt` を作り、lazy の検査が `found existing packages` と警告する
+  - 最初の確認では、キーを RPC で Neovim に直接送ったので IBus を通らず、`Ctrl+J` が Anthy に食われることに気付けなかった
+  - 画面の無い gnome-shell は、つながっている USB のボリュームを自動でマウントしようとした (ntfs3 が無くて失敗し、何も変わらなかった)。次に行うときは `org.gnome.desktop.media-handling automount` を false にする
 
 #### 未確認事項 (AlmaLinux 10 の実機での導入と取り込み)
 
 - AlmaLinux 導入の手順 1〜15 の実行 (この PC では済んでいた) と、ログインし直しての ibus の読み直し
-- 本物の Super+Space と GNOME の上部バーの表示 (`busctl` で代えた)
-- 画面での `あ` / `A` の窓とカーソルの色の見え方 (窓の位置と色の設定は、画面を文字として読んで確かめた)
+- 上部バーの節を本物のログインで通すこと (拡張は入れたが、ログインし直していない)。本物の Super+Space で上部バーと lualine が揃うこと
+- Super+Space で切り替えたときの、カーソルのすぐ下の表示 (直しは擬似のフォーカスの出入りで確かめた)
+- 画面でのカーソルの色の見え方
 - トークンの節の AlmaLinux の手順と、本物の GitLab での表示
 - tmux の節 (カーソル色)、JIS 配列のキーボード、aarch64

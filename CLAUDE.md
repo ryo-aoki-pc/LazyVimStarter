@@ -81,7 +81,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
 
 OS の IME を Neovim のモードに追従させる仕組み。Neovim には `imactivatefunc` /
 `imstatusfunc` が無いため、外部プロセス経由で IME デーモンを叩く自前実装になっている。
-7 ファイルに分かれる。
+7 ファイルに分かれ、GNOME の上部バーを合わせる GNOME Shell の拡張 (任意) が別にある。
 
 - **`lua/config/ime.lua`** — 本体 (約 740 行)。ibus の global engine 名
   (`anthy` = 日本語 / `xkb:us::eng` = 英数) **だけ**を状態の真実とし、`busctl` / `gdbus` /
@@ -108,6 +108,9 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
     出さない (`<Esc>` の英数化は観測時点でノーマルモードなので出ない)。検索では noice の検索欄の窓に
     `bufpos` で合わせ、カーソルの 1 行上に出す。窓は開いた時点の位置に固定されるため、`CursorMovedI`・
     `CmdlineChanged`・`ModeChanged`・`WinLeave` で早めに消す。
+    フォーカスが外れている間 (`FocusLost` から `FocusGained` まで) は出さず、その間に変わっていたら `FocusGained` で
+    今の状態を出す。GNOME の Super+Space はキーボードを掴むので、WezTerm を直接使うと FocusLost → 切り替え →
+    FocusGained の順で届き、出し直さないと Super+Space の表示が一度も出ない (実機で確認)。
   - 検索している間は、検索欄の右端に出し続ける。noice が ext_messages を使うと Neovim が `cmdheight` を
     0 にし (`ui.c` の `ui_refresh`)、lualine が最下段に来て、同じ最下段に出る noice の検索欄 (LazyVim の
     `bottom_search`) に覆われるため。`CmdlineEnter` / `CmdlineLeave` で開け閉めする (noice は検索欄を
@@ -118,6 +121,11 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   (`nvim__redraw`)。`ime_preedit.lua` と `ime_indicator.lua` が使う。
 - **`lua/config/keymaps.lua`** — `<C-j>` トグル。**挿入モードとコマンドラインのみ**に張る
   (ノーマルモードの `<C-j>` は LazyVim のウィンドウ移動)。
+- **`gnome-shell/ibus-engine-follow@ryo-aoki-pc.github.com/extension.js`** — GNOME Shell の拡張 (任意。
+  docs/setup.md の上部バーの節で入れる。Neovim の設定ではない)。GNOME Shell は ibus の engine が外から変わっても
+  「今の入力ソース」(上部バー・Super+Space の MRU) を更新しないので、`GlobalEngineChanged` を受けて合わせる。
+  `activateInputSource()` はキーボードを掴んで端末にフォーカスの出入りを起こすので使わず、内部の
+  `_currentInputSourceChanged()` を呼ぶ。GNOME Shell 49.4 で確認 (`metadata.json` の `shell-version` は 49 だけ)。
 - **`lua/config/ime_preedit.lua`** — Neovide 専用 (他では no-op)。Neovide は既定で IME の
   未確定文字列を描かないため、`neovide.preedit_handler` を差し替えてカーソル位置に inline の
   extmark で描く。`right_gravity = false` でないと挿入モードのカーソルが未確定文字列の前に出る。
@@ -213,6 +221,14 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
 - blink.cmp の `cmdline.sources` はリストが spec 間でマージされず丸ごと置き換わる。
   `lua/plugins/migemo.lua` で blink 既定 (`buffer` `cmdline`) ごと書いているので、cmdline の
   ソースを足すときはそこに足す。
+- 手順書や検証で GNOME / Anthy の設定を読み書きするときは `/usr/bin/gsettings` と書く。Homebrew の glib
+  (cairo・ffmpeg・imagemagick などの依存で入る) の `gsettings` が PATH の先頭に来ると、dconf を使えずに
+  `~/.config/glib-2.0/settings/keyfile` へ黙って書くので、GNOME にも Anthy にも効かない (実機で手順 15 が効いていなかった)。
+  Anthy が実際に使うキー割り当ては、`/usr/share/ibus-anthy/setup` の `AnthyPrefs` で読むと確かめられる
+- IME のキー (`<C-j>` など) を確かめるときは、キーを本物のキーボードから打つ。`--remote-send` や `nvim_input` は
+  IBus を通らないので、Anthy がキーを食う不具合を見逃す
+- GNOME Shell の拡張は内部の関数 (`_currentInputSourceChanged`) に頼る。GNOME を上げたら docs/setup.md の上部バーの節の
+  手順 4 で確かめ、動けば `metadata.json` の `shell-version` に版を足す
 - IME 連携を触るときは、対応環境が無くても静かに無効化される性質を壊さないこと
   (headless やコンテナで設定全体が落ちる)。
 - タイマーなどから `:normal` を実行するプラグインは、挿入モードのまま `ModeChanged` の `i:n` / `n:i` を
@@ -250,7 +266,7 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   `## 実施手順` の下を、シナリオの見出し (`###`、末尾の括弧に頻度) に分ける:
   「AlmaLinux 10 に導入する (1 度だけ)」手順 1〜19、「Windows 11 に導入する (1 度だけ)」手順 1〜11、
   「ほかのマシンの変更を取り込む (繰り返し)」手順 1〜2。後ろに「カーソル色を tmux で効かせる (任意)」
-  「GitLab プレビューのトークンを設定する (任意)」「SSH 越しのヤンクを手元のクリップボードに送る (任意)」「更新」「ロールバック」(OS ごとの手順は
+  「GNOME の上部バーを IME 連携に合わせる (任意)」「GitLab プレビューのトークンを設定する (任意)」「SSH 越しのヤンクを手元のクリップボードに送る (任意)」「更新」「ロールバック」(OS ごとの手順は
   「(この節の手順 N の代わりに)」) と `## 補足` を置く。
   - 記法は `~/setup-notes` の CLAUDE.md の「手順の形」「表現の規則」と kvm-container の `docs/setup.md` に揃える:
     太字にしない 1 行の説明「〜する。」→ ブロック → 箇条書き (末尾に「。」を付けない) → 折り畳みの補足 1 つまで。
@@ -266,7 +282,10 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
     そのまま貼って通した (aarch64 は未確認。検証した設定は PR #26 より前)。GNOME の実機では、導入済みの PC で
     置き場所を差し替えて導入の手順 16〜19 と取り込みの手順 1 (変更がある状態) を通した (手順 1〜15 は
     状態の確認だけ。パーサーとハイライト、カーソル直下と検索中の `あ` / `A`、img-clip、GitLab の近似表示と Firefox は確かめ、
-    アイコンの字形と Firefox の表示は利用者が目で確かめた。本物の Super+Space・`あ` / `A` の窓の見え方・トークンの節は未確認)。Windows 11 は実機 (Windows 11 Pro) で、設定とデータの置き場所を
+    アイコンの字形と Firefox の表示は利用者が目で確かめた)。その後、利用者の本物のキーで、手順 15 が Homebrew の
+    `gsettings` のせいで dconf に入っておらず日本語のときの `<C-j>` が Anthy に食われていたことが分かり、`/usr/bin/gsettings`
+    で入れ直して直った。上部バーの拡張は画面の無い gnome-shell 49.4 で確かめ、本物のログイン・本物の Super+Space・
+    トークンの節は未確認。Windows 11 は実機 (Windows 11 Pro) で、設定とデータの置き場所を
     差し替えて Windows PowerShell 5.1 に渡して通した (手順 2 とロールバックの手順 7 は未実行。IME の切り替えは
     モックの zenhan で確かめた。Neovide 0.16.2 の画面は、未確定文字列のハンドラを呼ぶ形で確かめ、本物の IME での入力は未確認。
     検索中の表示は、手順を通した後に Neovide と端末で個別に確かめた)。
