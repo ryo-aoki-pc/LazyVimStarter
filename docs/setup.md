@@ -29,7 +29,7 @@
 - この設定で何ができるかは [README](../README.md)。外部コマンドの用途は[必要なもの一覧](#必要なもの一覧)
 
 > [!WARNING]
-> **AlmaLinux 10 の手順は x86_64 のコンテナでのみ通した**。GNOME の画面と aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは、本物の GitLab での描画を確かめていない** (描画は模擬の API で確かめた。gitlab.com には、模擬のトークンが拒まれるところまで送った)。範囲は[対象と検証環境](#対象と検証環境)。
+> **AlmaLinux 10 の手順は x86_64 のコンテナでのみ通した**。GNOME の画面と aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
 
 ### AlmaLinux 10 に導入する (1 度だけ)
 
@@ -905,8 +905,9 @@
       - `<leader>cp` で既定のブラウザ (Edge) が開いてページがつながること、止めて開き直すと同じタブがつながり直すこと
       - トークンの節の Windows の手順 3・4・8 を、Windows PowerShell 5.1 の画面に打ち込んで (模擬のトークン。最後に消した)
       - gitlab.com が模擬のトークンを 401 で拒み、近似表示に切り替わってそれ以上送らないこと
+      - 本物の GitLab で表示できること (マージの後に、利用者が自分のトークンで `<leader>cp` を押して確かめた)
     - **確かめていないこと**:
-      - 本物の GitLab (gitlab.com・社内の GitLab) での描画 (本物のトークンが要る)
+      - 本物の GitLab での、記法ごとの見え方 (数式・mermaid・画像・参照などは、模擬の API でだけ確かめた)
       - トークンの節の AlmaLinux 10 の手順 (`HOME` を差し替えて Windows の bash で実行しただけ)
   - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
@@ -1220,10 +1221,11 @@
     - 手順 4 は URL を入れると `GITLAB_HOST` が入り、空のまま Enter で消えた。手順 8 で 2 つとも消えた
     - `SetEnvironmentVariable(…, 'User')` は 1 回 2 秒ほどかかった (変えたことを全てのウィンドウに知らせ終わるまで戻らない)。プロンプトが戻る前に次を打つと待たされるので、手順の箇条書きに書いた
   - gitlab.com: 模擬のトークンで Markdown API を呼ぶと、`401` と `{"message":"401 Unauthorized"}` が返った (Cloudflare の 403 ではない)。プレビューは `トークンが拒否された (HTTP 401)` の近似表示になり、その後の編集では curl を呼ばなかった
+- **本物の GitLab** (マージの後): 利用者が自分のトークンを設定して `<leader>cp` を押し、GitLab が描いた表示でプレビューが出ることを確かめた。どの記法を見たかは記録していない
 
 #### 未確認事項 (GitLab プレビューなど)
 
-- 本物の GitLab (gitlab.com・社内の GitLab) での描画 (本物のトークンが要る) と、GitLab の版による HTML の違い (`data-canonical-src`・アラート・`data-sourcepos`)
+- 本物の GitLab での、記法ごとの見え方と、GitLab の版による HTML の違い (`data-canonical-src`・アラート・`data-sourcepos`)
 - 非公開のプロジェクトの `/uploads/` の画像、`::include`、PlantUML / Kroki の図
 - Linux での画像の貼り付け (`wl-clipboard`、Wayland と tmux)
 - AlmaLinux 10 での、この変更の後の通し (`wl-clipboard` の導入、トークンの節の AlmaLinux の手順)
