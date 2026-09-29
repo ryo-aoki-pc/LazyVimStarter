@@ -1,0 +1,4 @@
+# 改行は LF に揃える (Windows の git が core.autocrlf=true でも、LF で取り出す)。
+# lazy.nvim は lazy-lock.json を LF で書き直すので、CRLF で取り出していると中身が同じでもファイルの
+# 大きさが変わり、git status が M を出し続ける (git diff は何も出さない)。scoop の git は core.autocrlf=true が既定。
+* text=auto eol=lf
