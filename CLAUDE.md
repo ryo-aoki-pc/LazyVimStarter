@@ -274,5 +274,6 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
     表示できることはマージの後に利用者が確かめた (本物の GitLab での記法ごとの見え方と、AlmaLinux 10 での通しは未確認)。
     SSH 越しのクリップボード (OSC 52) は、コンテナで tmux を手元の端末の代わりにして確かめた後、AlmaLinux 10 の実機で
     WezTerm の nightly (画面の無い mutter の上) から ssh し、SSH の節のブロックをそのまま貼って通した (Windows の WezTerm、
-    GNOME にログインした画面、PAM を通すシステムの sshd は未確認)
+    GNOME にログインした画面、PAM を通すシステムの sshd は未確認)。取り込みの手順 1 は AlmaLinux 10 の実機で、使っている
+    設定に対して行った (増えたプラグインを起動時に入れると lock が書き直され、`checkout` して `restore` し直すと揃うことを含む)
 - `README.md` — この設定で何ができるかの説明。機能の挙動と設計上の判断、運用上の注意。

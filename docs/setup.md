@@ -572,6 +572,7 @@
    ```
 
    - `git status --short` が何も出さなければ、`lazy-lock.json` の版に揃っている
+   - `git status --short` が `M lazy-lock.json` を出したら、取り込んだ変更で増えたプラグインを起動時に入れたとき、lock が入っていた古い版で書き直されている (`restore` はその lock に揃えた)。`git -C ~/.config/nvim checkout -- lazy-lock.json` で戻し、`nvim --headless "+Lazy! restore" +qa` をもう一度貼る (2 回目は入れるものが無いので書き直されない)
    - `pull` が `Not possible to fast-forward` で止まったら、このマシンに push していないコミットがある。先に push するか、`git -C ~/.config/nvim log --oneline '@{u}..'` で中身を見る
    - `pull` が `Your local changes to the following files would be overwritten by merge:` で `lazy-lock.json` を挙げて止まったら、このマシンで lock が書き換わっている。`:Lazy update` の結果として残すのでなければ、`git -C ~/.config/nvim checkout -- lazy-lock.json` で戻してから、この手順を貼り直す
 
@@ -583,6 +584,7 @@
    ```
 
    - `git status --short` が何も出さなければ、`lazy-lock.json` の版に揃っている
+   - `git status --short` が `M lazy-lock.json` を出したら、取り込んだ変更で増えたプラグインを起動時に入れたとき、lock が入っていた古い版で書き直されている (`restore` はその lock に揃えた)。`git -C "$env:LOCALAPPDATA\nvim" checkout -- lazy-lock.json` で戻し、`nvim --headless "+Lazy! restore" +qa` をもう一度貼る (2 回目は入れるものが無いので書き直されない)
    - `pull` が `Not possible to fast-forward` で止まったときは、`restore` は走らず、`git status --short` も何も出さない。このマシンに push していないコミットがある。先に push するか、`git -C "$env:LOCALAPPDATA\nvim" log --oneline '@{u}..'` で中身を見る
    - `pull` が `Your local changes to the following files would be overwritten by merge:` で `lazy-lock.json` を挙げて止まったら、このマシンで lock が書き換わっている。`:Lazy update` の結果として残すのでなければ、`git -C "$env:LOCALAPPDATA\nvim" checkout -- lazy-lock.json` で戻してから、この手順を貼り直す
 
@@ -980,6 +982,13 @@
       - Windows の WezTerm と、Windows Terminal など WezTerm 以外の端末
       - GNOME にログインした画面の WezTerm (同じ版の mutter を、画面無しで動かして代えた)
       - PAM を通すシステムの sshd でのログイン (同じ `/usr/sbin/sshd` を、検証用の設定で自分のユーザーのまま立てた)
+  - **取り込みの手順 1 は、AlmaLinux 10 の実機で、使っている設定とプラグインに対して行った (2026-09-29)**
+    - aa95dab から、#34 と #35 を取り込んだ。このマシンには、#30 で足した img-clip.nvim がまだ入っていなかった
+    - ブロックと同じコマンドを、端末に貼る代わりにシェルから実行した。始める前に、このマシンで lock が書き換わっていた (外したプラグインの行が 3 行増えていた) ので、`checkout` で戻した
+    - 確かめたこと:
+      - 1 回目の `restore` は、起動時に img-clip.nvim を入れたときに lock が古い版で書き直され、更新した 6 個が古い版のまま、`git status --short` が `M lazy-lock.json` を出した
+      - lock を `checkout` で戻して `restore` をもう一度実行すると、`git status --short` は何も出さず、38 個 (無効にした render-markdown.nvim 以外) が lock の版に揃った
+      - 節のリードの `:Lazy clean` (4 個のディレクトリを消した) と `:MasonUninstall markdown-toc` を headless で実行しても、lock は変わらなかった。`checkhealth lazyvim luamigemo` の ERROR は 0 件
   - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
 | 項目 | AlmaLinux 10 | Windows 11 |
