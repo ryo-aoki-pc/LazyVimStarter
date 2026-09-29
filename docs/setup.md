@@ -3,11 +3,11 @@
 ## 実施手順
 
 > [!IMPORTANT]
-> - **AlmaLinux 10 では、GNOME にログインしたデスクトップの端末で、自分のユーザーのまま実行する**。`sudo -i` した root のシェルでは行わない (Homebrew は root で動かず、`gsettings` は実行したユーザーの設定しか変えない)
+> - **AlmaLinux 10 では、GNOME にログインしたデスクトップの端末で、自分のユーザーのまま実行する** ([SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)だけは、手元の WezTerm から ssh したシェルで貼る)。`sudo -i` した root のシェルでは行わない (Homebrew は root で動かず、`gsettings` は実行したユーザーの設定しか変えない)
 > - **AlmaLinux 10 で実行するユーザーは `sudo` できる必要がある** ([AlmaLinux 導入の手順 2・3・8](#almalinux-10-に導入する-1-度だけ))
 > - **Windows 11 では、管理者ではない PowerShell で実行する**
 > - **対話入力がある**: AlmaLinux 導入の手順 3 (`[y/N]` と EPEL の鍵)、手順 8 (Homebrew の `RETURN` と `sudo` のパスワード)、手順 10 (`brew` の `[y/n]`)、[GitLab プレビューのトークンの節](#gitlab-プレビューのトークンを設定する-任意)の手順 1〜4 (トークンと GitLab の URL)。答えてから次の手順を貼る
-> - **Neovim の画面が開く**: AlmaLinux 導入の手順 17・19、Windows 導入の手順 9・11。`:qa` で閉じてから次の手順を貼る
+> - **Neovim の画面が開く**: AlmaLinux 導入の手順 17・19、Windows 導入の手順 9・11、[SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 2。`:qa` で閉じてから次の手順を貼る
 > - **AlmaLinux 導入の手順 15 の後で、ログアウトしてログインし直す** (入れた ibus-anthy と入力ソースを読み直させる)
 
 | シナリオ | 頻度 | 内容 |
@@ -17,6 +17,7 @@
 | [ほかのマシンの変更を取り込む](#ほかのマシンの変更を取り込む-繰り返し) | 繰り返し | 別のマシンで push した設定と `lazy-lock.json` を取り込み、プラグインの版を揃える |
 | [カーソル色を tmux で効かせる (任意)](#カーソル色を-tmux-で効かせる-任意) | 任意、1 度だけ | tmux の中でも、挿入モードのカーソル色を IME の状態で変える (AlmaLinux 10) |
 | [GitLab プレビューのトークンを設定する (任意)](#gitlab-プレビューのトークンを設定する-任意) | 任意、1 度だけ | `<leader>cp` のプレビューを GitLab 本体に描かせるため、アクセストークン (と GitLab の URL) を環境変数にする |
+| [SSH 越しのヤンクを手元のクリップボードに送る (任意)](#ssh-越しのヤンクを手元のクリップボードに送る-任意) | 任意、1 度だけ | 手元の WezTerm から ssh した AlmaLinux 10 の Neovim で、ヤンクが OSC 52 で手元のクリップボードに入ることを確かめる (向きは Neovim → 手元だけ) |
 | [更新](#更新) | 更新のたび | Neovim・外部コマンド・プラグインを上げる |
 | [ロールバック](#ロールバック) | 戻すとき | この設定とプラグインを消し、退避した設定と入力ソースを戻す |
 
@@ -29,7 +30,7 @@
 - この設定で何ができるかは [README](../README.md)。外部コマンドの用途は[必要なもの一覧](#必要なもの一覧)
 
 > [!WARNING]
-> **AlmaLinux 10 の手順は x86_64 のコンテナでのみ通した**。GNOME の画面と aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
+> **AlmaLinux 10 の手順は x86_64 のコンテナでのみ通した**。GNOME の画面と aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、Windows の WezTerm と GNOME の画面では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
 
 ### AlmaLinux 10 に導入する (1 度だけ)
 
@@ -724,6 +725,53 @@
 
 ---
 
+## SSH 越しのヤンクを手元のクリップボードに送る (任意)
+
+- 手元の端末から AlmaLinux 10 に ssh して Neovim を使うとき、`y` `d` `x` などでレジスタに入れたものを、手元のクリップボードにも入れる
+- 仕組みは端末の OSC 52 で、この設定が SSH のシェル (`SSH_CONNECTION` がある) で起動したときだけ使う。手元にも AlmaLinux 10 にも、足すソフトは無い
+- 向きは Neovim → 手元だけ。手元でコピーしたものは、端末の貼り付け (WezTerm は Ctrl+Shift+V) で Neovim に入れる
+- 手元の端末は WezTerm の nightly を想定している。安定版 (20240203) は、設定ファイルがあると OSC 52 を捨てる ([注意点](#注意点))
+- 先に[取り込みの手順 1](#ほかのマシンの変更を取り込む-繰り返し)で、AlmaLinux 10 の設定を最新にしておく
+- **この節は、GNOME の端末ではなく、手元の WezTerm から ssh したシェルで貼る**。tmux の中の Neovim は扱わない
+
+1. SSH のシェルで、この設定が OSC 52 を使うことを確かめる。
+
+   ```bash
+   printf 'SSH_CONNECTION=%s\n' "${SSH_CONNECTION:-(無い)}"
+   nvim --headless "+lua io.stdout:write((vim.g.clipboard or {}).name or '(無い)', '\n')" +qa
+   ```
+
+   - 1 行目が `SSH_CONNECTION=` に続けて、接続元と接続先のアドレスとポートを 4 つ出せばよい
+   - 2 行目が `OSC 52 (copy only)` と出ればよい
+   - `SSH_CONNECTION=(無い)` と出たら、SSH のシェルではない (`sudo -i` や `su -` のシェルでは消える)。ssh でログインしたユーザーのシェルで貼り直す
+   - 2 行目が `(無い)` と出たら、設定が古い。取り込みの手順 1 を貼ってから、この手順を貼り直す
+
+1. 試験用のテキストを開き、ヤンクした行が手元のクリップボードに入ることを確かめる。
+
+   ```bash
+   printf '%s\n' 'SSH 越しのヤンクを試す。' > /tmp/lazyvim-ssh.txt
+   nvim /tmp/lazyvim-ssh.txt
+   ```
+
+   - `yy` を押す。手元のアプリ (メモ帳など) に貼り付けると、`SSH 越しのヤンクを試す。` が入る
+   - `p` を押す。待たされずに、同じ行がすぐ下に入る
+   - `:set clipboard?` が `clipboard=unnamedplus` と出る
+   - `:qa!` で閉じる
+
+   <details>
+   <summary>補足: 仕組みと、手元から Neovim への向き</summary>
+
+   - ヤンクや削除のたびに、Neovim が OSC 52 (中身を base64 にしたエスケープシーケンス) を画面に書き、WezTerm がそれを手元のクリップボードに入れる。SSH は画面の出力として運ぶだけ
+   - LazyVim は SSH のシェルでは `clipboard` を空にするので、そのままでは `yy` が手元に入らない (WezTerm の nightly なら、`"+yy` は入る)
+   - Neovim は `clipboard` が空のときしか OSC 52 を自動で選ばない。この設定は `lua/config/options.lua` で OSC 52 を明示し、`clipboard` をローカルと同じ `unnamedplus` にしている
+   - `p` は端末に問い合わせず、この Neovim が最後に送った内容を貼る (行単位・矩形の形も保つ)。OSC 52 の読み出しには WezTerm も Windows Terminal も応えず、Neovim の内蔵の読み出しは 1 回ごとに 10 秒待つため
+   - 手元でコピーしたものは、WezTerm の貼り付け (Ctrl+Shift+V) で入れる。Neovim には貼り付け (bracketed paste) として届き、挿入モードでもノーマルモードでもカーソルの後ろに入る。レジスタには入らない
+   - ローカル (GNOME の端末や Neovide) で起動したときは、これまでどおり `wl-copy` などを使う (`SSH_CONNECTION` が無いので、この節の設定は効かない)
+
+   </details>
+
+---
+
 ## 更新
 
 - Neovim・外部コマンド・プラグインを上げる。設定そのものの取り込みは[ほかのマシンの変更を取り込む](#ほかのマシンの変更を取り込む-繰り返し)
@@ -912,6 +960,26 @@
     - **確かめていないこと**:
       - 本物の GitLab での、記法ごとの見え方 (数式・mermaid・画像・参照などは、模擬の API でだけ確かめた)
       - トークンの節の AlmaLinux 10 の手順 (`HOME` を差し替えて Windows の bash で実行しただけ)
+  - **SSH 越しのクリップボード ([SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)) は、x86_64 のコンテナで、tmux を手元の端末の代わりにして確かめた (2026-09-29)** ([付録](#付録-ssh-越しのクリップボードの検証記録-2026-09-29))
+    - Neovim 0.12.5 (公式の Linux 版のリリース) にこの設定とプラグイン 38 個を入れ、`SSH_CONNECTION` を付けて tmux の中で起動した。tmux (`set-clipboard on`) が OSC 52 を受けて作るペーストバッファを、手元のクリップボードの代わりに見た
+    - 確かめたこと:
+      - 変更前は、tmux の中の SSH のシェルで `yy` も `"+yy` も OSC 52 を出さない (`clipboard` が空で、tmux では OSC 52 が検出されず、クリップボードの提供元が無い)
+      - 変更後は、`yy`・`"+yy`・矩形・文字単位のヤンクで OSC 52 が出て、日本語を含めて中身が一致する。`p` は待たずに元の形 (行単位・矩形) で貼る
+      - まだ何も送っていないときの `p` は、待たずに、前に使ったレジスタから貼る (無ければ `E353`)。`SSH_CONNECTION` が無ければ、OSC 52 を出さない (これまでどおり)
+      - [SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 1・2 のブロック (手順 2 は tmux の中で、`yy`・`p`・`:set clipboard?`)
+    - 実物の WezTerm と AlmaLinux 10 での通しは、次の記録で確かめた
+  - **SSH 越しのクリップボードは、AlmaLinux 10 の実機で、WezTerm の nightly から ssh して通した (2026-09-29)** ([付録](#付録-almalinux-10-の実機での-ssh-越しのクリップボードの検証記録-2026-09-29))
+    - AlmaLinux 10.2 (x86_64) の上で、WezTerm 20260928 (nightly。利用者の設定ファイルのまま) を画面の無い mutter 49.4 で動かした
+    - その WezTerm から sshd に ssh し、ログインしたシェルに[SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)の**手順 1・2 のブロックをそのまま貼って**通した
+    - 確かめたこと:
+      - 手順 1 の出力 (`SSH_CONNECTION` の 4 つの値と `OSC 52 (copy only)`)、手順 2 の `yy`・`p`・`:set clipboard?`
+      - 続けて 5 回ヤンクしても、毎回その内容が手元のクリップボードに入ること
+      - 大きな範囲の `ggyG` (日本語の 8 万行、6.9 MB まで) が、ファイルとバイト単位で一致すること。矩形・文字単位の形
+      - 変更前は `yy` が入らず、`"+p` が 10 秒待って失敗すること (`"+yy` は入る。WezTerm の nightly は DA1 に `52` を出すので、noice があっても検出される)
+    - **確かめていないこと**:
+      - Windows の WezTerm と、Windows Terminal など WezTerm 以外の端末
+      - GNOME にログインした画面の WezTerm (同じ版の mutter を、画面無しで動かして代えた)
+      - PAM を通すシステムの sshd でのログイン (同じ `/usr/sbin/sshd` を、検証用の設定で自分のユーザーのまま立てた)
   - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
 | 項目 | AlmaLinux 10 | Windows 11 |
@@ -960,9 +1028,10 @@
 | GitLab の個人アクセストークン (`read_api`) | GitLab プレビューで、GitLab 本体に描かせる ([トークンの節](#gitlab-プレビューのトークンを設定する-任意)) | 任意 (無ければ近似表示になる) |
 | ブラウザ | GitLab プレビューのページ | 任意 (プレビューを使うときだけ) |
 | wl-clipboard (`wl-paste`) | `<leader>ci` での画像の貼り付け (Linux) | 任意 (無ければ `<leader>ci` だけが使えない) |
+| OSC 52 の書き込みに対応した端末 (WezTerm の nightly など) | SSH 越しのヤンクを手元のクリップボードに入れる ([SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)) | 任意 (SSH で使うときだけ) |
 | ネットワーク | 初回のプラグイン取得、Mason、treesitter のパーサー。GitLab プレビューでは GitLab と cdn.jsdelivr.net | 初回のみ必須 |
 
-- **不要なもの**: fzf (ピッカーは snacks.nvim の Lua 実装。`:checkhealth lazyvim` が警告を出すが機能には影響しない)、telescope とその C ビルド、make、Python、Deno、win32yank (Neovim の Windows ビルドに同梱済み)、プレビュー用の node のアプリ (GitLab プレビューは Neovim の中の HTTP サーバーと curl だけで動く)
+- **不要なもの**: fzf (ピッカーは snacks.nvim の Lua 実装。`:checkhealth lazyvim` が警告を出すが機能には影響しない)、telescope とその C ビルド、make、Python、Deno、win32yank (Neovim の Windows ビルドに同梱済み)、プレビュー用の node のアプリ (GitLab プレビューは Neovim の中の HTTP サーバーと curl だけで動く)、SSH 越しのクリップボードのための X11 転送・xclip・lemonade (OSC 52 で端末に渡す)
 
 ### 選択した方針
 
@@ -988,6 +1057,11 @@
 - **GitLab プレビューの設定は環境変数にする**: 名前は GitLab の CLI (glab) と同じ `GITLAB_TOKEN` / `GITLAB_HOST`
   - この設定のファイル (git で追跡し、ほかのマシンにも配る) にトークンを書かないため
   - トークンと URL は文書に書かず、貼った後に入力させる ([トークンの節](#gitlab-プレビューのトークンを設定する-任意))
+- **SSH 越しのクリップボードは OSC 52 にし、向きは Neovim → 手元だけにする** ([SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)): 端末が運ぶので、手元にも AlmaLinux 10 にもソフトを足さずに済む
+  - X11 転送 (`ssh -X` と xclip) は、手元に X サーバーが要る。lemonade などの中継は、転送したポートを同じサーバーのほかのユーザーも使える
+  - 手元 → Neovim の向きには OSC 52 の読み出しが要るが、WezTerm (nightly を含む) と Windows Terminal は応えない。端末の貼り付けで足りるので扱わない
+  - Neovim が OSC 52 を自動で選ぶのは `clipboard` が空のときだけで、`"+y` のように明示したときしか入らない。`y` でも入れるため、`lua/config/options.lua` で明示して `unnamedplus` にする
+  - 明示すれば、端末の検出にも頼らない。WezTerm の nightly は DA1 に `52` を出すので検出されるが、出さない端末では XTGETTCAP の応答頼みになり、noice がその応答を受け取らせない (folke/noice.nvim#1229)
 
 ### 完了時点の状態
 
@@ -1031,6 +1105,11 @@
 - **`<leader>ci` で画像を貼り付けられない**: `:ImgClipDebug` で、使ったコマンドと出力を見る
   - Linux では `wl-clipboard` が要り、Wayland のセッションで起動した Neovim だけが使える (tmux の中では `WAYLAND_DISPLAY` が引き継がれないことがある)
   - `Content is not an image.` は、クリップボードの中身が画像ではないとき。Windows では、PC のロック中はクリップボードを読めない
+- **SSH 越しにヤンクしても手元のクリップボードに入らない**: [SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 1 で、`SSH_CONNECTION` と `OSC 52 (copy only)` が出るかを確かめる
+  - WezTerm の安定版 (20240203) は、設定ファイル (`~/.wezterm.lua` など) があると OSC 52 を捨てる (wezterm#5917)。nightly にする
+  - GNOME Terminal と Ptyxis (どちらも VTE) は OSC 52 に対応していない。AlmaLinux 10 の GNOME から ssh するときも、WezTerm などを使う
+  - tmux の中の Neovim では、tmux の `set-clipboard` の既定 (`external`) がアプリの OSC 52 を捨てる。この文書では扱わない (`set -g set-clipboard on` が要る)
+  - `sudo -i` や `su -` の後のシェルには `SSH_CONNECTION` が無いので、この設定は OSC 52 を使わない
 - **`/` からの日本語検索が効かない**: `:checkhealth luamigemo` で、同梱の辞書と LuaJIT を確かめる
   - ローマ字として読めない入力 (`search` のような英単語、空白や記号を含むもの) は、わざと変換しない
   - まず `/kensaku` のような純粋なローマ字で試す
@@ -1076,6 +1155,9 @@
 - [GitLab Flavored Markdown](https://docs.gitlab.com/user/markdown/): GLFM の記法 (スニペットと近似表示が扱う記法の出どころ)
 - [GitLab の個人アクセストークン](https://docs.gitlab.com/user/profile/personal_access_tokens/): トークンの作り方とスコープ
 - [img-clip.nvim](https://github.com/HakonHarnes/img-clip.nvim): 画像の貼り付けの設定項目
+- [Neovim の clipboard-osc52](https://neovim.io/doc/user/provider/#clipboard-osc52): OSC 52 の提供元と、自動検出が効く条件 (`clipboard` が空のときだけ)
+- [wezterm#5917](https://github.com/wezterm/wezterm/issues/5917): 設定ファイルがあると OSC 52 が効かない (nightly で直った)
+- [folke/noice.nvim#1229](https://github.com/folke/noice.nvim/issues/1229): noice が XTGETTCAP の応答を受け取らせず、DA1 に `52` を出さない端末では OSC 52 の自動検出が効かない
 - [README](../README.md): この設定で何ができるか、IME 連携の設計と運用上の注意
 
 ### 付録: コンテナでの検証記録 (2026-09-28)
@@ -1232,3 +1314,70 @@
 - 非公開のプロジェクトの `/uploads/` の画像、`::include`、PlantUML / Kroki の図
 - Linux での画像の貼り付け (`wl-clipboard`、Wayland と tmux)
 - AlmaLinux 10 での、この変更の後の通し (`wl-clipboard` の導入、トークンの節の AlmaLinux の手順)
+
+### 付録: SSH 越しのクリップボードの検証記録 (2026-09-29)
+
+- **対象**: SSH のシェルで起動したときに、ヤンクを OSC 52 で手元のクリップボードに送る変更 (`lua/config/options.lua`) と、[SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)
+- **環境**: x86_64 のクラウドのコンテナ (AlmaLinux ではない)。Neovim 0.12.5 は公式の Linux 版のリリース (`nvim-linux-x86_64.tar.gz`)、tmux 3.4
+  - この設定を一時的な `XDG_CONFIG_HOME` に clone し、AlmaLinux 導入の手順 16 と同じ操作でプラグイン 38 個を入れた (`git status --short` は空)
+  - 手元の端末の代わりに tmux を使った。`set-clipboard on` の tmux は、中のアプリが出した OSC 52 をペーストバッファにする。`env -u TMUX` と `SSH_CONNECTION` を付けて nvim を起動し、キーは `send-keys` で送った
+  - SSH のサーバーは立てていない。この設定が見るのは `SSH_CONNECTION` だけなので、環境変数で代えた
+- **変更前** (`custom` の aa95dab): `yy` の後も `"+yy` の後も、ペーストバッファはできなかった
+  - `clipboard` は空、`provider#clipboard#Executable()` は空 (クリップボードの提供元が無い)、`g:termfeatures` は `{}` (OSC 52 が検出されていない)
+- **変更後**:
+  - `yy` で、ペーストバッファが `SSH 越しのヤンクを試す。` と改行 (UTF-8 のまま) になった。`"+yy` も同じ
+  - `p` はすぐに同じ行を下に貼り、`getregtype('+')` は `V` だった。矩形 (`<C-v>`) のヤンクは `\0222` で、`p` で矩形のまま貼れた。`yiw` は `v`
+  - ShaDa も送ったものも無い状態の `p` は、`E353: Nothing in register "` を出してすぐ戻った。ShaDa がある状態では、前回の起動のレジスタから貼った (Neovim の `get_yank_register()` が、提供元が失敗したときに直前のレジスタを使う)
+  - `clipboard` は `unnamedplus`、`provider#clipboard#Executable()` は `OSC 52 (copy only)` だった
+  - `SSH_CONNECTION` を外すと、`g:clipboard` は無く、`yy` でペーストバッファはできなかった (これまでどおり)
+  - `nvim --headless` は、`SSH_CONNECTION` の有無のどちらでもエラーを出さなかった
+- **手順書のブロック**: 手順 1・2 のブロックを `bash -n` に通し、手順 1 は `SSH_CONNECTION` の有無で `OSC 52 (copy only)` / `(無い)` を出した。手順 2 は tmux の中で打ち、`yy`・`p`・`:set clipboard?` が書いたとおりになった
+- **調べて分かったこと** (本文と方針に入れた):
+  - LazyVim は `SSH_CONNECTION` があると `clipboard` を空にする。Neovim 0.12.5 の `provider/clipboard.vim` は、`clipboard` が空で `g:termfeatures.osc52` が立っているときだけ OSC 52 を自動で選ぶ
+  - 検出 (`runtime/plugin/osc52.lua`) は DA1 に `52` が無ければ XTGETTCAP の `Ms` を問い合わせる。noice が messages / cmdline を扱っている間はその応答が届かない (folke/noice.nvim#1229)
+  - Neovim の OSC 52 の読み出しは、応答が無いと 1 秒待ってから、さらに 9 秒待つ。WezTerm (読み出しは未マージの PR だけ) と Windows Terminal は応えない
+
+#### 未確認事項 (SSH 越しのクリップボード)
+
+- 実物の WezTerm (nightly) と ssh で、手元のクリップボードに入ること。日本語と、大きな範囲 (`ggyG` など) の送り方
+- AlmaLinux 10 での通し (SSH のサーバーと、ログインしたシェルの `SSH_CONNECTION`)
+- Windows Terminal など、WezTerm 以外の端末
+
+### 付録: AlmaLinux 10 の実機での SSH 越しのクリップボードの検証記録 (2026-09-29)
+
+- **対象**: 上の付録と同じ変更 (20cf960)。上の付録の未確認事項のうち、実物の WezTerm と AlmaLinux 10 での通し
+- **環境**: AlmaLinux 10.2 (x86_64) の実機。Neovim 0.12.5 (Homebrew)、WezTerm 20260928_051827_7a370108 (nightly の RPM)、mutter 49.4、OpenSSH 9.9p1
+  - 利用者の GNOME の画面とクリップボードに触れないよう、専用のセッションバスの中で `mutter --headless --wayland --no-x11` を起動し、その上で WezTerm を動かした
+  - WezTerm の設定は、利用者の `~/.config/wezterm` のまま (設定ファイルがあると OSC 52 を捨てる wezterm#5917 の条件)
+  - クリップボードは、その mutter の RemoteDesktop の D-Bus (`EnableClipboard` / `SelectionRead`) で読んだ。seat にキーボードを持たせるため、同じ API の仮想キーボードを使った
+  - sshd は、同じ `/usr/sbin/sshd` を自分のユーザーのまま `127.0.0.1:2222` に立てた (検証用の鍵と設定、`UsePAM no`)。システムの sshd の設定と `~/.ssh` は変えていない
+  - この設定は PR のブランチを worktree に置き、ssh したシェルで `XDG_CONFIG_HOME` などを一時的な場所に向けた。プラグインは `~/.local/share/nvim` を写し、`Lazy! restore` で lock に揃えた
+  - 最初は一時的な場所のパスが長く、`vim.loader` のキャッシュのファイル名が上限を超えて (`ENAMETOOLONG`) `lazyvim.plugins` が読めなかった (noice も入らない)。短いパスに置き直した
+- **手順書のブロック**: ssh したシェルに、手順 1・2 のブロックをそのまま貼った
+  - ログインしたシェルの `SSH_CONNECTION` は `127.0.0.1 51210 127.0.0.1 2222`、`TERM` は `xterm-256color` で、`TMUX` は無かった。手順 1 の 2 行目は `OSC 52 (copy only)` だった
+  - 手順 2 の `yy` で、クリップボードが `SSH 越しのヤンクを試す。` と改行 (35 バイト、UTF-8) になった
+  - `p` は 0.02 秒で同じ行を下に貼り、`:set clipboard?` は noice の窓に `clipboard=unnamedplus` を出した
+  - Neovim の中では noice が読み込まれ、`g:termfeatures` は `{ osc52 = true }`、クリップボードの提供元は `OSC 52 (copy only)` だった
+- **変更後** (キーは仮想キーボードで WezTerm に打った):
+  - 違う文の 5 行を、1 行ずつ `yy` で 5 回続けてヤンクすると、毎回その行がクリップボードに入った
+  - `ggyG` で、日本語の 2,000 行 (170,893 B)・2 万行 (1,728,894 B)・8 万行 (6,948,894 B) のファイルが、ファイルとバイト単位で一致した
+  - 矩形 (`<C-v>`) は `A \nB \nC ` で、`getregtype('+')` は `\0222`。`p` で矩形のまま貼れた。`yiw` は `回目` だけが入った
+  - ShaDa の無い新しい状態で、何も送らずに `p` を押すと、1 秒以内に `E353: Nothing in register "` を出した
+- **変更前** (`custom` の aa95dab。同じ WezTerm と ssh):
+  - `yy` では、クリップボードは変わらなかった (`clipboard` は空)
+  - noice は読み込まれていたが、`g:termfeatures` は `{ osc52 = true }` で、`"+yy` はクリップボードに入った
+  - `"+p` は 10.3 秒待ってから `Timed out waiting for a clipboard response from the terminal` を出した (WezTerm は OSC 52 の読み出しに応えない)
+- **調べて分かったこと** (本文・方針・README・`lua/config/options.lua` のコメントを直した):
+  - WezTerm の nightly は DA1 に `\E[?65;4;6;18;22;52c` を返し、XTGETTCAP の `Ms` にも OSC 52 の形を返した。Neovim の検出は DA1 で済むので、noice#1229 (XTGETTCAP の応答が届かない) にかからない
+  - 上の付録で変更前の `"+yy` が出なかったのは、手元の端末の代わりにした tmux で OSC 52 が検出されなかったため
+  - この変更が要る理由は、`clipboard` が空で `y` が入らないことと、`"+p` の 10 秒の待ち。検出の失敗は、DA1 に `52` を出さない端末でだけ起きる
+- **検証の仕方で起きたこと** (この設定の問題ではない):
+  - 仮想キーボードを足す前の mutter では、WezTerm が OSC 52 を受けた時点で落ちた (`window/src/os/wayland/copy_and_paste.rs:96` の `unwrap()`。seat にキーボードが無く、データデバイスが無い)
+  - キーを `wezterm cli send-text` で pty に直接送ると、Wayland のキー入力が無いので WezTerm の serial が変わらない。mutter は新しくない serial の `set_selection` を無視するので、続けたヤンクが 1 回おきに前の内容のままになった
+  - キーを仮想キーボードで打つと serial が毎回新しくなり、起きなかった
+
+#### 未確認事項 (AlmaLinux 10 の実機での SSH 越しのクリップボード)
+
+- Windows の WezTerm (nightly) からの ssh と、Windows Terminal など WezTerm 以外の端末
+- GNOME にログインした画面の WezTerm (同じ版の mutter を、画面無しで動かして代えた)
+- PAM を通すシステムの sshd でのログイン (`UsePAM no` で、自分のユーザーのまま立てた sshd で代えた)

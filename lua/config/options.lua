@@ -71,3 +71,36 @@ vim.opt.matchpairs:append({ "（:）", "「:」", "『:』", "【:】" })
 -- Neovim 既定の single は WezTerm 既定の treat_east_asian_ambiguous_width_as_wide=false と
 -- 一致しているため、現状で正しい。端末側を wide に変えるときだけ、ここを "double" に
 -- 揃えること (片方だけ変えるのが「端末で日本語表示が崩れる」最頻の原因)。
+
+-- SSH 越しに起動したときは、ヤンク・削除を SSH クライアントの端末のクリップボードへ OSC 52 で送る
+-- (向きは Neovim → 手元だけ。手元から入れるのは端末の貼り付け (bracketed paste) に任せる)。
+-- LazyVim は SSH の中では 'clipboard' を空にするので、そのままでは y がクリップボードに入らない。
+-- Neovim が OSC 52 を自動で選ぶのは 'clipboard' が空のときだけ ("+y などで明示したときだけ) で、
+-- 検出も端末頼み (WezTerm の nightly は DA1 に 52 を出すので検出される。出さない端末では XTGETTCAP の
+-- 応答頼みで、noice が messages / cmdline を扱っている間はその応答が届かない。folke/noice.nvim#1229)。
+-- そのため g:clipboard で OSC 52 を明示し、'clipboard' もローカルと同じ unnamedplus にする
+-- (LazyVim は 'clipboard' を退避して VeryLazy で戻すので、ここで代入すれば効く)。
+-- 貼り付け (p) は端末に問い合わせず、この Neovim が最後に送った内容を返す。OSC 52 の読み出しは
+-- Windows Terminal も WezTerm も応えず、内蔵の paste は 1 回ごとに 10 秒待つため。
+if vim.env.SSH_CONNECTION then
+  local sent = {} ---@type table<string, table> レジスタ名 → { lines, regtype }
+  local function copy(reg)
+    return function(lines, regtype)
+      sent[reg] = { lines, regtype }
+      require("vim.ui.clipboard.osc52").copy(reg)(lines)
+    end
+  end
+  local function paste(reg)
+    return function()
+      -- まだ何も送っていなければ 0 (失敗) を返す。Neovim は直前に使ったレジスタ
+      -- (ShaDa で前回の起動から引き継いだものを含む) から貼る (register.c の get_yank_register())
+      return sent[reg] or 0
+    end
+  end
+  vim.g.clipboard = {
+    name = "OSC 52 (copy only)",
+    copy = { ["+"] = copy("+"), ["*"] = copy("*") },
+    paste = { ["+"] = paste("+"), ["*"] = paste("*") },
+  }
+  vim.opt.clipboard = "unnamedplus"
+end
