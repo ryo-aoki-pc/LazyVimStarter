@@ -22,7 +22,7 @@ vim.api.nvim_create_autocmd("FileType", {
 -- treesitter の markdown / markdown_inline クエリがコードフェンスの ``` と言語名 (行ごと消える)、
 -- インラインコードの `、強調の * _、リンクの [] () と URL などを隠す。'concealcursor' が空なので
 -- カーソル行でだけ元に戻り、カーソルを動かすたびに周りの行が消えたり現れたりする。
--- 記法をそのまま見て書くため 0 にする (見た目の確認は markdown-preview.nvim で行う)。
+-- 記法をそのまま見て書くため 0 にする (見た目の確認は GitLab プレビュー <leader>cp で行う)。
 -- 一時的に隠し表示へ戻すには <leader>uc (LazyVim の Conceal Level トグル)。
 -- 'conceallevel' はウィンドウローカルなので setlocal で張る (LazyVim の lazyvim_json_conceal と同じ)。
 -- ただし FileType だけでは、ウィンドウに出す前に filetype が決まったバッファに効かない

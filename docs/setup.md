@@ -6,7 +6,7 @@
 > - **AlmaLinux 10 では、GNOME にログインしたデスクトップの端末で、自分のユーザーのまま実行する**。`sudo -i` した root のシェルでは行わない (Homebrew は root で動かず、`gsettings` は実行したユーザーの設定しか変えない)
 > - **AlmaLinux 10 で実行するユーザーは `sudo` できる必要がある** ([AlmaLinux 導入の手順 2・3・8](#almalinux-10-に導入する-1-度だけ))
 > - **Windows 11 では、管理者ではない PowerShell で実行する**
-> - **対話入力がある**: AlmaLinux 導入の手順 3 (`[y/N]` と EPEL の鍵)、手順 8 (Homebrew の `RETURN` と `sudo` のパスワード)、手順 10 (`brew` の `[y/n]`)。答えてから次の手順を貼る
+> - **対話入力がある**: AlmaLinux 導入の手順 3 (`[y/N]` と EPEL の鍵)、手順 8 (Homebrew の `RETURN` と `sudo` のパスワード)、手順 10 (`brew` の `[y/n]`)、[GitLab プレビューのトークンの節](#gitlab-プレビューのトークンを設定する-任意)の手順 1〜4 (トークンと GitLab の URL)。答えてから次の手順を貼る
 > - **Neovim の画面が開く**: AlmaLinux 導入の手順 17・19、Windows 導入の手順 9・11。`:qa` で閉じてから次の手順を貼る
 > - **AlmaLinux 導入の手順 15 の後で、ログアウトしてログインし直す** (入れた ibus-anthy と入力ソースを読み直させる)
 
@@ -16,18 +16,20 @@
 | [Windows 11 に導入する](#windows-11-に導入する-1-度だけ) | マシンごとに 1 度 | scoop で外部コマンド・Neovim・zenhan を入れ、この設定を clone して初回起動する |
 | [ほかのマシンの変更を取り込む](#ほかのマシンの変更を取り込む-繰り返し) | 繰り返し | 別のマシンで push した設定と `lazy-lock.json` を取り込み、プラグインの版を揃える |
 | [カーソル色を tmux で効かせる (任意)](#カーソル色を-tmux-で効かせる-任意) | 任意、1 度だけ | tmux の中でも、挿入モードのカーソル色を IME の状態で変える (AlmaLinux 10) |
+| [GitLab プレビューのトークンを設定する (任意)](#gitlab-プレビューのトークンを設定する-任意) | 任意、1 度だけ | `<leader>cp` のプレビューを GitLab 本体に描かせるため、アクセストークン (と GitLab の URL) を環境変数にする |
 | [更新](#更新) | 更新のたび | Neovim・外部コマンド・プラグインを上げる |
 | [ロールバック](#ロールバック) | 戻すとき | この設定とプラグインを消し、退避した設定と入力ソースを戻す |
 
 - 初めてのマシンでは、自分の OS の「導入する」を上から順に貼る。以後は、必要なシナリオと節だけを貼る
 - 手順の番号はシナリオ (見出し) ごとに 1 から数える。ほかのシナリオの手順は「AlmaLinux 導入の手順 3」「Windows 導入の手順 2」「取り込みの手順 1」のように呼ぶ
 - 変数は無い。設定の置き場所 (`~/.config/nvim` / `%LOCALAPPDATA%\nvim`) と clone 元の URL は、コマンドに直接書いてある
+  - 例外は [GitLab プレビューのトークンを設定する (任意)](#gitlab-プレビューのトークンを設定する-任意) だけ。トークンと GitLab の URL は文書に書かず、貼った後に入力する
 - AlmaLinux 10 のブロックは bash、Windows 11 のブロックは PowerShell で貼る
 - 各手順の末尾の「補足」(折り畳み) と後半の[補足](#補足)は、実行するだけなら読まなくてよい。折り畳みの中のブロックも貼らなくてよい
 - この設定で何ができるかは [README](../README.md)。外部コマンドの用途は[必要なもの一覧](#必要なもの一覧)
 
 > [!WARNING]
-> **AlmaLinux 10 の手順は x86_64 のコンテナでのみ通した**。GNOME の画面と aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。範囲は[対象と検証環境](#対象と検証環境)。
+> **AlmaLinux 10 の手順は x86_64 のコンテナでのみ通した**。GNOME の画面と aarch64 では通していない。**Windows 11 の手順は実機で通したが、IME の切り替えは確かめていない** (zenhan をモックに差し替えた)。**GitLab プレビューは、本物の GitLab での描画を確かめていない** (描画は模擬の API で確かめた。gitlab.com には、模擬のトークンが拒まれるところまで送った)。範囲は[対象と検証環境](#対象と検証環境)。
 
 ### AlmaLinux 10 に導入する (1 度だけ)
 
@@ -65,7 +67,7 @@
 1. 外部コマンドと日本語入力 (ibus-anthy) を dnf で入れる。
 
    ```bash
-   sudo dnf install git ripgrep fd-find gcc curl tar gzip unzip nodejs nodejs-npm file procps-ng ibus-anthy
+   sudo dnf install git ripgrep fd-find gcc curl tar gzip unzip nodejs nodejs-npm file procps-ng ibus-anthy wl-clipboard
    ```
 
    - 何に使うかは[必要なもの一覧](#必要なもの一覧)
@@ -78,27 +80,28 @@
 
    - **`unzip` は必須**: Mason は zip で配布されるツール (`stylua` など) の展開に使う。無いと**そのツールだけ**が静かに入らず、ほかは入るので気付きにくい
    - **`gcc`**: nvim-treesitter は各言語のパーサーを手元で C としてコンパイルする。C コンパイラが無いとハイライトが効かない
-   - **`nodejs` / `nodejs-npm`**: Mason が `markdownlint-cli2` / `markdown-toc` / `bash-language-server` / `json-lsp` / `yaml-language-server` を npm パッケージとして入れる。**node を消すと Markdown の lint と整形が丸ごと止まる**
+   - **`nodejs` / `nodejs-npm`**: Mason が `markdownlint-cli2` / `bash-language-server` / `json-lsp` / `yaml-language-server` を npm パッケージとして入れる。**node を消すと Markdown の lint と整形が丸ごと止まる**
    - `npm` と書いても `nodejs-npm` に解決されて入るが、この節の手順 4 の `rpm -q` はパッケージ名でしか引けないので、両方の手順で `nodejs-npm` と書いている
    - **`file` / `procps-ng`**: Homebrew の前提 (この節の手順 8)。GNOME の PC には入っていることが多い
    - **`ibus-anthy`**: AlmaLinux 10 の Workstation には最初から入っている。入っていれば dnf は `already installed` と出して飛ばす。依存として `ibus-anthy-python` と `anthy-unicode` が入る
    - `curl` / `tar` / `gzip` は treesitter と Mason の取得・展開に使う。最小構成のコンテナにも入っていた
    - **Deno は要らない**: 日本語のローマ字検索 (Migemo) は純 Lua の luamigemo が辞書ごと同梱している
-   - コンテナ (最小構成の `almalinux:10`) での実測は、101 個を入れて 4 個を更新した (git の依存の perl など)。GNOME の PC ではもっと少ない
+   - **`wl-clipboard`**: `<leader>ci` (img-clip.nvim) がクリップボードの画像を `wl-paste` で取り出す。EPEL にある。無くても `<leader>ci` が使えないだけ
+   - コンテナ (最小構成の `almalinux:10`) での実測は、101 個を入れて 4 個を更新した (git の依存の perl など。`wl-clipboard` を足す前の数)。GNOME の PC ではもっと少ない
 
    </details>
 
 1. dnf で入ったか確かめる。
 
    ```bash
-   rpm -q git ripgrep fd-find gcc curl tar gzip unzip nodejs nodejs-npm file procps-ng ibus-anthy
+   rpm -q git ripgrep fd-find gcc curl tar gzip unzip nodejs nodejs-npm file procps-ng ibus-anthy wl-clipboard
    node --version
-   command -v fd rg gdbus busctl
+   command -v fd rg gdbus busctl wl-paste
    ```
 
    - どの行も `package … is not installed` にならなければよい
    - `node --version` が `v22.…` と出る
-   - `fd` / `rg` / `gdbus` / `busctl` の 4 つの場所が出る (`gdbus` と `busctl` は IME 連携が ibus と話すのに使う)
+   - `fd` / `rg` / `gdbus` / `busctl` / `wl-paste` の 5 つの場所が出る (`gdbus` と `busctl` は IME 連携が ibus と話すのに使う)
 
 1. 既存の Neovim の設定とデータがあれば、`.bak` を付けて退避する。
 
@@ -341,7 +344,7 @@
    ```
 
    - 画面の下に `Downloading tree-sitter-…` などの通知が流れる
-   - `:Mason` を開き、Installed が 12 個になり、導入中のものが無くなるまで待つ (`q` で閉じる)
+   - `:Mason` を開き、Installed が 11 個になり、導入中のものが無くなるまで待つ (`q` で閉じる)
    - 待ったら `:qa` で閉じる
    - **次の手順は、`:qa` で閉じてから貼る** (続けて貼ると Neovim への入力として食われる)
 
@@ -349,9 +352,9 @@
    <summary>補足: 初回起動で入るもの</summary>
 
    - ファイルを開くのは、LSP のサーバーがファイルを開いたとき (`LazyFile`) に初めて入るため
-   - Mason が入れるのは 12 個: `bash-language-server` / `json-lsp` / `lua-language-server` / `markdown-toc` / `markdownlint-cli2` / `marksman` / `shellcheck` / `shfmt` / `stylua` / `taplo` / `tree-sitter-cli` / `yaml-language-server`
-   - そのうち 5 個 (`bash-language-server` / `json-lsp` / `markdown-toc` / `markdownlint-cli2` / `yaml-language-server`) は npm で入る
-   - コンテナでは、開いてから 15 秒ほどで 12 個が揃い、`:Mason` に `Installed (12)` と出た
+   - Mason が入れるのは 11 個: `bash-language-server` / `json-lsp` / `lua-language-server` / `markdownlint-cli2` / `marksman` / `shellcheck` / `shfmt` / `stylua` / `taplo` / `tree-sitter-cli` / `yaml-language-server`
+   - そのうち 4 個 (`bash-language-server` / `json-lsp` / `markdownlint-cli2` / `yaml-language-server`) は npm で入る
+   - コンテナでは、開いてから 15 秒ほどで揃い、`:Mason` に `Installed (12)` と出た (markdown-toc を外す前の記録。今は 11 個)
    - 途中で閉じても、次に起動したときに足りないものが入る (コンテナで確認)
    - treesitter のパーサーは GitHub の archive から取得し、`gcc` でビルドする
    - 検証環境ではパーサーの取得がプロキシに拒まれ、パーサーの導入は確かめていない ([付録](#付録-コンテナでの検証記録-2026-09-28))
@@ -366,7 +369,7 @@
    grep -E 'ERROR|WARNING' /tmp/lazyvim-health.txt
    ```
 
-   - `mason/bin` に `markdownlint-cli2` / `markdown-toc` / `marksman` / `stylua` / `tree-sitter` などが並ぶ
+   - `mason/bin` に `markdownlint-cli2` / `marksman` / `stylua` / `tree-sitter` などが並ぶ
    - `grep` の結果が `` WARNING `fzf` is not installed `` の 1 行だけならよい (無視してよい)
    - `ERROR` が出たら[注意点](#注意点)
 
@@ -404,7 +407,7 @@
    - 英単語や空白・記号を含む入力はそのまま検索する (ローマ字として読めるときだけ変換する)
    - `s` → `ni` で「日本語」などにラベルが付くことも見られる (flash.nvim)。同梱の辞書に「にほんご → 日本語」の語は無いので、`nihongo` では当たらない
    - `<Tab>` の候補は、バッファ内で Migemo に一致した文字列を ripgrep で集めたもの。ローマ字が 3 文字以上のときだけ出る
-   - 整形は保存時に conform.nvim が `markdownlint-cli2 --fix` と `markdown-toc` を順に掛ける。`#動作確認` は MD018 (見出しの `#` の後の空白) の違反
+   - 整形は保存時に conform.nvim が `markdownlint-cli2 --fix` を掛ける。`#動作確認` は MD018 (見出しの `#` の後の空白) の違反
    - IME 連携は ibus-daemon が動いているセッションで起動したときだけ有効になる。ログインし直した後の端末で起動する
    - コンテナでは ibus-daemon を `--panel disable` で起動して、`<C-j>` で `ibus engine` が `anthy` に、`<Esc>` で `xkb:us::eng` に変わるのを確かめた。アイコンの見た目は確かめていない
 
@@ -482,7 +485,7 @@
 
    - `zenhan` / `neovim` / `ripgrep` / `fd` / `gcc` / `nodejs` は scoop の `main` バケット、`lazygit` は `extras` にある (バケットの定義で確認)
    - `curl` と `tar` は Windows 11 が `C:\Windows\System32` に同梱している
-   - `gzip` と `unzip` は要らない。Mason は Windows では zip を PowerShell の `Expand-Archive` で、`.tar.gz` を同梱の `tar` で展開する。この設定で入る 12 個は、どちらかか、展開の要らない exe・npm で済む
+   - `gzip` と `unzip` は要らない。Mason は Windows では zip を PowerShell の `Expand-Archive` で、`.tar.gz` を同梱の `tar` で展開する。この設定で入る 11 個は、どちらかか、展開の要らない exe・npm で済む
    - `:checkhealth mason` の `unzip` / `gzip` / `wget` の WARNING は無視してよい
    - C コンパイラは `gcc` が PATH にあれば、LazyVim が見つけて `CC` に設定する
    - scoop を使わないなら `winget install --id=BrechtSanders.WinLibs.POSIX.UCRT` が手軽。Visual Studio Build Tools の `cl.exe` も自動で見つかる
@@ -527,7 +530,7 @@
    nvim "$env:TEMP\lazyvim-check.md"
    ```
 
-   - `:Mason` を開き、Installed が 12 個になり、導入中のものが無くなるまで待つ (`q` で閉じる)
+   - `:Mason` を開き、Installed が 11 個になり、導入中のものが無くなるまで待つ (`q` で閉じる)
    - 待ったら `:qa` で閉じる
    - **次の手順は、`:qa` で閉じてから貼る** (続けて貼ると Neovim への入力として食われる)
 
@@ -557,6 +560,7 @@
 - 別のマシンで push した設定の変更と `lazy-lock.json` を取り込み、プラグインをその版に揃える
 - AlmaLinux 10 はこの節の手順 1、Windows 11 はこの節の手順 2 を貼る
 - Mason のツールや treesitter のパーサーが増えたときは、次に Neovim でファイルを開いたときに入る
+- 外したプラグインとツールは、自動では消えない。消すなら Neovim で `:Lazy clean` (無効にしたプラグインのディレクトリ) と `:MasonUninstall <名前>` (例: markdown-preview.nvim と markdown-toc を外した変更の後なら `:MasonUninstall markdown-toc`)
 
 1. AlmaLinux 10 では、設定を最新にしてプラグインを揃える。
 
@@ -613,6 +617,112 @@
 
 ---
 
+## GitLab プレビューのトークンを設定する (任意)
+
+- `<leader>cp` のプレビューを、GitLab 本体の描画 (GitLab の Markdown API) で見るための設定。しなくても、プレビューは近似表示で動く
+- 先に GitLab で、スコープが `read_api` の個人アクセストークンを作っておく (GitLab の「ユーザー設定」→「アクセストークン」)
+- 編集中の内容とトークンは、ここで設定する GitLab (空なら gitlab.com) にだけ送られる ([README](../README.md#markdown--glfm-執筆))
+- AlmaLinux 10 はこの節の手順 1・2・5、Windows 11 はこの節の手順 3・4・6 を貼る。消すときは手順 7 (AlmaLinux 10) / 手順 8 (Windows 11)
+
+1. AlmaLinux 10 では、トークンを入力して `~/.bashrc` に書く。
+
+   ```bash
+   read -rsp 'GitLab のトークン: ' t && echo && sed -i '/^export GITLAB_TOKEN=/d' ~/.bashrc && printf 'export GITLAB_TOKEN=%q\n' "$t" >> ~/.bashrc; unset t
+   ```
+
+   - `GitLab のトークン: ` と出るので、トークンを貼って Enter を押す (画面には出ない)
+   - 前に書いた `GITLAB_TOKEN` の行があれば、書き直す
+   - **次の手順は、トークンを入力してから貼る**
+
+   <details>
+   <summary>補足: トークンの置き場所</summary>
+
+   - `~/.bashrc` は平文。ホームディレクトリは自分だけが読める (0700) ので、ほかのユーザーからは読めない
+   - GNOME から起動する GUI のアプリ (Neovide など) は `~/.bashrc` を読まない。そちらでも使うなら、`~/.config/environment.d/gitlab.conf` に `GITLAB_TOKEN=…` の形で書き、ログインし直す
+   - 名前は GitLab の CLI (glab) と同じにしてある
+
+   </details>
+
+1. AlmaLinux 10 で、gitlab.com 以外の GitLab (社内の GitLab など) を使うときは、その URL を入力して `~/.bashrc` に書く。
+
+   ```bash
+   read -rp 'GitLab の URL (gitlab.com なら空のまま Enter): ' h && sed -i '/^export GITLAB_HOST=/d' ~/.bashrc && { [ -z "$h" ] || printf 'export GITLAB_HOST=%q\n' "$h" >> ~/.bashrc; }; unset h
+   ```
+
+   - `https://gitlab.example.com` のように入力する (ホスト名だけでもよい)
+   - 空のまま Enter を押すと、`GITLAB_HOST` を書かない (前に書いた行も消す)。送り先は gitlab.com になる
+   - **次の手順は、URL を入力してから貼る**
+
+1. Windows 11 では、(この節の手順 1 の代わりに) トークンを入力して、ユーザーの環境変数にする。
+
+   ```powershell
+   [Environment]::SetEnvironmentVariable('GITLAB_TOKEN', [pscredential]::new('gitlab', (Read-Host -AsSecureString 'GitLab のトークン')).GetNetworkCredential().Password, 'User')
+   ```
+
+   - `GitLab のトークン: ` と出るので、トークンを貼って Enter を押す (画面には `*` で出る)
+   - Enter の後、プロンプトが戻るまで 2 秒ほどかかる
+   - 前に設定した値があれば、置き換わる
+   - **次の手順は、トークンを入力し、プロンプトが戻ってから貼る**
+
+   <details>
+   <summary>補足: トークンの置き場所</summary>
+
+   - ユーザーの環境変数は、レジストリ (`HKCU\Environment`) に平文で入る。ほかのユーザーからは読めない
+   - 設定した後に起動したアプリ (端末・スタートメニューから開く Neovide) にだけ渡る。開いたままの端末には渡らない
+   - 時間がかかるのは、変えたことを開いている全てのウィンドウに知らせ終わるまで戻らないため (検証した PC では 1 回 2 秒ほど)
+
+   </details>
+
+1. Windows 11 で、(この節の手順 2 の代わりに) gitlab.com 以外の GitLab を使うときは、その URL を入力して、ユーザーの環境変数にする。
+
+   ```powershell
+   $h = Read-Host 'GitLab の URL (gitlab.com なら空のまま Enter)'; if ($h) { [Environment]::SetEnvironmentVariable('GITLAB_HOST', $h, 'User') } else { [Environment]::SetEnvironmentVariable('GITLAB_HOST', $null, 'User') }
+   ```
+
+   - `https://gitlab.example.com` のように入力する (ホスト名だけでもよい)
+   - 空のまま Enter を押すと、`GITLAB_HOST` を消す。送り先は gitlab.com になる
+   - Enter の後、プロンプトが戻るまで 2 秒ほどかかる
+   - **次の手順は、URL を入力し、プロンプトが戻ってから貼る**
+
+1. AlmaLinux 10 では、新しい端末でこの設定の README を開き、プレビューで確かめる。
+
+   ```bash
+   nvim ~/.config/nvim/README.md
+   ```
+
+   - `<leader>cp` を押すとブラウザが開き、右上に `GitLab: gitlab.com` (設定した GitLab のホスト名) と出ればよい
+   - `近似表示` と出たら、上のバナーに理由が出る ([注意点](#注意点))
+   - `<leader>cp` をもう一度押すと止まる。`:qa` で閉じる
+
+1. Windows 11 では、(この節の手順 5 の代わりに) 新しい端末でこの設定の README を開き、プレビューで確かめる。
+
+   ```powershell
+   nvim "$env:LOCALAPPDATA\nvim\README.md"
+   ```
+
+   - 確かめることは、この節の手順 5 と同じ
+   - Neovide で使うなら、Neovide も起動し直す
+
+1. AlmaLinux 10 で、設定を消すときは、`~/.bashrc` から消す。
+
+   ```bash
+   sed -i '/^export GITLAB_\(TOKEN\|HOST\)=/d' ~/.bashrc
+   ```
+
+   - GitLab の側でも、「アクセストークン」からそのトークンを取り消す
+   - 開いたままの端末には値が残る。端末を開き直す
+
+1. Windows 11 で、(この節の手順 7 の代わりに) 設定を消すときは、ユーザーの環境変数から消す。
+
+   ```powershell
+   foreach ($n in 'GITLAB_TOKEN', 'GITLAB_HOST') { [Environment]::SetEnvironmentVariable($n, $null, 'User') }
+   ```
+
+   - プロンプトが戻るまで 4 秒ほどかかる (2 つ消すので、この節の手順 3 の倍)
+   - GitLab の側でも、「アクセストークン」からそのトークンを取り消す
+
+---
+
 ## 更新
 
 - Neovim・外部コマンド・プラグインを上げる。設定そのものの取り込みは[ほかのマシンの変更を取り込む](#ほかのマシンの変更を取り込む-繰り返し)
@@ -666,6 +776,7 @@
 - この設定とプラグインを消し、[AlmaLinux 導入の手順 5](#almalinux-10-に導入する-1-度だけ) / [Windows 導入の手順 4](#windows-11-に導入する-1-度だけ) で退避したものを戻す
 - AlmaLinux 10 はこの節の手順 1〜4、Windows 11 はこの節の手順 5〜7 を、上から順に貼る
 - dnf / scoop で入れた共通のコマンド (git・ripgrep・node など) と Homebrew 本体は、ほかでも使うので残す
+- GitLab プレビューのトークンを設定していたら、[その節](#gitlab-プレビューのトークンを設定する-任意)の手順 7 (AlmaLinux 10) / 手順 8 (Windows 11) で消す
 - Windows 11 の手順 7 (scoop のアンインストール) は実行していない。手順 5・6 は、設定の置き場所を差し替えた環境で通した
 
 > [!CAUTION]
@@ -755,7 +866,7 @@
 
 - **目的**: 新しいマシンで、この Neovim 設定 (日本語の入力・検索と Markdown 執筆の強化) を動かす。設定そのものの説明は [README](../README.md)
 - **進め方**: 外部コマンドを先に揃え、この設定を clone し、プラグインを `lazy-lock.json` の版に揃えてから初回起動する
-  - 変数は無い。読者が書き換える値も無い
+  - 変数は無い。読者が書き換える値も無い (GitLab プレビューのトークンの節だけは、トークンと URL を貼った後に入力する)
   - AlmaLinux 10 は dnf + EPEL と Homebrew、Windows 11 は scoop で入れる
 - **状態**:
   - **AlmaLinux 10 の導入は、x86_64 のコンテナでのみ通した (2026-09-28)。実機では、この形では通していない**
@@ -765,19 +876,20 @@
     - 確かめたこと:
       - 入るパッケージと版、EPEL の鍵、`brew` の確認、`fc-match`
       - Anthy のキーの置き換え (ほかのキーが残ること)
-      - `lazy-lock.json` の版に揃うこと、Mason の 12 個、`checkhealth` の ERROR が 0 件
+      - `lazy-lock.json` の版に揃うこと、Mason の 12 個 (当時。markdown-toc を外した今は 11 個)、`checkhealth` の ERROR が 0 件
       - `/kensaku` の検索、保存時の整形、`<C-j>` での `anthy` ↔ `xkb:us::eng` と lualine の `あ` / `A`
     - **確かめていないこと**:
       - treesitter のパーサーの導入 (検証環境のプロキシが github.com の archive を 403 で拒んだ)
       - GNOME の画面・Super+Space・アイコンの見た目・ログインし直しての ibus の読み直し
       - aarch64
       - PR #26 で入った、カーソルのすぐ下の `あ` / `A` の表示 (検証した設定は、その前の 9c4e8d9)
+      - **markdown-preview.nvim と markdown-toc を外し、GitLab プレビュー・img-clip.nvim・GLFM のスニペットを足した変更の後は、通していない** (AlmaLinux 導入の手順 3・4 に足した `wl-clipboard`、画像の貼り付け、GitLab プレビューのトークンの節を含む)
     - 検証の都合で変えたこと (手順には含めない): sudo をパスワード無しにし、プロキシの環境変数と CA を渡した ([付録](#付録-コンテナでの検証記録-2026-09-28))
   - **Windows 11 は、実機 (Windows 11 Pro 10.0.26200、x64) で通した (2026-09-29)。設定とデータの置き場所は、一時的な場所に差し替えた**
     - `LOCALAPPDATA` と `TEMP` を差し替え、PATH をレジストリの値から組み立て直した Windows PowerShell 5.1 に、**この文書のコードブロックをそのまま渡して**通した ([付録](#付録-windows-11-の実機での検証記録-2026-09-29))
     - 通したもの: Windows 導入の手順 1・3〜11 (scoop が入っていたので手順 2 は飛ばした)、取り込みの手順 2、更新の手順 2・4、ロールバックの手順 5・6
     - 確かめたこと:
-      - `lazy-lock.json` の版に揃うこと、Mason の 12 個、treesitter のパーサー 31 個とハイライト、`checkhealth` の ERROR が 0 件
+      - `lazy-lock.json` の版に揃うこと、Mason の 12 個 (当時。今は 11 個)、treesitter のパーサー 31 個とハイライト、`checkhealth` の ERROR が 0 件
       - `/kensaku` の検索、`<Tab>` の候補、保存時の整形、`<C-j>` と lualine の `あ` / `A`、カーソルのすぐ下の表示、検索の sticky
       - 取り込みの手順 2 を、変更がある状態・push していないコミットがある状態・`lazy-lock.json` が書き換わった状態で通すこと
       - Neovide 0.16.2 の画面での、未確定文字列 (下線・変換中の文節の反転・カーソルの位置)・カーソルのすぐ下の表示・lualine の `あ` / `A` (未確定文字列は、Neovide が IME から受け取ったときと同じ引数でハンドラを呼んで描かせた)
@@ -785,6 +897,17 @@
       - 本物の IME の切り替え (zenhan は、呼び出しを記録するモックに差し替えた。本物は前面のウィンドウの IME を切り替えるため)
       - Neovide に本物の IME で打ったとき、Neovide がハンドラを呼ぶこと (呼び出しの形は Neovide 0.16.2 のソースで確かめた)
       - scoop の導入 (Windows 導入の手順 2) と、ロールバックの手順 7
+  - **markdown-preview.nvim と markdown-toc を外し、GitLab プレビュー・img-clip.nvim・GLFM のスニペットを足した変更は、同じ Windows 11 の実機で、置き場所を差し替えた環境で確かめた (2026-09-29)** ([付録](#付録-gitlab-プレビューなどの検証記録-2026-09-29))
+    - 確かめたこと:
+      - プラグインの導入と `lazy-lock.json` の版 (38 個、lock は 39 行のまま)、Mason の 11 個、`checkhealth` の ERROR が 0 件
+      - GitLab プレビューを、GitLab の形の HTML を返す模擬の API と headless の Edge で (送信の条件・ページの描画・ライブの更新・スクロール・近似表示・閉じ込め・トークンを残さないこと)
+      - img-clip.nvim を、本物のクリップボードの画像で (`shell` が `powershell` と `pwsh` の両方。クリップボードの中身は退避して戻した)。GLFM のスニペットを blink.cmp の一覧で
+      - `<leader>cp` で既定のブラウザ (Edge) が開いてページがつながること、止めて開き直すと同じタブがつながり直すこと
+      - トークンの節の Windows の手順 3・4・8 を、Windows PowerShell 5.1 の画面に打ち込んで (模擬のトークン。最後に消した)
+      - gitlab.com が模擬のトークンを 401 で拒み、近似表示に切り替わってそれ以上送らないこと
+    - **確かめていないこと**:
+      - 本物の GitLab (gitlab.com・社内の GitLab) での描画 (本物のトークンが要る)
+      - トークンの節の AlmaLinux 10 の手順 (`HOME` を差し替えて Windows の bash で実行しただけ)
   - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
 | 項目 | AlmaLinux 10 | Windows 11 |
@@ -799,7 +922,7 @@
 > [!NOTE]
 > - 本書には変数が無い。設定の置き場所と clone 元の URL は、Neovim と GitHub が決める固定の値なので、コマンドに直接書いてある
 > - 途中で作る値は `ANTHY_SHORTCUT` だけ ([AlmaLinux 導入の手順 14](#almalinux-10-に導入する-1-度だけ) で作り、手順 15 で使う)
-> - 出力例の中のユーザーのホームは `…` で省いてある。パスワード・鍵・トークンは扱わない
+> - 出力例の中のユーザーのホームは `…` で省いてある。パスワードと鍵は扱わない。トークンは [GitLab プレビューのトークンの節](#gitlab-プレビューのトークンを設定する-任意)でだけ扱い、貼った後に入力させる (文書には書かない)
 
 ### 実施前の状態
 
@@ -807,7 +930,7 @@
 |---|---|
 | OS | AlmaLinux 10 + GNOME (Wayland) / Windows 11 |
 | ユーザー | AlmaLinux 10 は `sudo` のできる一般ユーザーで、GNOME にログインしている。Windows 11 は一般ユーザー |
-| ネットワーク | github.com・Homebrew・npm・scoop に届く (初回のプラグイン・Mason・treesitter の取得に要る) |
+| ネットワーク | github.com・Homebrew・npm・scoop に届く (初回のプラグイン・Mason・treesitter の取得に要る)。GitLab プレビューには、使う GitLab と cdn.jsdelivr.net も |
 | Neovim の設定 | 無い、または退避してよい (AlmaLinux 導入の手順 5 / Windows 導入の手順 4 で `.bak` にする) |
 | Homebrew / scoop | 未導入でも導入済みでもよい (手順の中で判定する) |
 | 入力ソース | 何でもよい (AlmaLinux 導入の手順 13 で `us` と `anthy` の 2 つに置き換える) |
@@ -823,18 +946,19 @@
 | [fd](https://github.com/sharkdp/fd) | ファイルピッカーと explorer | Windows で必須 / Linux では推奨 |
 | C コンパイラ (gcc または MSVC の cl) | treesitter のパーサーのビルド | 必須 |
 | tree-sitter CLI | treesitter のパーサーのビルド。PATH に無ければ LazyVim が Mason で入れる | 必須 (自動で入る) |
-| curl / tar / gzip / unzip | treesitter と Mason の取得・展開 | 必須 (Windows 11 は同梱の curl と tar だけでよい。[Windows 導入の手順 6](#windows-11-に導入する-1-度だけ) の補足) |
+| curl / tar / gzip / unzip | treesitter と Mason の取得・展開。curl は GitLab プレビューが GitLab の API を呼ぶのにも使う (8.3 以上) | 必須 (Windows 11 は同梱の curl と tar だけでよい。[Windows 導入の手順 6](#windows-11-に導入する-1-度だけ) の補足) |
 | [Node.js](https://nodejs.org/) (node + npm) | Mason が npm で入れる LSP・整形ツール | 必須 |
 | Nerd Font ([HackGen Console NF](https://github.com/yuru7/HackGen)) | アイコン表示と `guifont` | 実質必須 (無いと記号が豆腐になる) |
 | ibus + ibus-anthy、`busctl` か `gdbus` | 日本語入力 (Linux)。global engine を切り替える | Linux で必須 |
 | [zenhan](https://github.com/iuchim/zenhan) または im-select | 日本語入力 (Windows) | 任意 (無ければ IME 連携のみ無効) |
 | [Neovide](https://neovide.dev/) 0.16 以上 | GUI クライアント。IME の未確定文字列の表示には Neovim 0.12 以上も要る | 任意 (端末で使うなら不要) |
 | lazygit | `<leader>gg` | 任意 (無ければキーマップが定義されないだけ) |
-| ネットワーク | 初回のプラグイン取得、Mason、treesitter のパーサー | 初回のみ必須 |
+| GitLab の個人アクセストークン (`read_api`) | GitLab プレビューで、GitLab 本体に描かせる ([トークンの節](#gitlab-プレビューのトークンを設定する-任意)) | 任意 (無ければ近似表示になる) |
+| ブラウザ | GitLab プレビューのページ | 任意 (プレビューを使うときだけ) |
+| wl-clipboard (`wl-paste`) | `<leader>ci` での画像の貼り付け (Linux) | 任意 (無ければ `<leader>ci` だけが使えない) |
+| ネットワーク | 初回のプラグイン取得、Mason、treesitter のパーサー。GitLab プレビューでは GitLab と cdn.jsdelivr.net | 初回のみ必須 |
 
-- **不要なもの**: fzf (ピッカーは snacks.nvim の Lua 実装。`:checkhealth lazyvim` が警告を出すが機能には影響しない)、telescope とその C ビルド、make、Python、Deno、win32yank (Neovim の Windows ビルドに同梱済み)
-- **markdown-preview.nvim**: ビルド時にプリビルドのバイナリを落とす。Linux では x86_64 (と i686) の分しか無い
-  - aarch64 では node で動かす形になり、プラグインの `app` で `npm install` が要る (プラグインのコードから読んだもので、試していない)
+- **不要なもの**: fzf (ピッカーは snacks.nvim の Lua 実装。`:checkhealth lazyvim` が警告を出すが機能には影響しない)、telescope とその C ビルド、make、Python、Deno、win32yank (Neovim の Windows ビルドに同梱済み)、プレビュー用の node のアプリ (GitLab プレビューは Neovim の中の HTTP サーバーと curl だけで動く)
 
 ### 選択した方針
 
@@ -857,22 +981,26 @@
 - **入力ソースは `us` と `anthy` に固定する**: IME 連携が英数を `xkb:us::eng` に固定しているため ([AlmaLinux 導入の手順 13](#almalinux-10-に導入する-1-度だけ) の補足)
 - **フォントは Linux では Homebrew の cask にする**: zip を落として `~/.local/share/fonts` に置く手作業が 1 行になり、`brew upgrade --cask` で上がる。Windows には同じ手段が無いので手で入れる
 - **動作確認は試験用のファイルで行う**: `/tmp` の Markdown 1 つで、LSP の導入の引き金・日本語検索・整形の 3 つを確かめられる
+- **GitLab プレビューの設定は環境変数にする**: 名前は GitLab の CLI (glab) と同じ `GITLAB_TOKEN` / `GITLAB_HOST`
+  - この設定のファイル (git で追跡し、ほかのマシンにも配る) にトークンを書かないため
+  - トークンと URL は文書に書かず、貼った後に入力させる ([トークンの節](#gitlab-プレビューのトークンを設定する-任意))
 
 ### 完了時点の状態
 
 | 場所 | 中身 |
 |---|---|
 | `~/.config/nvim` (`%LOCALAPPDATA%\nvim`) | このリポジトリの clone (`custom` ブランチ) |
-| `~/.local/share/nvim/lazy` | プラグイン 38 個 (`lazy-lock.json` の版)。コンテナで 189 MB |
-| `~/.local/share/nvim/mason` | Mason のツール 12 個。コンテナで 279 MB |
+| `~/.local/share/nvim/lazy` | プラグイン 38 個 (`lazy-lock.json` の版)。コンテナで 189 MB (markdown-preview.nvim を img-clip.nvim に替える前の計測) |
+| `~/.local/share/nvim/mason` | Mason のツール 11 個。コンテナで 279 MB (markdown-toc を外す前の 12 個での計測) |
 | `~/.local/share/nvim/site/parser` | treesitter のパーサー (初回起動で入る) |
 | `~/.local/share/fonts` | HackGen Console NF と HackGen35 Console NF (Linux) |
-| `~/.bashrc` | `eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"` の 1 行 (Linux) |
+| `~/.bashrc` | `eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"` の 1 行 (Linux)。トークンの節を行ったときは `GITLAB_TOKEN` (と `GITLAB_HOST`) の行も |
 | `org.gnome.desktop.input-sources sources` | `[('xkb', 'us'), ('ibus', 'anthy')]` (Linux) |
 | `org.freedesktop.ibus.engine.anthy.shortcut default` | `on_off` が `['Zenkaku_Hankaku']` だけ (Linux) |
 | `*.bak` | 退避した以前の設定とデータ (あった場合だけ) |
 
 - Windows のプラグインと Mason のツールは `%LOCALAPPDATA%\nvim-data` に入る
+- Windows でトークンの節を行ったときは、ユーザーの環境変数に `GITLAB_TOKEN` (と `GITLAB_HOST`) が入る
 
 ### 注意点
 
@@ -885,12 +1013,20 @@
   - `:checkhealth lazyvim` の `LazyVim nvim-treesitter` の節で `C compiler` と `tree-sitter (CLI)` を見る
   - Windows で `gcc` を入れた直後は PATH が反映されていないことがある。端末を開き直してから `nvim` を起動する
 - **ファイルピッカーが空のまま**: `fd` も `rg` も無い。Linux には `find` へのフォールバックがあるが、Windows には無い
-- **保存しても Markdown が整形されない / lint が出ない**: `markdownlint-cli2` と `markdown-toc` は npm のパッケージ
+- **保存しても Markdown が整形されない / lint が出ない**: `markdownlint-cli2` は npm のパッケージ
   - node を入れ替えたり消したりすると、Mason で入れたものごと壊れる
-  - `:Mason` で状態を見て、`:MasonInstall markdownlint-cli2 markdown-toc` で入れ直す
-- **Windows で `<leader>cp` のプレビューが開かない (`node:internal/modules/cjs/loader` のエラー)**: markdown-preview.nvim のバイナリ (`app\bin\markdown-preview-win.exe`) が入っていない
-  - この設定の build は、Windows では `install.cmd` を `cmd.exe` で実行する (`shell` の PowerShell からは、カレントディレクトリの `install.cmd` を実行できないため)。この形になる前に入れたマシンでは、バイナリが入っていない
-  - Neovim で `:Lazy build markdown-preview.nvim` を実行して入れ直す。20 秒ほどかかる
+  - `:Mason` で状態を見て、`:MasonInstall markdownlint-cli2` で入れ直す
+- **GitLab プレビュー (`<leader>cp`) が `近似表示` になる**: ページの上のバナーに理由が出る
+  - `GITLAB_TOKEN が未設定`: [トークンの節](#gitlab-プレビューのトークンを設定する-任意)を行い、端末 (と Neovide) を開き直す
+  - `トークンが拒否された (HTTP 401)`: トークンの期限切れ、スコープ (`read_api`)、`GITLAB_HOST` の違いを確かめる。直したら `:GitLabPreview` で送り直す
+  - `GitLab の API が見つからない (HTTP 404)`: `GITLAB_HOST` が GitLab を指していない。サブパスで動かしている GitLab は `https://example.com/gitlab` まで書く
+  - `GitLab に接続できない (curl: …)`: ネットワーク・プロキシ (curl は `HTTPS_PROXY` を見る)・社内の CA (Windows の curl は OS の証明書ストアを使う) を確かめる。30 秒たつと送り直す
+  - `option --variable: is unknown` を含むとき: curl が 8.3 より古い。Linux では新しい curl を入れる
+- **GitLab プレビューで `#123` などがリンクにならない**: git の remote (origin) のホスト名が `GITLAB_HOST` と違うと、プロジェクトを付けずに描かせる
+  - SSH の設定の別名 (`Host` の名前) を使った remote は、ホスト名が一致しない。`git remote -v` で確かめる
+- **`<leader>ci` で画像を貼り付けられない**: `:ImgClipDebug` で、使ったコマンドと出力を見る
+  - Linux では `wl-clipboard` が要り、Wayland のセッションで起動した Neovim だけが使える (tmux の中では `WAYLAND_DISPLAY` が引き継がれないことがある)
+  - `Content is not an image.` は、クリップボードの中身が画像ではないとき。Windows では、PC のロック中はクリップボードを読めない
 - **`/` からの日本語検索が効かない**: `:checkhealth luamigemo` で、同梱の辞書と LuaJIT を確かめる
   - ローマ字として読めない入力 (`search` のような英単語、空白や記号を含むもの) は、わざと変換しない
   - まず `/kensaku` のような純粋なローマ字で試す
@@ -932,6 +1068,10 @@
 - [luamigemo](https://github.com/delphinus/luamigemo): ローマ字検索 (Migemo) の純 Lua 実装。同梱の辞書のライセンスもここ
 - [ibus-anthy](https://github.com/ibus/ibus-anthy): `on_off` などのキー割り当て
 - [HackGen](https://github.com/yuru7/HackGen): フォントのリリース
+- [GitLab の Markdown API](https://docs.gitlab.com/api/markdown/): GitLab プレビューが呼ぶ API。認証が要ること (`read_api` で足りる) と `project` の扱い
+- [GitLab Flavored Markdown](https://docs.gitlab.com/user/markdown/): GLFM の記法 (スニペットと近似表示が扱う記法の出どころ)
+- [GitLab の個人アクセストークン](https://docs.gitlab.com/user/profile/personal_access_tokens/): トークンの作り方とスコープ
+- [img-clip.nvim](https://github.com/HakonHarnes/img-clip.nvim): 画像の貼り付けの設定項目
 - [README](../README.md): この設定で何ができるか、IME 連携の設計と運用上の注意
 
 ### 付録: コンテナでの検証記録 (2026-09-28)
@@ -1033,3 +1173,57 @@
 - Neovide に本物の IME で打ったときの未確定文字列 (画面の描画は、ハンドラを呼ぶ形で確かめた)
 - scoop の導入 (Windows 導入の手順 2) と、ロールバックの手順 7
 - scoop も Git for Windows も無い、素の Windows 11 からの通し
+
+### 付録: GitLab プレビューなどの検証記録 (2026-09-29)
+
+- **対象**: markdown-preview.nvim と markdown-toc を外し、GitLab プレビュー・img-clip.nvim・GLFM のスニペットを足した変更
+- **環境**: 上の付録と同じ Windows 11 の実機。`LOCALAPPDATA` / `TEMP` を `%TEMP%\nvv-gp` の下に差し替え、PATH はレジストリの Machine の値と、手順書で scoop が入れるアプリのディレクトリだけにした (scoop の shims は含めないので、curl は System32 の 8.21.0)
+  - この設定は robocopy で写した。テストの nvim は `set clipboard=` で起動し、クリップボードに書かないようにした
+  - 最初は置き場所を深いディレクトリにして、git の clone が `Filename too long` で失敗した。このとき lazy.nvim の bootstrap はキー入力を待つので、headless では返ってこない。短い場所に置き直した
+- **プラグインと lock** (Windows 導入の手順 8 と同じ操作): 1 行目は 17 秒。lock の差分は、既知の 6 行 (SchemaStore.nvim など) と img-clip.nvim の追加だけだった
+  - img-clip.nvim の行 (99848da) を足した lock に restore すると、`lazy/` は 38 個で、lock は変わらなかった
+  - markdown-preview.nvim のディレクトリはできず、gitlab-preview (virtual の spec) もディレクトリを作らなかった
+- **設定の合成** (headless での 83 項目): conform の markdown は `markdownlint-cli2` だけ、`markdown.mdx` は `prettier` と `markdownlint-cli2`。Mason の `ensure_installed` に markdown-toc は無く、`stylua` などは残った
+  - `:GitLabPreview*` と `:PasteImage` があり、`<leader>cp` / `<leader>ci` は markdown のバッファにだけ張られた
+  - スニペットの 21 個は、どれも Neovim のスニペットの文法で読めた。blink.cmp の一覧に `gl*` が全部入り、friendly-snippets のものも残った
+  - ファイルの閉じ込め (`resolve()`): `..`・`%2e%2e`・`%5c`・ドライブ・`%00`・`.git`・`CON`・末尾の `.`・外を指すジャンクションを拒んだ
+  - 最初は virtual の spec を `name` だけで書き、lazy.nvim に `Invalid plugin spec` として捨てられていた。名前を `[1]` に書いて直した
+- **Mason**: 11 個 (`bash-language-server` / `json-lsp` / `lua-language-server` / `markdownlint-cli2` / `marksman` / `shellcheck` / `shfmt` / `stylua` / `taplo` / `tree-sitter-cli` / `yaml-language-server`) が入り、markdown-toc は入らなかった
+  - headless では mason-lspconfig が LSP のサーバーを入れない (`platform.is_headless` で飛ばす) ので、その `ensure_installed` を直接呼んで数えた
+  - `checkhealth lazyvim` は ERROR 0 件、WARNING は `fzf` の 1 件
+- **GitLab プレビュー** (87 項目): node で GitLab の形の HTML を返す模擬の Markdown API を立て、headless の nvim を `--listen` で操作し、headless の Edge 154 を CDP で見た
+  - トークンが無いと、API に 1 回も送らずに近似表示になった。トークンを入れて `:GitLabPreview` を打つと、`project`・`gfm`・`PRIVATE-TOKEN` を付けて送り、返った HTML のまま描いた
+  - ページ: mermaid の SVG と KaTeX。`data-canonical-src` から手元の画像 (`../img/a.png`、日本語と空白の名前) を出し、`/uploads/` は GitLab から読んだ。リポジトリへのリンクは GitLab の URL のまま新しいタブで開いた
+  - TOC・アラート・`[~]`・inline diff・色見本が出た。ライト / ダークが切り替わり、CSP の違反と例外は 0 件だった
+  - 打つと約 1 秒で描き直され、カーソルの移動にスクロールが付いてきた。10 回続けて編集しても、送ったのは 1〜2 回
+  - 別の .md に移ると追従し、戻ると送り直さずに前の結果を出した。遅い応答の途中でバッファを移ると、古い応答は出さなかった
+  - 401 の後は送らなかった。プロジェクトの 404 では、プロジェクトを外して 1 回だけ送り直した。remote のホストが違えば `project` を付けなかった
+  - API を止めると近似表示になり、送らない時間 (検証では 30 秒を 2.5 秒に縮めた) の後に戻った。cdn.jsdelivr.net を塞ぐと、近似表示では原文をそのまま出した
+  - サーバーは、token の違う URL・Host の偽装・`Sec-Fetch-Site: cross-site`・POST を拒んだ。画像には ETag で 304 を返した
+  - 送信中の curl のコマンドラインにトークンの値は無く (`--variable %GITLAB_TOKEN`)、TEMP のファイルにも残らなかった
+  - 止めるとページに「止めた」が出て接続が閉じ、開き直すと同じ URL に戻った。Neovim の終了もページに届いた
+- **img-clip.nvim**: `checkhealth img-clip` は OK。`shell` は `powershell` (5.1) で、img-clip と同じ経路 (`vim.fn.system()`) で PowerShell を実行でき (STA)、日本語と空白を含むパスに画像を保存できた
+  - クリップボードの読み出しと保存を差し替えて `:PasteImage` を通すと、`docs/assets/<日時>.png` に保存し、`![](assets/<日時>.png)` を入れた (ファイル名の入力は空)
+  - 祖先のディレクトリに置いた `.img-clip.lua` は、設定の参照・貼り付け・`vim.paste` のどれでも実行されなかった。`vim.paste` はただの文字列として入った
+  - クリップボードそのものは、PC のロック中で Windows が開かせなかった (`Requested Clipboard operation did not succeed.`。この設定と関係の無い PowerShell からも同じ)
+- **手順書のブロック**: トークンの節の PowerShell の 4 個は、Windows PowerShell 5.1 と PowerShell 7.6.6 のパーサーでエラーが無く、`&&` / `||` も無かった
+  - bash の 4 個は `bash -n` を通した。Windows の bash で `HOME` を差し替えて実行し、記号を含むトークンが `~/.bashrc` を通してそのまま戻ること、2 回実行しても 1 行だけになること、消せることを確かめた
+- **ロックを解いた後の確認** (同じ日、同じ置き場所の差し替えで):
+  - 本物のクリップボードの画像: 先にクリップボードの中身 (text/html・HTML Format・UnicodeText・Text) をファイルに退避し、64×40 の画像を置いた
+    - `<leader>ci` → ファイル名は空のまま Enter で、`docs/assets/<日時>.png` に同じ大きさ・同じ色の PNG ができ、`![](assets/<日時>.png)` が入った
+    - `shell` が `powershell` (5.1) でも、`pwsh` (7.6.6。PATH に本物の `pwsh.exe` を載せた) でも同じだった
+    - 終わった後にクリップボードの中身を戻し、文字列のハッシュと 4 つの形式が元どおりなことを確かめた。Windows のクリップボードの履歴には、試験の画像が残る
+  - 既定のブラウザ: `vim.g.gitlab_preview_browser` を付けずに `:GitLabPreview` を打つと、`vim.ui.open` が 1 回呼ばれて Edge (既定のブラウザ) にタブが開き、そのタブの EventSource がつながった
+    - `:GitLabPreviewStop` の後に `:GitLabPreview` を打つと、同じ URL で開き、開いたままのタブがつながり直した。新しいタブは開かなかった
+  - トークンの節の Windows の手順 3・4・8: headless の nvim の `:terminal` (ConPTY) で Windows PowerShell 5.1 を開き、文書のブロックをそのまま打ち込んだ。トークンは模擬の値で、始める前に `GITLAB_*` のユーザーの環境変数が無いことを確かめた
+    - 手順 3 は `GitLab のトークン: ` を出して入力を `*` で隠し、`HKCU\Environment` に `GITLAB_TOKEN` が入った。値は画面に出なかった
+    - 手順 4 は URL を入れると `GITLAB_HOST` が入り、空のまま Enter で消えた。手順 8 で 2 つとも消えた
+    - `SetEnvironmentVariable(…, 'User')` は 1 回 2 秒ほどかかった (変えたことを全てのウィンドウに知らせ終わるまで戻らない)。プロンプトが戻る前に次を打つと待たされるので、手順の箇条書きに書いた
+  - gitlab.com: 模擬のトークンで Markdown API を呼ぶと、`401` と `{"message":"401 Unauthorized"}` が返った (Cloudflare の 403 ではない)。プレビューは `トークンが拒否された (HTTP 401)` の近似表示になり、その後の編集では curl を呼ばなかった
+
+#### 未確認事項 (GitLab プレビューなど)
+
+- 本物の GitLab (gitlab.com・社内の GitLab) での描画 (本物のトークンが要る) と、GitLab の版による HTML の違い (`data-canonical-src`・アラート・`data-sourcepos`)
+- 非公開のプロジェクトの `/uploads/` の画像、`::include`、PlantUML / Kroki の図
+- Linux での画像の貼り付け (`wl-clipboard`、Wayland と tmux)
+- AlmaLinux 10 での、この変更の後の通し (`wl-clipboard` の導入、トークンの節の AlmaLinux の手順)
