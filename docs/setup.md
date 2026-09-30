@@ -31,7 +31,7 @@
 - この設定で何ができるかは [README](../README.md)。外部コマンドの用途は[必要なもの一覧](#必要なもの一覧)
 
 > [!WARNING]
-> **AlmaLinux 10 の手順は x86_64 のコンテナで通した。GNOME の実機では、導入済みの PC で AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 だけを通した** (手順 1〜15 は、システムを変えずに到達点を確かめただけ)。aarch64 では通していない。**上部バーの節は、画面の無い gnome-shell でだけ確かめた** (本物のログインでは通していない)。**Windows 11 の手順は実機で通した** (scoop も Git for Windows も PATH に無い状態からの通しと、本物の IME を含む)。VC++ のランタイムが無い Windows 11 では通していない。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、GNOME の画面と、Windows からの ssh では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた。Windows の WezTerm と Windows Terminal は、ssh を通さずに確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
+> **AlmaLinux 10 の手順は x86_64 のコンテナで通した。GNOME の実機では、導入済みの PC で AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 だけを通した** (手順 1〜15 は、システムを変えずに到達点を確かめただけ)。aarch64 では通していない。**上部バーの節は、画面の無い gnome-shell でだけ確かめた** (本物のログインでは通していない)。**Windows 11 の手順は実機で通した** (scoop も Git for Windows も PATH に無い状態からの通しと、本物の IME を含む)。VC++ のランタイムが無い Windows 11 では通していない。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、GNOME の画面では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた。Windows からは、WezTerm の nightly と Windows Terminal で WSL の AlmaLinux 10 に ssh して確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
 
 ### AlmaLinux 10 に導入する (1 度だけ)
 
@@ -846,6 +846,7 @@
    - `p` は端末に問い合わせず、この Neovim が最後に送った内容を貼る (行単位・矩形の形も保つ)。OSC 52 の読み出しには WezTerm も Windows Terminal も応えず、Neovim の内蔵の読み出しは 1 回ごとに 10 秒待つため
    - 手元でコピーしたものは、WezTerm の貼り付け (Ctrl+Shift+V) で入れる。Neovim には貼り付け (bracketed paste) として届き、挿入モードでもノーマルモードでもカーソルの後ろに入る。レジスタには入らない
    - ローカル (GNOME の端末や Neovide) で起動したときは、これまでどおり `wl-copy` などを使う (`SSH_CONNECTION` が無いので、この節の設定は効かない)
+   - 手元が Windows のときは、WezTerm の nightly と Windows Terminal で確かめた。ssh は Windows の OpenSSH (`ssh.exe`) でも Git for Windows の `ssh` でもよい ([付録](#付録-windows-11-の実機での未確認項目の検証記録-2026-09-30))
 
    </details>
 
@@ -1056,9 +1057,9 @@
       - 大きな範囲の `ggyG` (日本語の 8 万行、6.9 MB まで) が、ファイルとバイト単位で一致すること。矩形・文字単位の形
       - 変更前は `yy` が入らず、`"+p` が 10 秒待って失敗すること (`"+yy` は入る。WezTerm の nightly は DA1 に `52` を出すので、noice があっても検出される)
     - **確かめていないこと**:
-      - Windows からの ssh (Windows の WezTerm と Windows Terminal は、2026-09-30 に ssh を通さずに確かめた。下の記録)
+      - Windows からの ssh (2026-09-30 に、WSL の AlmaLinux 10 に対して確かめた。下の記録)
       - GNOME にログインした画面の WezTerm (同じ版の mutter を、画面無しで動かして代えた)
-      - PAM を通すシステムの sshd でのログイン (同じ `/usr/sbin/sshd` を、検証用の設定で自分のユーザーのまま立てた)
+      - PAM を通すシステムの sshd でのログイン (同じ `/usr/sbin/sshd` を、検証用の設定で自分のユーザーのまま立てた。2026-09-30 に、WSL の AlmaLinux 10 で PAM を通す形も確かめた。下の記録)
   - **取り込みの手順 1 は、AlmaLinux 10 の実機で、使っている設定とプラグインに対して行った (2026-09-29)**
     - aa95dab から、#34 と #35 を取り込んだ。このマシンには、#30 で足した img-clip.nvim がまだ入っていなかった
     - ブロックと同じコマンドを、端末に貼る代わりにシェルから実行した。始める前に、このマシンで lock が書き換わっていた (外したプラグインの行が 3 行増えていた) ので、`checkout` で戻した
@@ -1092,12 +1093,12 @@
       - 取り込みの手順 2 で、増えたプラグインを起動時に入れて lock が古い版で書き直される場合と、箇条書きの対処 (`checkout` して `restore` をもう一度)
       - flash の `s` (`s` → `nihon` → `;` → ラベルなど。端末と Neovide 0.16.2)、フォーカスが戻ったときのカーソルのすぐ下の表示、手順 11 の確認項目 (最新の設定で)
       - 本物の IME (Microsoft IME) と本物の zenhan: Neovide 0.16.2 と WezTerm の nightly で、`Ctrl+J` で IME が開閉し、`nihon` の未確定文字列 (Neovide はハンドラ経由でカーソル位置に描く) が変換・確定されること。IME が開いたままの `Ctrl+J` も Neovim に届く。キーは `SendInput` で入れた (IME を通る)
-      - SSH 越しのクリップボード: WezTerm の nightly と Windows Terminal 1.24 の中で、`SSH_CONNECTION` を付けたこの設定の nvim の `yy` が Windows のクリップボードに入ること (ssh は通していない)
+      - SSH 越しのクリップボード: WezTerm の nightly (Windows の OpenSSH と Git for Windows の ssh) と Windows Terminal 1.24 (Windows の OpenSSH) から WSL の AlmaLinux 10.2 に ssh し、[SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 1・2 のブロックをそのまま貼って、`yy` が Windows のクリップボードに入ること。sshd は、自分のユーザーのまま立てたものと、PAM を通すもの (root)
     - 見つけて直したこと: scoop の git (`core.autocrlf=true` が既定) で clone すると、手順 8 の `git status --short` が `M lazy-lock.json` を出し続けた。`.gitattributes` で改行を LF に揃えた
     - **確かめていないこと**:
       - VC++ のランタイム (`VCRUNTIME140.dll`) が無い Windows 11 (`nvim.exe` は読み込むが、この PC にはシステムに入っている)
-      - Windows の `ssh.exe` を通した OSC 52 (手元の WezTerm から AlmaLinux 10 に ssh すること)
       - 物理キーボードでの打鍵 (`SendInput` で代えた)
+      - SSH の接続先の、実機の AlmaLinux 10 と systemd の sshd.service (WSL の AlmaLinux 10 で代えた)
   - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
 | 項目 | AlmaLinux 10 | Windows 11 |
@@ -1640,6 +1641,15 @@
   - SSH の節の手順 1 の nvim の行は `OSC 52 (copy only)` を出した
   - WezTerm の nightly と Windows Terminal 1.24 のどちらでも、`yy` で Windows のクリップボードが `SSH 越しのヤンクを試す。` と改行 (LF) になった。`p` はすぐに貼り (RPC の往復を含めて 71〜73 ms)、`clipboard` は `unnamedplus`。文字単位の日本語のヤンク (`越しのヤンクを試す。`) も入った
   - クリップボードの中身は始める前に退避し、終わった後に戻した (空だった)。Windows のクリップボードの履歴には試験の文字列が残る
+- **SSH 越しのクリップボード (Windows から ssh)**: 上の確認の後、利用者の許可を得て、この PC の WSL の AlmaLinux 10.2 (WSL2、NAT) を接続先にした
+  - WSL には Neovim 0.12.5 (公式の Linux 版のリリース) を一時的な場所に置き、この設定 (この PR のブランチ) を一時的な `XDG_CONFIG_HOME` などに入れた。プラグイン 38 個は lock の版に揃え、`git status --short` は空だった
+  - sshd は 2 通り: (1) openssh-server 9.9p1-27 の RPM を展開した `sshd` を、自分のユーザーのまま `127.0.0.1:2222` に立てた (`UsePAM no`)。(2) 同じパッケージを dnf で入れ、`/usr/sbin/sshd` を root で `127.0.0.1:2223` に立てた (`UsePAM yes`。検証用の設定ファイルと鍵で、`/etc/ssh` と sshd.service は使っていない)。どちらも Windows の localhost から届いた
+  - 手元の端末と ssh: WezTerm の nightly (利用者の設定ファイルのまま) の中の Windows の OpenSSH (`ssh.exe` 9.5p2) と Git for Windows の ssh (OpenSSH 10.3p1)、Windows Terminal 1.24 の中の Windows の OpenSSH。鍵と known_hosts は検証用のもの
+  - WezTerm では、ログインしたシェルに検証の準備 (一時的な場所の Neovim と設定を使う 1 行) を打った後、SSH の節の手順 1・2 のブロックを文書から取り出してそのまま貼り (`wezterm cli send-text`。bash には貼り付けとして届く)、Enter を送った。`yy`・`p`・`:set clipboard?` も同じ経路で打った
+  - 6 通り (sshd 2 通り × WezTerm の 2 つの ssh と Windows Terminal) のどれでも、手順 1 は `SSH_CONNECTION=127.0.0.1 <ポート> 127.0.0.1 2222` (または 2223) と `OSC 52 (copy only)`、手順 2 の `yy` で Windows のクリップボードが `SSH 越しのヤンクを試す。` と改行 (LF) になった
+  - `p` はすぐに貼り (cli の往復を含めて 60〜295 ms)、`:set clipboard?` は noice の窓に `clipboard=unnamedplus` を出した。Windows Terminal では画面を読めないので、nvim を `--listen` 付きで起動して RPC で `yy` と `p` を送り、`clipboard` を読んだ
+  - PAM を通す sshd のログインは、`XDG_SESSION_ID` が付き (`c6` など)、loginuid が 1000 の、logind のセッションだった
+  - 片付け: 2 つの sshd を止め、openssh-server を外した (入れたときに作られた `sshd` のユーザーとグループも消した)。openssh と openssh-clients は、openssh-server に合わせて 9.9p1-23 から 9.9p1-27 に上がったまま。WSL の一時的な場所と、Windows の検証用の鍵は消した
 - **scoop も Git for Windows も PATH に無い状態からの通し** (Windows 導入の手順 1〜11・更新の手順 2・ロールバックの手順 5〜7。ブロックは文書から取り出して Windows PowerShell 5.1 に渡した):
   - scoop は一時的な場所 (`SCOOP`・`XDG_CONFIG_HOME`) に新しく入れた。PATH は Windows の既定の 5 つ (System32 など) とユーザーの PATH (初めは `WindowsApps` だけ) で、ブロックごとに「新しい端末」と同じくレジストリの値から組み立てた
   - scoop が書くユーザーの環境変数 (PATH・`GIT_INSTALL_ROOT`・`C_INCLUDE_PATH` など) と実行ポリシーは、各ブロックの前で `RegOverridePredefKey` を使い、そのプロセスの HKCU を一時的なキーに差し替えて受けた。本物のユーザーの値は変わっていない。scoop がスタートメニューに作った・上書きしたショートカット (Git と 7-Zip) は、退避しておいたものに戻した
@@ -1657,10 +1667,12 @@
   - Neovim も `XDG_CONFIG_HOME` を読むので、scoop の設定を隔離するために付けたままだと、手順 8 が設定を見つけずに `E492: Not an editor command: Lazy! restore` になった。scoop を実行するブロックだけに付けた
   - `RegOverridePredefKey` に渡す `HKEY_CURRENT_USER` は、64 ビットでは符号拡張した値 (`0xFFFFFFFF80000001`) にする。そうしないと `ERROR_INVALID_HANDLE` (6) になる
   - Windows PowerShell 5.1 は、ネイティブコマンドの引数の中の `"` を正しく渡さない。RPC で送る Lua は、ファイルに書いて `dofile` させた
+  - Git for Windows の ssh では、ログインした直後のプロンプトに送った 1 文字目が落ちた。空の行を 1 回送ってから打った
+  - pwsh からパイプで WSL にファイルを書かせると、最後に CRLF が付く。Windows Terminal の確認で、nvim が `lazyvim-ssh.txt` の後ろに CR の付いた別のファイル (空) を開き、`yy` で改行だけが入った。受け手で CR を消して直した
 
 #### 未確認事項 (2026-09-30 の Windows 11)
 
 - VC++ のランタイムが無い Windows 11 での起動 (この PC ではシステムの `VCRUNTIME140.dll` を外せない)
-- Windows の `ssh.exe` を通した OSC 52 (手元の WezTerm から AlmaLinux 10 に ssh し、SSH の節をそのまま貼ること)
+- 実機の AlmaLinux 10 への、Windows からの ssh と、systemd の sshd.service・既定の `/etc/ssh/sshd_config` でのログイン (WSL の AlmaLinux 10 と検証用の設定で代えた)
 - 物理キーボードでの打鍵 (`SendInput` で代えた)
 - `.gitattributes` の無い版を CRLF で取り出した clone が、この変更を取り込むときの流れ
