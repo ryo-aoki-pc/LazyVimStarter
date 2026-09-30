@@ -240,6 +240,9 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   (`install.cmd` など) を実行する処理は動かない (PowerShell は `.\` 無しでは実行しない)。build が失敗しても
   成功と表示されることがある。逆に img-clip.nvim は、`shell` が PowerShell なら PowerShell のコマンドを
   そのまま `vim.fn.system()` に渡すので、`shellcmdflag` の前置きの後ろに連結されて動いている。
+- 改行は `.gitattributes` で LF に固定している。外すと、`core.autocrlf=true` の git (scoop の git の既定) で clone した
+  Windows では、lazy.nvim が LF で書き直す `lazy-lock.json` の大きさが索引と食い違い、`git status` が `M` を出し続ける
+  (`git diff` は空。手順書の「`git status --short` が何も出さなければ揃っている」が成り立たなくなる)。
 - lazy.nvim は、無効にした (`enabled = false`) プラグインの行を `lazy-lock.json` に残し続ける。
   外したプラグインの行は手で消す。既に入っているマシンのディレクトリは `:Lazy clean` まで残る。
 - LazyVim の mason.nvim の `ensure_installed` は spec をまたいで連結される (`opts_extend`)。
@@ -286,15 +289,21 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
     `gsettings` のせいで dconf に入っておらず日本語のときの `<C-j>` が Anthy に食われていたことが分かり、`/usr/bin/gsettings`
     で入れ直して直った。上部バーの拡張は画面の無い gnome-shell 49.4 で確かめ、本物のログイン・本物の Super+Space・
     トークンの節は未確認。Windows 11 は実機 (Windows 11 Pro) で、設定とデータの置き場所を
-    差し替えて Windows PowerShell 5.1 に渡して通した (手順 2 とロールバックの手順 7 は未実行。IME の切り替えは
-    モックの zenhan で確かめた。Neovide 0.16.2 の画面は、未確定文字列のハンドラを呼ぶ形で確かめ、本物の IME での入力は未確認。
-    検索中の表示は、手順を通した後に Neovide と端末で個別に確かめた)。
+    差し替えて Windows PowerShell 5.1 に渡して通した (IME の切り替えはモックの zenhan で確かめた。Neovide 0.16.2 の画面は、
+    未確定文字列のハンドラを呼ぶ形で確かめた。検索中の表示は、手順を通した後に Neovide と端末で個別に確かめた)。
+    2026-09-30 に、scoop も Git for Windows も PATH に無い状態から Windows 導入の手順 1〜11・更新の手順 2・ロールバックの手順 5〜7 を
+    通し (scoop は一時的な場所に入れ、scoop が書くユーザーの環境変数は HKCU の差し替えで受けた)、利用者の離席中に本物の IME
+    (`SendInput`) と本物の zenhan で Neovide と WezTerm を確かめた。flash の `s`・フォーカスが戻ったときの表示・取り込みの手順 2 の
+    lock の書き直しも Windows で確かめ、scoop の git (`core.autocrlf=true`) で `lazy-lock.json` が `M` になり続ける不具合を
+    `.gitattributes` で直した (VC++ のランタイムの無い Windows 11 は未確認)。
     markdown-preview.nvim と markdown-toc を外し GitLab プレビュー・img-clip.nvim・GLFM のスニペットを足した変更は、
     Windows 11 の実機で置き場所を差し替え、模擬の GitLab API と headless の Edge で確かめた。本物のクリップボードの
     画像・既定のブラウザ・トークンの節の Windows の手順 (模擬のトークン)・gitlab.com の 401 も確かめ、本物の GitLab で
     表示できることはマージの後に利用者が確かめた (本物の GitLab での記法ごとの見え方と、トークンの節の AlmaLinux の手順は未確認)。
     SSH 越しのクリップボード (OSC 52) は、コンテナで tmux を手元の端末の代わりにして確かめた後、AlmaLinux 10 の実機で
-    WezTerm の nightly (画面の無い mutter の上) から ssh し、SSH の節のブロックをそのまま貼って通した (Windows の WezTerm、
-    GNOME にログインした画面、PAM を通すシステムの sshd は未確認)。取り込みの手順 1 は AlmaLinux 10 の実機で、使っている
-    設定に対して行った (増えたプラグインを起動時に入れると lock が書き直され、`checkout` して `restore` し直すと揃うことを含む)
+    WezTerm の nightly (画面の無い mutter の上) から ssh し、SSH の節のブロックをそのまま貼って通した。2026-09-30 に、Windows の
+    WezTerm の nightly (Windows の OpenSSH と Git for Windows の ssh) と Windows Terminal から、WSL の AlmaLinux 10.2 に立てた sshd
+    (自分のユーザーのまま・PAM を通す root の 2 通り) に ssh して、同じブロックで通した (GNOME にログインした画面、実機の
+    AlmaLinux 10 の sshd.service は未確認)。取り込みの手順 1 は AlmaLinux 10 の実機で、使っている設定に対して行った
+    (増えたプラグインを起動時に入れると lock が書き直され、`checkout` して `restore` し直すと揃うことを含む)
 - `README.md` — この設定で何ができるかの説明。機能の挙動と設計上の判断、運用上の注意。
