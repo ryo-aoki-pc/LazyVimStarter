@@ -188,6 +188,7 @@
    - `Homebrew 7.…` と版が出ればよい
    - すでに `brew shellenv` の行があれば、`~/.bashrc` には足さない
    - ほかの端末は、開き直すと `brew` が使える
+   - 自分用の bash の設定 (`ryo-aoki-pc/bash`) を入れたホストでは、このブロックは貼らない。代わりに `. ~/.bashrc` と `brew --version` を実行する (その設定が同じ 1 行を読む)
 
 1. Neovim と lazygit を Homebrew で入れる。
 
