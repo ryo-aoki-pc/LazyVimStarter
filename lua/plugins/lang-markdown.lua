@@ -37,8 +37,12 @@ local specs = {
   -- markdown-toc も外す。npm の最終リリースが 2017 年で更新が止まっている。GitLab は [[_TOC_]] で
   -- 目次を描画時に作り、ファイルに書き込む目次が要るときは marksman のコードアクション
   -- ("Table of Contents"。見出し ID は GitLab 方式) で作れる。
-  -- formatters_by_ft の値はリストなので deep-merge で「置換」され、extra の連鎖を上書きする。
+  -- opts 関数で連鎖を置き換え、extra の prettier / markdown-toc が残らないようにする。
   -- そのため markdown.mdx (JSX 混在。GLFM ではないので prettier は残す) も連鎖を全部書く。
+  -- Markdown だけは timeout を 10 秒にする。AlmaLinux 10 の 1 CPU の新規 VM では
+  -- markdownlint-cli2 の単独実行が約 3 秒掛かり、LazyVim 既定の 3 秒では保存時に
+  -- timeout して違反が直らなかった。速い環境では終了した時点で戻り、10 秒待たない。
+  -- timeout_ms を持つ表はリストではなく deep-merge されるため、表の opts には書かない。
   --
   -- ★ 注意: extras の formatting.prettier を有効にすると、この上書きは無効化される。
   -- あちらは opts 関数の中で formatters_by_ft.markdown に prettier を table.insert するため、
@@ -53,12 +57,10 @@ local specs = {
   {
     "stevearc/conform.nvim",
     optional = true,
-    opts = {
-      formatters_by_ft = {
-        markdown = { "markdownlint-cli2" },
-        ["markdown.mdx"] = { "prettier", "markdownlint-cli2" },
-      },
-    },
+    opts = function(_, opts)
+      opts.formatters_by_ft.markdown = { "markdownlint-cli2", timeout_ms = 10000 }
+      opts.formatters_by_ft["markdown.mdx"] = { "prettier", "markdownlint-cli2", timeout_ms = 10000 }
+    end,
   },
 
   -- extra が Mason に入れさせる markdown-toc を外す。LazyVim の mason.nvim の spec は

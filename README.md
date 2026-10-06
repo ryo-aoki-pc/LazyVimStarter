@@ -7,6 +7,8 @@ Markdown (GLFM) 執筆を強化した Neovim 設定。
 (外部コマンドの導入、GNOME + ibus の初期設定、初回起動と動作確認まで)。
 この README は「何ができる設定か」を説明する。
 
+2026-10-06 に新規 AlmaLinux 10.2 VM で[CLI の導入と整形](docs/setup.md#付録-新規-almalinux-102-vm-での-cli-導入整形の再検証2026-10-06)、別の GNOME VM で[通常 GUI と IBus のキー](docs/setup.md#付録-現行手順を別のクリーン-vm-の-gnome-で再検証-2026-10-06)を再検証した。遅い VM の Markdown 整形の待ち時間も修正して再確認した。物理キーやすべての任意節を一括して確認した記録ではない。
+
 ## 手順書
 
 - 手順書は [docs/setup.md](docs/setup.md) の 1 本。`## 実施手順` の下で、OS ごとの導入 (1 度だけ) と、
@@ -150,7 +152,8 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
 
 - LazyVim extra `lang.markdown` を有効化し、以下を上書き:
   - 整形連鎖から **prettier を除外** (GLFM の数式・脚注・`[[_TOC_]]` を壊すため)。
-    整形は markdownlint-cli2 `--fix` のみ。
+    整形は markdownlint-cli2 `--fix` のみ。Markdown / MDX の待ち時間の上限は 10 秒
+    (速い環境では処理が終わった時点で戻る)。ほかのファイルは LazyVim 既定の 3 秒。
   - **markdown-toc を外した** (npm の最終リリースが 2017 年で、更新が止まっている)。目次は GitLab が
     `[[_TOC_]]` から描画のたびに作る。ファイルに書き込む目次が要るときは、marksman のコードアクション
     (`<leader>ca` → Table of Contents。見出しの ID は GitLab の方式) で作る。
