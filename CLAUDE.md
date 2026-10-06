@@ -274,41 +274,22 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   「AlmaLinux 10 に導入する (1 度だけ)」手順 1〜19、「Windows 11 に導入する (1 度だけ)」手順 1〜11、
   「ほかのマシンの変更を取り込む (繰り返し)」手順 1〜2。後ろに「カーソル色を tmux で効かせる (任意)」
   「GNOME の上部バーを IME 連携に合わせる (任意)」「GitLab プレビューのトークンを設定する (任意)」「SSH 越しのヤンクを手元のクリップボードに送る (任意)」「更新」「ロールバック」(OS ごとの手順は
-  「(この節の手順 N の代わりに)」) と `## 補足` を置く。
+  「(この節の手順 N の代わりに)」)を置く。前提条件・注意・期待結果は手順書に残す。
   - 記法は `~/setup-notes` の CLAUDE.md の「手順の形」「表現の規則」と kvm-container の `docs/setup.md` に揃える:
-    太字にしない 1 行の説明「〜する。」→ ブロック → 箇条書き (末尾に「。」を付けない) → 折り畳みの補足 1 つまで。
+    太字にしない 1 行の説明「〜する。」→ ブロック → 箇条書き (末尾に「。」を付けない) 。
     止める手順は「**次の手順は、〜してから貼る**」で終える。アラートは最上位だけに 5 個まで
   - 変数は無い (設定の置き場所と clone 元の URL は変える必要が無いので、コマンドに直接書く)。
     例外は GitLab プレビューのトークンの節だけで、トークンと GitLab の URL は文書に書かず、貼った人に入力させる。
     AlmaLinux 10 のブロックは bash、Windows 11 のブロックだけ PowerShell (5.1 でも通る書き方にし、`&&` / `||` を使わない)
   - 手順は「AlmaLinux 導入の手順 N」「Windows 導入の手順 N」「取り込みの手順 N」と呼び、シナリオの見出しへリンクする。
     番号を変えたら、本文・補足・付録・`> [!IMPORTANT]`・README・この欄を付け替える
-  - 補足は「対象と検証環境」「実施前の状態」「必要なもの一覧」(README がリンク)「選択した方針」「完了時点の状態」
-    「注意点」「参照」「付録」。付録 (検証記録) は書き直さない
-  - 2026-10-06 は新規 AlmaLinux 10.2 x86_64 VM に ae7f049 を新規導入し、CLI の前提・lock 38 個・Mason 11 個・パーサー 30 個・検索・保存を確認した (setup.md の CLI 付録)。遅い VM で Markdown 整形が 3 秒を超えたため、Markdown / MDX 限定で 10 秒の上限に修正して再実行し、GLFM 記法の保持・他のファイル形式の設定も確認した。別の新規 GNOME VM で手順 13〜19 も実行し、入力ソースと Anthy キー保持・通常 GUI・Mason11 / パーサー30・Migemo / Tab・修正後の保存・IBus Ctrl+J / Esc と検索 sticky・アイコンを実 evdev keycode と PNG で確認した (setup.md の GUI 付録)。物理キー・上部バー拡張・画像貼り付け等は今回未実施
-  - 状態の要約 (補足の状態行を変えたらここも直す): AlmaLinux 10 は x86_64 のコンテナで、文書のブロックを
-    そのまま貼って通した (aarch64 は未確認。検証した設定は PR #26 より前)。GNOME の実機では、導入済みの PC で
-    置き場所を差し替えて導入の手順 16〜19 と取り込みの手順 1 (変更がある状態) を通した (手順 1〜15 は
-    状態の確認だけ。パーサーとハイライト、カーソル直下と検索中の `あ` / `A`、img-clip、GitLab の近似表示と Firefox は確かめ、
-    アイコンの字形と Firefox の表示は利用者が目で確かめた)。その後、利用者の本物のキーで、手順 15 が Homebrew の
-    `gsettings` のせいで dconf に入っておらず日本語のときの `<C-j>` が Anthy に食われていたことが分かり、`/usr/bin/gsettings`
-    で入れ直して直った。上部バーの拡張は画面の無い gnome-shell 49.4 で確かめ、本物のログイン・本物の Super+Space・
-    トークンの節は未確認。Windows 11 は実機 (Windows 11 Pro) で、設定とデータの置き場所を
-    差し替えて Windows PowerShell 5.1 に渡して通した (IME の切り替えはモックの zenhan で確かめた。Neovide 0.16.2 の画面は、
-    未確定文字列のハンドラを呼ぶ形で確かめた。検索中の表示は、手順を通した後に Neovide と端末で個別に確かめた)。
-    2026-09-30 に、scoop も Git for Windows も PATH に無い状態から Windows 導入の手順 1〜11・更新の手順 2・ロールバックの手順 5〜7 を
-    通し (scoop は一時的な場所に入れ、scoop が書くユーザーの環境変数は HKCU の差し替えで受けた)、利用者の離席中に本物の IME
-    (`SendInput`) と本物の zenhan で Neovide と WezTerm を確かめた。flash の `s`・フォーカスが戻ったときの表示・取り込みの手順 2 の
-    lock の書き直しも Windows で確かめ、scoop の git (`core.autocrlf=true`) で `lazy-lock.json` が `M` になり続ける不具合を
-    `.gitattributes` で直した (VC++ のランタイムの無い Windows 11 は未確認)。
-    markdown-preview.nvim と markdown-toc を外し GitLab プレビュー・img-clip.nvim・GLFM のスニペットを足した変更は、
-    Windows 11 の実機で置き場所を差し替え、模擬の GitLab API と headless の Edge で確かめた。本物のクリップボードの
-    画像・既定のブラウザ・トークンの節の Windows の手順 (模擬のトークン)・gitlab.com の 401 も確かめ、本物の GitLab で
-    表示できることはマージの後に利用者が確かめた (本物の GitLab での記法ごとの見え方と、トークンの節の AlmaLinux の手順は未確認)。
-    SSH 越しのクリップボード (OSC 52) は、コンテナで tmux を手元の端末の代わりにして確かめた後、AlmaLinux 10 の実機で
-    WezTerm の nightly (画面の無い mutter の上) から ssh し、SSH の節のブロックをそのまま貼って通した。2026-09-30 に、Windows の
-    WezTerm の nightly (Windows の OpenSSH と Git for Windows の ssh) と Windows Terminal から、WSL の AlmaLinux 10.2 に立てた sshd
-    (自分のユーザーのまま・PAM を通す root の 2 通り) に ssh して、同じブロックで通した (GNOME にログインした画面、実機の
-    AlmaLinux 10 の sshd.service は未確認)。取り込みの手順 1 は AlmaLinux 10 の実機で、使っている設定に対して行った
-    (増えたプラグインを起動時に入れると lock が書き直され、`checkout` して `restore` し直すと揃うことを含む)
+  - 背景説明は `docs/reference/setup.md`、検証記録は `docs/verification/setup.md`。必要なもの一覧・前提条件・操作上の注意・期待結果は手順書に残す。過去の記録はリンクと手順番号以外を書き直さない
+  - 検証済みとする範囲は `docs/verification/setup.md` に記載する。開発ガイドにあった従来の要約は `docs/verification/claude.md` に保存する
+
 - `README.md` — この設定で何ができるかの説明。機能の挙動と設計上の判断、運用上の注意。
+
+## 手順書と記録の分離
+
+- 実行・更新・ロールバック・再実行用の確認手順には、必要な前提・注意・分岐・待機条件・期待結果だけを載せる
+- 検証の環境・実施日・対象コミット・実出力・結果・未確認事項は `docs/verification/<手順書名>.md`、背景説明は必要なときだけ `docs/reference/<手順書名>.md` に置く。README は `readme.md` を使う
+- 既存の記録の本文を保持して移動し、ファイルと見出しへの参照を更新する。再実行できる確認コマンドを実施済みの記録と混同しない

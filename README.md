@@ -7,15 +7,13 @@ Markdown (GLFM) 執筆を強化した Neovim 設定。
 (外部コマンドの導入、GNOME + ibus の初期設定、初回起動と動作確認まで)。
 この README は「何ができる設定か」を説明する。
 
-2026-10-06 に新規 AlmaLinux 10.2 VM で[CLI の導入と整形](docs/setup.md#付録-新規-almalinux-102-vm-での-cli-導入整形の再検証2026-10-06)、別の GNOME VM で[通常 GUI と IBus のキー](docs/setup.md#付録-現行手順を別のクリーン-vm-の-gnome-で再検証-2026-10-06)を再検証した。遅い VM の Markdown 整形の待ち時間も修正して再確認した。物理キーやすべての任意節を一括して確認した記録ではない。
 
 ## 手順書
 
 - 手順書は [docs/setup.md](docs/setup.md) の 1 本。`## 実施手順` の下で、OS ごとの導入 (1 度だけ) と、
   ほかのマシンの変更の取り込み (繰り返し) を見出しで分けてある
 - 初めてのマシンでは、自分の OS の「導入する」を上から順に貼る。以後は、必要なシナリオと節だけを貼る
-- 対象は AlmaLinux 10 + GNOME と Windows 11。検証範囲は、手順書の補足の
-  [対象と検証環境](docs/setup.md#対象と検証環境)の「状態」に書いてある
+- 対象は AlmaLinux 10 + GNOME と Windows 11。実施範囲は [導入の検証記録](docs/verification/setup.md)、README の実測は [別の記録](docs/verification/readme.md) に書いてある
 
 | 節 | 頻度 | 用途 |
 |---|---|---|
@@ -91,8 +89,8 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
 #### 補足
 
 - **Neovim の中では `<C-j>` を使うこと**: gnome-shell は ibus の global engine が外部から
-  変わっても自分の内部状態を更新しない (gsettings の `current` を書いても追従しないことを
-  実測で確認済み)。そのため nvim がモードに応じてエンジンを切り替えた後に Super+Space を
+  変わっても自分の内部状態を更新しない (gsettings の `current` を書いても追従しない)。
+  そのため nvim がモードに応じてエンジンを切り替えた後に Super+Space を
   押すと、gnome-shell は古い認識を基準に「次のソース」を選ぶので、一手ぶん空振りすることがある
   (もう一度押せば揃う)。`<C-j>` は nvim が直接切り替えるので常に意図どおり動く。
   なお nvim を抜けた時点では上記の復帰処理で必ず整合が取れるため、OS 側の切替が
