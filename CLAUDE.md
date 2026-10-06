@@ -158,7 +158,11 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
 
 - 整形連鎖から **prettier を除外**し、`markdownlint-cli2 --fix` だけにする
   (prettier は GLFM の数式 `$...$`・複数行脚注・`[[_TOC_]]` を壊すため)。conform の
-  `formatters_by_ft` はリストが spec 間で置き換わるので、`markdown.mdx` の連鎖も全部書いている。
+  `formatters_by_ft` は `opts` 関数で明示代入して置き換え、`markdown.mdx` の連鎖も全部書いている。
+  Markdown / MDX だけ `timeout_ms=10000` (他は既定の 3000)。新規 AlmaLinux VM では
+  単独整形が 3.01 秒で既定 timeout に掛かったため。名前付き timeout を持つ表はリストではなく
+  deep-merge されるので、表の `opts` に戻すと extra の prettier 等が残る。
+  実 UI の保存と GLFM 数式・目次の保持、連鎖・既定値を確認した (docs/setup.md の新規 VM 記録)。
 - **markdown-toc は外した** (npm の最終リリースが 2017 年)。整形連鎖から抜くのに加え、Mason の
   `ensure_installed` からも opts 関数で取り除く (LazyVim の mason.nvim の spec は `opts_extend` で
   リストを連結するので、テーブルで書いても消せない)。
@@ -281,6 +285,7 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
     番号を変えたら、本文・補足・付録・`> [!IMPORTANT]`・README・この欄を付け替える
   - 補足は「対象と検証環境」「実施前の状態」「必要なもの一覧」(README がリンク)「選択した方針」「完了時点の状態」
     「注意点」「参照」「付録」。付録 (検証記録) は書き直さない
+  - 2026-10-06 は新規 AlmaLinux 10.2 x86_64 VM に ae7f049 を新規導入し、CLI の前提・lock 38 個・Mason 11 個・パーサー 30 個・検索・保存を確認した (setup.md の CLI 付録)。遅い VM で Markdown 整形が 3 秒を超えたため、Markdown / MDX 限定で 10 秒の上限に修正して再実行し、GLFM 記法の保持・他のファイル形式の設定も確認した。別の新規 GNOME VM で手順 13〜19 も実行し、入力ソースと Anthy キー保持・通常 GUI・Mason11 / パーサー30・Migemo / Tab・修正後の保存・IBus Ctrl+J / Esc と検索 sticky・アイコンを実 evdev keycode と PNG で確認した (setup.md の GUI 付録)。物理キー・上部バー拡張・画像貼り付け等は今回未実施
   - 状態の要約 (補足の状態行を変えたらここも直す): AlmaLinux 10 は x86_64 のコンテナで、文書のブロックを
     そのまま貼って通した (aarch64 は未確認。検証した設定は PR #26 より前)。GNOME の実機では、導入済みの PC で
     置き場所を差し替えて導入の手順 16〜19 と取り込みの手順 1 (変更がある状態) を通した (手順 1〜15 は

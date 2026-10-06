@@ -31,6 +31,8 @@
 - この設定で何ができるかは [README](../README.md)。外部コマンドの用途は[必要なもの一覧](#必要なもの一覧)
 
 > [!WARNING]
+> **2026-10-06 に現行 `ae7f049` を、新規 AlmaLinux 10.2 の x86_64 VM で公開 URL から新規導入した**。CLI の前提・lock 復元・Mason 11 個・パーサー 30 個・検索・保存時の整形を確認し、遅い VM の Markdown 整形の待ち時間を修正した（[今回の CLI 記録](#付録-新規-almalinux-102-vm-での-cli-導入整形の再検証2026-10-06)）。別の新規 GNOME VM でも入力ソース・通常 GUI・IBus の Ctrl+J / Esc・検索 sticky・アイコン・修正後の保存を確認した（[今回の GUI 記録](#付録-現行手順を別のクリーン-vm-の-gnome-で再検証-2026-10-06)）。物理キー・上部バー拡張・画像貼り付け等は今回未実施。以下は過去の検証範囲。
+>
 > **AlmaLinux 10 の手順は x86_64 のコンテナで通した。GNOME の実機では、導入済みの PC で AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 だけを通した** (手順 1〜15 は、システムを変えずに到達点を確かめただけ)。aarch64 では通していない。**上部バーの節は、画面の無い gnome-shell でだけ確かめた** (本物のログインでは通していない)。**Windows 11 の手順は実機とクリーンインストールした VM で通した** (scoop も Git for Windows も PATH に無い状態からの通しと、本物の IME を含む)。VM では VC++ ランタイム不足の起動失敗を再現し、手順 6 に導入を追加して起動できることを確かめた。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、GNOME の画面では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた。Windows からは、WezTerm の nightly と Windows Terminal で WSL の AlmaLinux 10 に ssh して確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
 
 ### AlmaLinux 10 に導入する (1 度だけ)
@@ -401,6 +403,7 @@
    - `/kensaku` と打って Enter を押す。3 行目の「検索」にカーソルが移り、`[1/1]` と出る
    - `/kensaku` と打って `<Tab>` を押す。入力が「検索」に置き換わる (候補が 1 つなので、すぐ確定する)。`<Esc>` で抜ける
    - `:w` で保存する。1 行目が `# 動作確認` に直る (markdownlint-cli2 の整形)
+   - 遅い VM では整形に数秒掛かる。Markdown / MDX の待ち時間の上限は 10 秒で、処理が終わればすぐ戻る
    - `o` で行を開き、`<C-j>` を押す。下の表示が `A` から `あ` に変わる。`<Esc>` で `A` に戻る
    - `<C-j>` を押したときは、カーソルのすぐ下にも `あ` / `A` が約 1 秒出る
    - `/` を押す。最下段の検索欄の右端に `A` が出る。`<C-j>` で `あ` に変わり、検索欄のカーソルのすぐ上にも `あ` が約 1 秒出て、カーソルが橙になる
@@ -1001,6 +1004,8 @@
   - 変数は無い。読者が書き換える値も無い (GitLab プレビューのトークンの節だけは、トークンと URL を貼った後に入力する)
   - AlmaLinux 10 は dnf + EPEL と Homebrew、Windows 11 は scoop で入れる
 - **状態**:
+  - **2026-10-06 に `ae7f049` を新規 AlmaLinux 10.2 の x86_64 VM で新規導入し、CLI の前提・lock・Mason 11 個・パーサー 30 個・検索・保存を確認した**。Markdown 整形は遅い VM で 3 秒の上限を超えたため、Markdown / MDX だけ 10 秒へ修正して再実行した（[今回の CLI 記録](#付録-新規-almalinux-102-vm-での-cli-導入整形の再検証2026-10-06)）。以下の記録は、それぞれの過去の環境で確認した範囲を示す
+  - **別の新規 GNOME VM で現行の手順 13〜19 も通した**。入力ソース・Anthy キーの保持・通常 WezTerm GUI・Mason 11 個 / パーサー 30 個・Migemo / Tab・修正後 `:w`・IBus の Ctrl+J / Esc と検索 sticky・アイコンを実 evdev keycode と PNG で確認した（[今回の GUI 記録](#付録-現行手順を別のクリーン-vm-の-gnome-で再検証-2026-10-06)）。health は fzf の WARNING だけ。物理キー・上部バー拡張・画像貼り付け等は今回未実施
   - **AlmaLinux 10 の導入は、x86_64 のコンテナでのみ通した (2026-09-28)。実機では、この形では通していない**
     - クラウドホスト上の Docker の `almalinux:10` (AlmaLinux 10.2) に、sudo のできる一般ユーザーを作り、端末 (tmux) に**この文書のコードブロックをそのまま貼って**通した
     - 通したもの: AlmaLinux 導入の手順 1〜19、取り込みの手順 1、tmux の節、更新の手順 1・3、ロールバックの手順 1〜4
@@ -1227,6 +1232,8 @@
 - **保存しても Markdown が整形されない / lint が出ない**: `markdownlint-cli2` は npm のパッケージ
   - node を入れ替えたり消したりすると、Mason で入れたものごと壊れる
   - `:Mason` で状態を見て、`:MasonInstall markdownlint-cli2` で入れ直す
+  - 診断が出ているのに直らなければ `:ConformInfo` を開く。`Formatter 'markdownlint-cli2' timeout` は整形の時間切れで、ツールの未導入とは区別する
+  - AlmaLinux 10 の 1 CPU の新規 VM で、正常な単独整形にも約 3 秒掛かった。Markdown / MDX だけ上限を 10 秒へ広げて保存整形を再確認した。ほかのファイルは既定の 3 秒のまま
 - **GitLab プレビュー (`<leader>cp`) が `近似表示` になる**: ページの上のバナーに理由が出る
   - `GITLAB_TOKEN が未設定`: [トークンの節](#gitlab-プレビューのトークンを設定する-任意)を行い、端末 (と Neovide) を開き直す
   - `トークンが拒否された (HTTP 401)`: トークンの期限切れ、スコープ (`read_api`)、`GITLAB_HOST` の違いを確かめる。直したら `:GitLabPreview` で送り直す
@@ -1725,3 +1732,40 @@
 - Neovide と WezTerm、flash の `s`、カーソル直下の短時間の IME 表示、フォーカスが戻ったときの表示
 - 今回の VM での更新・取り込み・ロールバックと、GitLab プレビュー・画像貼り付け・SSH の任意の節
 - Home / Pro、標準ユーザーが別の管理者の認証を使う UAC (非管理者として動く管理者アカウントの許可で確かめた)
+
+### 付録: 新規 AlmaLinux 10.2 VM での CLI 導入・整形の再検証（2026-10-06）
+
+- **対象と環境**:
+  - 公式 ISO から新規導入した AlmaLinux 10.2 Workstation の x86_64 VM（kernel `6.12.0-211.61.1.el10_2.x86_64`、1 CPU、SELinux Enforcing）を使った。一般ユーザーの対話 SSH PTY で、この設定の `custom` / `ae7f049` を公開 URL から通常の `~/.config/nvim` に clone した
+  - 共通 bash `3d5323e` と Homebrew 7.0.8 は先に導入した。手順 9 は本文の共通 bash 分岐どおり `. ~/.bashrc` と `brew --version` を使い、直接追記はしなかった
+- **導入と確認**:
+  - AlmaLinux 導入の手順 1・3〜7・10・11・16〜18 を実行した。EPEL と Homebrew の導入済み分岐を使った。手順 3 の不足分は dnf から入り、Node 22.23.2・npm 10.9.8・gcc 14.3.1、外部コマンドの検出が揃った
+  - Neovim 0.12.5（Homebrew formula 0.12.5_1）と lazygit 0.66.0 は bottle で入った。初回 headless の中断通知の後、lock を git から戻して `Lazy! restore` を行った。有効なリモートプラグイン 38 個の実際の HEAD が lock とすべて一致し、修正を転送する前の `git status --short` は空だった
+  - 通常 UI で Markdown を開いて待った。`VeryLazy` とローカル autocmd が自然に読み込まれ、Mason は Installed 11・導入中 0、パーサーは 30 個、Markdown highlighting は有効だった。gitcommit のパーサーは最後までコンパイルを待った
+  - 手順 18 の health に ERROR / WARNING は無かった（`grep` の終了コードは 1）。手順 19 のうち `/kensaku` は 3 行目の byte 12 に移り、`/kensaku<Tab>` は検索欄を「検索」にした
+- **見つけて直したこと**:
+  - ツール導入後に起動し直しても `:w` が `#動作確認` を直さず、conform のログに `Formatter 'markdownlint-cli2' timeout` が残った。単独の `markdownlint-cli2 --fix` は正常に直せたが、実行時間は 3.01 秒で、LazyVim の既定の上限 3 秒を超えた
+  - `lua/plugins/lang-markdown.lua` を修正し、Markdown / MDX の formatter 連鎖へだけ `timeout_ms=10000` を付けた。名前付きの設定を持つ表の deep-merge で prettier が戻らないよう、`opts` 関数の明示代入で連鎖を置き換えた
+  - 修正ファイルを同じ VM に転送して Neovim を起動し直し、通常 UI の `:w` で `# 動作確認` へ直ることを確認した。GLFM の `$E = mc^2$` と `[[_TOC_]]` は保存後も変わらなかった。診断の準備を待ってから打鍵し、RPC を含む完了確認は約 6.8 秒だった
+  - 実 UI で Markdown は markdownlint-cli2 だけ、MDX は prettier と markdownlint-cli2、両者の上限は 10000 ms と観測した。既定値は 3000 ms、sh の連鎖は shfmt のままだった。修正 Lua の `stylua --check` も成功した。速い実機での時間は測定していない
+- **範囲と補助処理**:
+  - 実 UI は通常起動し、観測用に `--listen` を足して状態を RPC で読んだ。`VeryLazy` は手動発火していない。初回通知の `Press ENTER` には Enter を送った
+  - 初回 UI からそのまま保存の確認へ進む試験と、lint 診断が来る前の保存は、整形の条件を満たさなかった。本文どおり初回 UI を閉じて再起動し、診断の準備後に確認した
+  - CLI の範囲には GNOME の入力ソース・IME の実入力・フォントの見た目・上部バー拡張・GitLab の実サービス・画像貼り付け・SSH のローカルクリップボード・更新・削除を含めない。GNOME での確認は別の VM の記録へ分ける
+
+### 付録: 現行手順を別のクリーン VM の GNOME で再検証 (2026-10-06)
+
+CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Linux の手順 13〜19 を通した。初期状態は SELinux Enforcing、firewalld 有効、GNOME Shell 49.4、ibus-anthy 1.5.17。共通 bash、Homebrew 7.0.8、Neovim 0.12.5_1、lazygit 0.66.0、HackGen Console NF 2.10.0 と、WezTerm の設定 `4bdfbf1` を導入した。設定は `ae7f049` の clone に、直前の CLI 検証で修正した `lang-markdown.lua` を転送したもの。
+
+- 入力ソースを US と Anthy にし、Anthy の 46 キーを保ったまま `on_off` を `Zenkaku_Hankaku` だけにした。セッションを終えてから新しい GNOME セッションを作った
+- 手順 16 の headless 導入・lock の復元後、通常の WezTerm の画面で手順 17 の Markdown を開いた。Mason の 11 ツールとパーサー 30 個が入った。最後の gitcommit はコンパイル完了まで待った。初回の marksman は依存導入中に `MailboxProcessor.PostAndAsyncReply` のタイムアウトで終了したが、導入完了後の起動では再発しなかった
+- 手順 18 の health は `fzf` 未導入の WARNING だけで、ERROR は無かった
+- 導入完了後に閉じて起動し直し、実キーの `/kensaku` で「検索」の `[1/1]`、Tab で検索入力が「検索」へ変わることを PNG で確認した
+- 修正後の実キー `:w` で、ファイルの 1 行目が `# 動作確認` へ直った。GUI でも 10 秒上限の変更が効いた。MDX の実整形はこの GUI 試験では行っていない
+- 新しく起動した Neovim で `o` → Ctrl+J を打つと lualine が `A` → `あ`、カーソルが橙になった。Esc で NORMAL と `A` に戻った
+- 検索欄は最初 `A`、Ctrl+J で右端が `あ` に変わった。検索欄の近くに一時的な `あ` も写った。Esc で抜けた後の次の `/` は `あ` で始まり、Ctrl+J で `A` に戻せた
+- Space 2 回のファイルピッカーとプレビューを開き、HackGen のファイル種別アイコンが豆腐にならないことを確認した。追加した空行は `:qa!` で保存せず閉じた
+
+入力は Mutter の RemoteDesktop を通る実 evdev keycode の押下・解放を使った。`nvim_input` / `--remote-send` による IME 試験はしていない。スクリーンショットと通常 GUI の表示で確認し、`VeryLazy` を手で発火していない。
+
+今回の GUI 試験には、挿入カーソル近くの一時表示の撮影、上部バー追従の拡張、Neovide、物理キーボード、画像貼り付け、SSH / tmux 越しのローカルクリップボード、JIS 配列、Windows / aarch64、設定の更新・削除を含めない。上部バーは拡張を入れていないので英語の表示が残った。通常 GUI と IBus の経路を確認した範囲であり、物理キーの実測とは分ける。
