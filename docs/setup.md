@@ -5,8 +5,8 @@
 > [!IMPORTANT]
 > - **AlmaLinux 10 では、GNOME にログインしたデスクトップの端末で、自分のユーザーのまま実行する** ([SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)だけは、手元の WezTerm から ssh したシェルで貼る)。`sudo -i` した root のシェルでは行わない (Homebrew は root で動かず、`gsettings` は実行したユーザーの設定しか変えない)
 > - **AlmaLinux 10 で実行するユーザーは `sudo` できる必要がある** ([AlmaLinux 導入の手順 2・3・8](#almalinux-10-に導入する-1-度だけ))
-> - **Windows 11 では、管理者ではない PowerShell で実行する**
-> - **対話入力がある**: AlmaLinux 導入の手順 3 (`[y/N]` と EPEL の鍵)、手順 8 (Homebrew の `RETURN` と `sudo` のパスワード)、手順 10 (`brew` の `[y/n]`)、[GitLab プレビューのトークンの節](#gitlab-プレビューのトークンを設定する-任意)の手順 1〜4 (トークンと GitLab の URL)。答えてから次の手順を貼る
+> - **Windows 11 では、管理者ではない PowerShell で実行する** (手順 6 の VC++ ランタイムのインストーラーだけは UAC を許可する。標準ユーザーなら管理者の認証が必要)
+> - **対話入力がある**: AlmaLinux 導入の手順 3 (`[y/N]` と EPEL の鍵)、手順 8 (Homebrew の `RETURN` と `sudo` のパスワード)、手順 10 (`brew` の `[y/n]`)、Windows 導入の手順 6 (VC++ ランタイムの UAC)、[GitLab プレビューのトークンの節](#gitlab-プレビューのトークンを設定する-任意)の手順 1〜4 (トークンと GitLab の URL)。答えてから次の手順を貼る
 > - **Neovim の画面が開く**: AlmaLinux 導入の手順 17・19、Windows 導入の手順 9・11、[SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 2。`:qa` で閉じてから次の手順を貼る
 > - **AlmaLinux 導入の手順 15 の後で、ログアウトしてログインし直す** (入れた ibus-anthy と入力ソースを読み直させる)。[上部バーの節](#gnome-の上部バーを-ime-連携に合わせる-任意)の手順 2 でも、拡張を読ませるためにログインし直す
 
@@ -31,7 +31,7 @@
 - この設定で何ができるかは [README](../README.md)。外部コマンドの用途は[必要なもの一覧](#必要なもの一覧)
 
 > [!WARNING]
-> **AlmaLinux 10 の手順は x86_64 のコンテナで通した。GNOME の実機では、導入済みの PC で AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 だけを通した** (手順 1〜15 は、システムを変えずに到達点を確かめただけ)。aarch64 では通していない。**上部バーの節は、画面の無い gnome-shell でだけ確かめた** (本物のログインでは通していない)。**Windows 11 の手順は実機で通した** (scoop も Git for Windows も PATH に無い状態からの通しと、本物の IME を含む)。VC++ のランタイムが無い Windows 11 では通していない。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、GNOME の画面では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた。Windows からは、WezTerm の nightly と Windows Terminal で WSL の AlmaLinux 10 に ssh して確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
+> **AlmaLinux 10 の手順は x86_64 のコンテナで通した。GNOME の実機では、導入済みの PC で AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 だけを通した** (手順 1〜15 は、システムを変えずに到達点を確かめただけ)。aarch64 では通していない。**上部バーの節は、画面の無い gnome-shell でだけ確かめた** (本物のログインでは通していない)。**Windows 11 の手順は実機とクリーンインストールした VM で通した** (scoop も Git for Windows も PATH に無い状態からの通しと、本物の IME を含む)。VM では VC++ ランタイム不足の起動失敗を再現し、手順 6 に導入を追加して起動できることを確かめた。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、GNOME の画面では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた。Windows からは、WezTerm の nightly と Windows Terminal で WSL の AlmaLinux 10 に ssh して確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
 
 ### AlmaLinux 10 に導入する (1 度だけ)
 
@@ -426,7 +426,7 @@
 
 - Windows 11 に scoop で外部コマンド・Neovim・zenhan を入れ、この設定を `%LOCALAPPDATA%\nvim` に clone して初回起動する
 - 管理者ではない PowerShell で貼る。Windows PowerShell 5.1 でも PowerShell 7 でもよい
-- この節の手順は、Windows 11 Pro の実機で Windows PowerShell 5.1 に貼る形で通した (scoop も Git for Windows も PATH に無い状態から、手順 2 を含めて。範囲は[対象と検証環境](#対象と検証環境))
+- この節の手順は、Windows 11 Pro の実機とクリーンインストールした Windows 11 Enterprise Evaluation の VM で Windows PowerShell 5.1 に渡して通した (scoop と git が無い状態から、手順 2 を含めて。VM では VC++ ランタイムも無かった。範囲は[対象と検証環境](#対象と検証環境))
 
 1. scoop が入っているか確かめる。
 
@@ -479,22 +479,24 @@
    - `custom` と出ればよい
    - すでに clone してあれば、`git clone` は飛ばされる
 
-1. 外部コマンドと Neovim・zenhan・lazygit を scoop で入れる。
+1. Visual C++ のランタイムと、外部コマンド・Neovim・zenhan・lazygit を scoop で入れる。
 
    ```powershell
+   scoop install vcredist2022
    scoop install neovim ripgrep fd gcc nodejs zenhan lazygit
    ```
 
+   - PowerShell は非管理者のまま、Visual C++ のインストーラーの UAC を許可する (x64・x86 の両方を入れる。標準ユーザーなら管理者の認証情報が要る)
    - `zenhan` は IME 連携に使う。無ければ IME 連携だけが静かに無効になる
    - `lazygit` は任意 (無ければ `<leader>gg` が定義されないだけ)
-   - 入っているものは、何も出さずに飛ばされる (scoop は複数を並べると `already installed` を出さない)
+   - 2 行目のパッケージは、導入済みなら何も出さずに飛ばされる (scoop は複数を並べると `already installed` を出さない)
 
    <details>
    <summary>補足: Windows の外部コマンド</summary>
 
-   - `zenhan` / `neovim` / `ripgrep` / `fd` / `gcc` / `nodejs` は scoop の `main` バケット、`lazygit` は `extras` にある (バケットの定義で確認)
+   - `zenhan` / `neovim` / `ripgrep` / `fd` / `gcc` / `nodejs` は scoop の `main` バケット、`vcredist2022` / `lazygit` は `extras` にある (バケットの定義で確認)
    - `curl` と `tar` は Windows 11 が `C:\Windows\System32` に同梱している
-   - scoop の `neovim` は VC++ のランタイム (`VCRUNTIME140.dll`) を同梱しない。多くの PC には入っているが、無ければ `nvim` が起動しない ([注意点](#注意点))。手順 6 で scoop も `'neovim' suggests installing 'extras/vcredist2022'` と出す
+   - scoop の `neovim` は VC++ のランタイム (`VCRUNTIME140.dll`) を同梱しない。`extras/vcredist2022` の提案だけでは自動導入されないため、この手順で先に入れて揃える ([注意点](#注意点))
    - `gzip` と `unzip` は要らない。Mason は Windows では zip を PowerShell の `Expand-Archive` で、`.tar.gz` を同梱の `tar` で展開する。この設定で入る 11 個は、どちらかか、展開の要らない exe・npm で済む
    - `:checkhealth mason` の `unzip` / `gzip` / `wget` の WARNING は無視してよい
    - C コンパイラは `gcc` が PATH にあれば、LazyVim が見つけて `CC` に設定する
@@ -1100,11 +1102,17 @@
       - VC++ のランタイム (`VCRUNTIME140.dll`) が無い Windows 11 (`nvim.exe` は読み込むが、この PC にはシステムに入っている)
       - 物理キーボードでの打鍵 (`SendInput` で代えた)
       - SSH の接続先の、実機の AlmaLinux 10 と systemd の sshd.service (WSL の AlmaLinux 10 で代えた)
+  - **クリーンインストールした Windows 11 の VM で導入を確かめた (2026-10-06)** ([付録](#付録-クリーンインストールした-windows-11-vm-での検証記録-2026-10-06))
+    - 対象は `custom` の `f0d732d`。scoop・git・Neovim・VC++ ランタイムが無い新規 Windows 11 Enterprise Evaluation の複製に、通常の置き場所のまま導入した
+    - ランタイム不足で Neovim が `0xC0000135` を返した。手順 6 に `scoop install vcredist2022` を追加し、x64・x86 の UAC を許可すると起動できた
+    - 有効なプラグイン 38 個の HEAD が lock と一致し、`core.autocrlf=true` でも Git の変更表示は空で lock は LF。実 UI で Mason の 11 個、パーサー 30 個とハイライト、marksman の初期化を確認した
+    - Windows Terminal と Microsoft IME で、日本語入力・`<C-j>`・Esc の英数化・検索の sticky と状態表示・`/kensaku`・Tab の補完・保存時の Markdown 整形・アイコンを確認した。キーは VirtualBox の仮想キーボードから入れ、OS の IME を通した。health は無視してよい `fzf` の WARNING だけだった
+    - 更新・ロールバック・任意の節・Neovide は今回の VM では確認していない
   - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
 | 項目 | AlmaLinux 10 | Windows 11 |
 |---|---|---|
-| 検証 | x86_64 のコンテナ (AlmaLinux 10.2) で通した。GNOME の実機では、手順 16〜19 と取り込みだけを通した | 実機 (Windows 11 Pro) で、置き場所を差し替えて通した |
+| 検証 | x86_64 のコンテナ (AlmaLinux 10.2) で通した。GNOME の実機では、手順 16〜19 と取り込みだけを通した | 実機 (Windows 11 Pro) では置き場所を差し替えて通し、クリーンな VM (Enterprise Evaluation) では通常の置き場所で導入を確認した |
 | パッケージマネージャ | dnf + EPEL、Neovim・lazygit・フォントは Homebrew (7.0.7) | scoop |
 | Neovim | Homebrew の `neovim` (0.12.5) | scoop の `neovim` (0.12.5) |
 | IME | ibus 1.5.32 + ibus-anthy 1.5.17 (`busctl` / `gdbus` で制御) | zenhan 0.0.1 (任意。検証の多くはモックで、本物でも確かめた) |
@@ -1204,10 +1212,9 @@
 
 ### 注意点
 
-- **Windows で `nvim` が起動しない (`VCRUNTIME140.dll が見つからない`)**: Visual C++ のランタイムが入っていない
-  - scoop の `neovim` は `VCRUNTIME140.dll` を同梱しない (`nvim.exe` と `lua51.dll` が読み込む)。Windows 導入の手順 6 で scoop が勧める `extras/vcredist2022` が、このランタイム
-  - Microsoft の「Visual C++ 再頒布可能パッケージ」の x64 版 (`VC_redist.x64.exe`) を入れる (管理者の権限が要る)
-  - 検証した PC にはシステムに入っていたので、この症状そのものは確かめていない
+- **Windows で `nvim` が起動しない (`VCRUNTIME140.dll が見つからない` / `0xC0000135`)**: Visual C++ のランタイムが入っていない
+  - scoop の `neovim` は `VCRUNTIME140.dll` を同梱しない (`nvim.exe` と `lua51.dll` が読み込む)。[Windows 導入の手順 6](#windows-11-に導入する-1-度だけ)で `vcredist2022` を入れ、手順 7 の `nvim --version` で確かめる
+  - VC++ のランタイムが無いクリーンインストールの Windows 11 VM では、Neovim 0.12.5 が終了コード `-1073741515` (`0xC0000135`) になり、起動しなかった
 - **一部の Mason のツールだけが入らない (`stylua` など)**: `unzip` が無い
   - Mason は zip で配布されるツールの展開に `unzip` を使い、無いと**そのツールだけ**が静かに失敗する
   - `:Mason` で状態を見て、`sudo dnf install unzip` の後に入れ直す
@@ -1285,6 +1292,7 @@
 - [lazy.nvim](https://lazy.folke.io/): `:Lazy restore` と `lazy-lock.json` の扱い
 - [Homebrew on Linux](https://docs.brew.sh/Homebrew-on-Linux): `/home/linuxbrew/.linuxbrew` に入れる理由とボトルの条件
 - [scoop](https://scoop.sh/): 管理者権限なしで `%USERPROFILE%\scoop` に入れる
+- [Visual C++ 再頒布可能パッケージ](https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files#command-line-options-for-the-redistributable-packages): インストーラーのオプションと、非管理者から起動するときの UAC
 - [luamigemo](https://github.com/delphinus/luamigemo): ローマ字検索 (Migemo) の純 Lua 実装。同梱の辞書のライセンスもここ
 - [ibus-anthy](https://github.com/ibus/ibus-anthy): `on_off` などのキー割り当て
 - [HackGen](https://github.com/yuru7/HackGen): フォントのリリース
@@ -1677,3 +1685,43 @@
 - 実機の AlmaLinux 10 への、Windows からの ssh と、systemd の sshd.service・既定の `/etc/ssh/sshd_config` でのログイン (WSL の AlmaLinux 10 と検証用の設定で代えた)
 - 物理キーボードでの打鍵 (`SendInput` で代えた)
 - `.gitattributes` の無い版を CRLF で取り出した clone が、この変更を取り込むときの流れ
+
+### 付録: クリーンインストールした Windows 11 VM での検証記録 (2026-10-06)
+
+- **対象と導入前の状態**:
+  - クリーンインストール直後の Windows 11 の複製を、専用の VirtualBox VM `lazyvim-windows11-verify-20261006` にした。導入前の `clean-baseline` snapshot を保存してから試した。終了後は Windows を通常の手順で終了し、導入済みの `verified-lazyvim` snapshot を保存した
+  - Windows 11 Enterprise Evaluation、レジストリの `DisplayVersion=26H2`・`CurrentBuild=26300`・`UBR=9457`。Windows PowerShell 5.1.26100.9444 を非管理者として実行した。VirtualBox 7.2.20、メモリ 8 GB、検証を再開した後の CPU は 1 個
+  - Guest Additions は入っていた。scoop・git・nvim・rg・fd・gcc・node・npm・zenhan・lazygit はコマンドとして存在せず、通常の設定・データのディレクトリも無かった。`System32` の `VCRUNTIME140.dll`・`MSVCP140.dll` と VC++ ランタイムの登録も無かった
+  - この設定は GitHub から通常の `%LOCALAPPDATA%\nvim` に clone した。対象は `custom` の `f0d732d82b41909cee34d5abd481e6591cba6f56`。ホストの設定や変更中の lock は持ち込んでいない
+- **実行したこと**:
+  - Windows 導入の手順 1〜8・10 の PowerShell ブロックを文書から取り出し、Windows PowerShell 5.1 に渡した。PATH は各実行前に Machine と User の値から読み直した。設定やユーザーのレジストリは隔離せず、この VM の通常の場所に入れた
+  - 手順 6 は修正前のブロックで開始し、下記のランタイム不足を再現した後、追加した `scoop install vcredist2022` を別に実行して再開した。修正した手順 1〜11 を頭から再実行した結果ではない
+  - HackGen v2.10.0 の公式リリースの NF zip を、公開された SHA256 と照合して展開し、HackGen Console NF の Regular・Bold をユーザーの Fonts とレジストリに登録した。Windows Terminal の既定のフォントを `HackGen Console NF` に設定した
+  - 手順 9・11 は Windows Terminal に実際の Neovim を開いて確認した。観測用に `--listen` を付け、実画面の状態を RPC で読んだ。VeryLazy を手動で発火させず、実際の UIEnter から設定が読み込まれた状態を確認した
+  - UI のキーは VirtualBox の `keyboardputscancode` で仮想キーボードから送り、Microsoft IME を通した。IME の検証に `nvim_input` や `--remote-send` は使っていない
+- **見つけて直したこと**:
+  - scoop の neovim 0.12.5 は VC++ ランタイムを同梱せず、`extras/vcredist2022` を suggests として案内するだけだった。修正前の手順 6 の後で `nvim.exe --version` を実行すると、何も出さずに `-1073741515` (`0xC0000135`) で終了した
+  - `scoop install vcredist2022` の Microsoft 製インストーラーの x64・x86 の UAC をそれぞれ許可した。14.51.36247 のランタイムが入り、`VCRUNTIME140.dll` は 14.51.36247.0 になった。続く `nvim.exe --version` の出力を最後まで受け取ると、先頭行は `NVIM v0.12.5` で、終了コード 0 だった
+  - Windows 導入の手順 6 にランタイムの導入を追加した。PowerShell 自体は非管理者のままでよく、インストーラーには UAC の許可 (標準ユーザーなら管理者の認証) が必要になる
+- **確認結果**:
+  - scoop の導入、extras の追加、設定の clone、neovim・ripgrep・fd・gcc・nodejs・zenhan・lazygit の導入とコマンド検出が通った。版は neovim 0.12.5、ripgrep 15.2.0、fd 10.5.0、gcc 15.2.0、nodejs 26.10.0、zenhan 0.0.1、lazygit 0.66.0
+  - 手順 8 の起動・lock の復元・`Lazy! restore` が終了コード 0 で完了した。Mason の中断と tree-sitter CLI の未導入のメッセージは初回の headless では出たが、実 UI で待つと揃った
+  - 有効なリモートプラグイン 38 個の実際の HEAD を lock と照合し、すべて一致した。無効な render-markdown の lock 行は対象外。`core.autocrlf=true` でも `git status --short` は空で、lock に CRLF は無かった
+  - 実 UI で Mason の Installed が 11 個、導入中・欠落が 0 個だった。パーサー 30 個のロードと、Markdown の解析が通り、ハイライトが有効だった。marksman は初期化済みで、VeryLazy・ローカルの autocmd・keymap・noice・zenhan の IME 連携が読み込まれていた
+  - 手順 10 の health は ERROR が無く、無視してよい `fzf is not installed` の WARNING 1 件だけだった
+  - `/kensaku` を実キーで確定すると、本文の「検索」(3 行目のバイト列 12) に移動した。`/kensaku<Tab>` は検索欄を「検索」に置き換えた
+  - 挿入モードで `<C-j>` を押すと IME と lualine が「あ」になり、`nihon`・Space・Enter で「日本」を確定できた。Esc でノーマルモードと「A」に戻った。検索でも `<C-j>` が効き、入り直すと日本語の状態を復元して検索欄の右端に「あ」が表示された
+  - 実キーの `:w` で `#動作確認` が `# 動作確認` に整形された。別の基礎機能の試験でも、markdownlint の MD018 の検出と修正、整形連鎖が markdownlint-cli2 だけであること、GLFM の `$E = mc^2$` と `[[_TOC_]]` が保たれることを確認した
+  - 日本語の表示とステータスラインの Nerd Font のアイコンを画面で確認した。headless の基礎機能の試験では、Migemo の候補の出現回数順と、PowerShell の `system()`・`:read !`・`:grep` の日本語の入出力も通った
+- **検証環境と補助処理で起きたこと**:
+  - ホストの Hyper-V が有効な NEM 上の 4 CPU の VM で、gcc の導入中に応答が止まった。専用の複製を停止し、1 CPU・nested virtualization 無効で再開した。scoop が Install failed と記録した gcc だけを外し、手順 6・7 を再実行して揃えた。Neovim 設定のエラーは確認されなかった
+  - Windows PowerShell 5.1 は BOM の無い UTF-8 の補助 `.ps1` を既定では正しく読まないため、補助処理は UTF-8 を指定して読み込んだ。文書のブロックは UTF-8 の JSON から実行した
+  - 手順 7 の `Select-Object -First 1` はネイティブコマンドの出力を途中で閉じるため、表示が正しくても補助処理が終了コード -1 を観測した。起動可否は別に採取した `--version` の全出力と終了コード 0 で判断した
+  - RPC の観測クライアントも `--headless` を付けて実行した。仮想キーボードで Shift と文字を一括で送るとコロンの入力が通らないことがあり、Shift の押下・文字・解放を分けて `:w` を確認した
+
+#### 未確認事項 (2026-10-06 の Windows 11 VM)
+
+- 物理キーボードでの打鍵 (OS の IME を通る VirtualBox の仮想キーボードで代えた)
+- Neovide と WezTerm、flash の `s`、カーソル直下の短時間の IME 表示、フォーカスが戻ったときの表示
+- 今回の VM での更新・取り込み・ロールバックと、GitLab プレビュー・画像貼り付け・SSH の任意の節
+- Home / Pro、標準ユーザーが別の管理者の認証を使う UAC (非管理者として動く管理者アカウントの許可で確かめた)
