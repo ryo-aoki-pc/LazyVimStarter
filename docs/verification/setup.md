@@ -713,6 +713,64 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
 - 古い版のランタイムだけがある PC での Neovim の起動 (1 行目は版を見ない)
 - 注意点の、`already installed` と出たときの `scoop uninstall vcredist2022` → `scoop install vcredist2022` の入れ直し。uninstall でランタイムが残ることは、Extras のマニフェスト (`bucket/vcredist2022.json`、2026-10-08 に取得した `14.51.36247.0`) に uninstaller が無く、インストーラーを `post_install` で実行するだけで、`notes` が `You can now remove this installer with 'scoop uninstall vcredist2022'` であることから読んだだけ
 
+### 付録: GLFM 整形器の検証 (2026-10-08)
+
+- 環境は導入済みの AlmaLinux 10.2 aarch64、Neovim 0.12.5。Homebrew で Node.js 26.11.0 / npm 11.20.0 を導入した
+- 整形用の npm 依存は markdownlint-cli2 0.23.3 / Comrak 0.48.0-rc.0 (WASM) に固定した。実設定で `:GlfmFormatInstall` による取得を確認し、Mason の markdownlint-cli2 も導入した
+- Node の回帰テスト 24 件が通った。説明の対応・継続行・内部リスト・多重の説明・引用・実際のコード・GLFM の数式やアラート・フロントマター、日本語と CRLF、設定の優先順位、未保存バッファ、範囲指定と冪等性を確認した
+- headless でインストール済みの conform.nvim を使い、診断が無い状態の整形、範囲の行と UTF-8 の列指定、依存不足・時間切れでの原文保持、導入時の引数を確認した。Windows の npm.cmd / Scoop shim の解決は模擬のプロセスで確認した
+- 実設定とインストール済みの LazyVim の整形処理を使い、headless の `:w` と `<leader>cf` と同じコールバックを通した。見出しと説明内部の末尾空白が直り、子リストの 2 スペースが保たれた。ビジュアル選択からの範囲の自動検出と、範囲外の保持も確認した。lazy.nvim の導入・更新は起動せず、既存の `lazy-lock.json` と `AGENTS.md` は保持した
+- 今回の新しい整形器は、通常 GUI の実キー、Windows 実機、GitLab API での描画では未確認。これらの過去の検証記録とは分ける
+
+### 付録: Windows 11 の実機での GLFM 整形器の検証記録 (2026-10-08)
+
+- **対象**: この変更の a522326 と、下の「見つけて直したこと」を入れた作業ツリー。上の付録で未確認だった、通常 GUI の実キー・Windows 実機・GitLab API での描画
+- **環境**: Windows 11 Pro 10.0.26300 (x64、AMD Ryzen AI MAX+ 395) の常用のマシン。scoop の neovim 0.12.5・nodejs 26.10.0 (npm 11.19.1)、Neovide 0.16.2
+  - `LOCALAPPDATA` と `TEMP` を `%TEMP%\g44` の下に差し替え、PATH はレジストリの Machine と User の値から組み立てた。この設定は robocopy で写し、プラグインと Mason のツールは常用のものを写して `Lazy! restore` で lock に揃えた (有効な 38 個とも lock の版)。常用の `%LOCALAPPDATA%\nvim` と `nvim-data` は触っていない
+  - Linux は、この PC の WSL の AlmaLinux 10 (x86_64) に、Node.js 22.23.3 (手順書の最低の 22 系) の公式の tar を `/tmp` に置いて使った。tar は公式の SHA256 と照合し、システムは変えていない
+- **導入** (`:GlfmFormatInstall`): 4.2 秒で終わり、markdownlint-cli2 0.23.3・Comrak 0.48.0-rc.0 など 88 個が lock どおりに入った
+  - `exepath("npm")` は `…\nodejs\current\npm.CMD`。scoop の `current` のジャンクションを解決した `…\nodejs\26.10.0\node_modules\npm\bin\npm-cli.js` を node で直接起動し、shell は通らなかった (`ci --prefix … --ignore-scripts --no-audit --no-fund`)
+  - npm のキャッシュは scoop の設定どおり `scoop\persist\nodejs\cache` に入る (検証で隔離できなかったもの)
+  - Neovide を開いた直後 (conform は未読込) に実キーで `:GlfmFormatInstall` を打つと、lazy.nvim の `cmd` で conform が読み込まれた。「依存を導入しています」「導入が完了しました」の通知が作られ、約 2 秒で入れ直された
+- **回帰テスト**: Windows で Node の 24 件と `test/conform.lua` が通った。StyLua・`node --check`・`git diff --check` も通った
+  - 直した後は 32 件と `conform.lua` が通った (Node は Windows と WSL の両方)。足した 8 件のうち 6 件は a522326 では失敗し、下の不具合を捉えている
+  - `conform.lua` には、Neovim の作業ディレクトリにある設定が下のフォルダーのバッファに効くことと、末尾の空行が消えることを足した
+- **通常 GUI の実キー** (Neovide 0.16.2):
+  - キーは `SendInput` で打った。打つ前に毎回、利用者の入力が無いことと、前面の窓が検証用であることを確かめた。状態は `--listen` の RPC で読み、窓は `PrintWindow` で取り込んだ。computer-use は Neovide を端末と同じ扱いにするため、キーを打てなかった
+  - 日本語と空白を含むフォルダーの手順書の例では、`:w` が `#動作確認` を `# 動作確認` に直し、末尾の空白を消した。`  - 内部の項目` の 2 スペース・`$a^2 + b^2$`・`[[_TOC_]]` は残った。`u` 1 回で整形の前に戻った
+  - `<leader>cf` はバッファ全体を整形した (保存はしない)。`V` で 3 行目だけを選んだ `<leader>cf` は、その行だけを直した。範囲外の `#外側` と末尾の空白は残った
+  - 行と列を決めてから保存すると、カーソルは動かなかった
+  - `:ConformInfo` は `glfm_markdownlint ready (markdown)` と node のパスを出した
+  - `ff=dos` のファイルは、整形した後も CRLF のままだった
+  - 下のフォルダーに壊れた `.markdownlint.json` があると、保存は整形せずに本文を残した。conform のログに `Markdownlint の設定またはルールを読み込めません: Unable to parse '…/.markdownlint.json'…` が残った。画面の右上には、赤枠の `Error` で `Formatter failed. See :ConformInfo for details` の通知が約 3 秒出た (理由は通知に出ない)
+  - 依存のフォルダーを外したときも、本文はそのままだった。戻すと、次の `:w` で直った
+  - 124 行の複雑な GLFM の文書 (下の GitLab の節と同じもの) では、実キーの `:w` がキーの送信を含めて 0.9 秒で保存した。診断は 68 件から 20 件になった。残ったのは説明の中の MD007・コード片の中の MD038・MD025 など、直すと構造や中身が変わるか、直せないもの。保存したファイルは CLI の整形結果と一致した
+- **GitLab API での描画** (gitlab.com 19.5.0-pre、利用者のトークン): 合成した試験用の Markdown だけを `POST /api/v4/markdown` (`gfm: true`) に送り、`data-sourcepos` などを除いた HTML を整形の前後で比べた
+  - 手順書の例とテストの入力 10 件は、わざと直した見出し以外は同じだった。説明リストの構造は、手元の Comrak と GitLab で一致した
+  - 124 行の文書には、フロントマター・`[[_TOC_]]`・説明リストの入れ子・`~` の説明・アラートや `>>>` の中の説明リスト・タスク (`[~]` を含む)・数式・mermaid / plantuml / math のコードブロック・表・inline diff・参照・wiki リンク・画像の属性・`::include`・`<details>`・脚注を詰めた
+  - その文書で変わったのは、`#概要` の見出しと、それに伴う目次の項目、行がずれたチェックボックスの `data-checkbox-sourcepos` だけだった
+- **見つけて直したこと** (a522326 に対して):
+  - 説明の中を引用に見立てた lint で空行を足す修正 (MD022 / MD031 / MD032 / MD058) が、見立ての `>` を写したまま元の文書に当たり、`>` だけの行ができた。GitLab では空の `<blockquote>` が出た。説明の中を 4 スペースで字下げした子リストや表の直後に、HTML・`***`・段落が続く場合に起きる。足す行を元の行の本来の接頭辞に戻し、見立てた部分への MD027 は当てないようにした
+  - markdownlint-cli2 の基準をファイルのフォルダーにしていたため、上の階層のプロジェクト設定が効かなかった (以前の `markdownlint-cli2 --fix` は Neovim の作業ディレクトリが基準)。ファイルが Neovim の作業ディレクトリの下にあるときは、そこを基準にした
+  - 修正候補ごとに文書全体を解析し直していたため、違反の多い長い文書で 10 秒の上限を超えた (1277 行に末尾空白 942 か所で 42 秒、771 行に 650 か所で 13 秒)。まとめて当てて 1 回で検査し、構造が変わるときだけ半分に分けるようにした
+    - コードの中に掛かる修正は 1 つずつ確かめる。説明の中の行の MD005 / MD007 は、引用に見立てた側だけを見る
+    - 同じ例は 1.0 秒・0.8 秒になった。説明リスト 150 個の文書は 1.5 秒から 0.5 秒になった
+    - 実文書 6 本と説明リストの文書、それぞれに末尾空白を足した版では、結果は直す前と同じだった (末尾の空行の修正を除く)
+  - GitLab は小文字の `[[_toc_]]` も目次として描く。ところが保護は大文字だけだったため、MD049 で `[[*toc*]]` (GitLab では wiki リンク) に変わった。目次の保護で大文字小文字を区別しないようにした
+  - 末尾の余分な空行を消す MD012 の修正が、何も変えなかった。改行の無い最後の行は、前の行の改行ごと消すようにした
+  - 設定へのパスがシンボリックリンクやジャンクションを通ると、`format.mjs` が自分の起動と見なさずに何も出力しなかった。conform はそれを空の出力として、黙って整形をやめた。実体のパスで比べるようにした
+- **検証の仕方で起きたこと** (この設定の問題ではない):
+  - 計測のために `vim.notify` を差し替えると、LazyVim の起動直後の通知の待ち合わせと循環した。待ってから差し替え、元の関数を呼ばないようにした
+  - 取り込みのスクリプトが DPI に対応しておらず、表示倍率 175% のモニターでは、窓の左上 (縦横とも約 57%) だけを撮っていた。右上の通知と下端のステータスラインが写らなかったのは、このためだった。DPI に対応させて撮り直すと、どちらも写った
+  - `nostartofline` のため、`gg` や `5G` は前の桁を引き継ぐ。保存の後にカーソルが行末に見えたのは、このためだった
+
+#### 未確認事項 (2026-10-08 の Windows 11 の GLFM 整形器)
+
+- 物理キーボードでの打鍵 (`SendInput` で代えた)、WezTerm の中の nvim
+- GitLab の版の違いと、非公開のプロジェクトを `project` に付けたときの描画
+- 遅い PC (1 CPU の VM や Raspberry Pi) での保存にかかる時間 (この PC で計った)
+- 行頭の `#1234` を見出しにする MD018 の修正 (以前の `markdownlint-cli2 --fix` と同じ動きで、直していない)
+
 ## 補足資料に記載していた観測
 
 ### dnf で入れるものの観測

@@ -9,3 +9,4 @@ data
 /lazyvim.json
 /.stfolder
 /.claude/worktrees
+tools/**/node_modules/
