@@ -742,7 +742,7 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
   - 行と列を決めてから保存すると、カーソルは動かなかった
   - `:ConformInfo` は `glfm_markdownlint ready (markdown)` と node のパスを出した
   - `ff=dos` のファイルは、整形した後も CRLF のままだった
-  - 下のフォルダーに壊れた `.markdownlint.json` があると、保存は整形せずに本文を残した。conform のログに `Markdownlint の設定またはルールを読み込めません: Unable to parse '…/.markdownlint.json'…` が残り、`Formatter failed. See :ConformInfo for details` の通知が作られた
+  - 下のフォルダーに壊れた `.markdownlint.json` があると、保存は整形せずに本文を残した。conform のログに `Markdownlint の設定またはルールを読み込めません: Unable to parse '…/.markdownlint.json'…` が残った。画面の右上には、赤枠の `Error` で `Formatter failed. See :ConformInfo for details` の通知が約 3 秒出た (理由は通知に出ない)
   - 依存のフォルダーを外したときも、本文はそのままだった。戻すと、次の `:w` で直った
   - 124 行の複雑な GLFM の文書 (下の GitLab の節と同じもの) では、実キーの `:w` がキーの送信を含めて 0.9 秒で保存した。診断は 68 件から 20 件になった。残ったのは説明の中の MD007・コード片の中の MD038・MD025 など、直すと構造や中身が変わるか、直せないもの。保存したファイルは CLI の整形結果と一致した
 - **GitLab API での描画** (gitlab.com 19.5.0-pre、利用者のトークン): 合成した試験用の Markdown だけを `POST /api/v4/markdown` (`gfm: true`) に送り、`data-sourcepos` などを除いた HTML を整形の前後で比べた
@@ -761,12 +761,11 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
   - 設定へのパスがシンボリックリンクやジャンクションを通ると、`format.mjs` が自分の起動と見なさずに何も出力しなかった。conform はそれを空の出力として、黙って整形をやめた。実体のパスで比べるようにした
 - **検証の仕方で起きたこと** (この設定の問題ではない):
   - 計測のために `vim.notify` を差し替えると、LazyVim の起動直後の通知の待ち合わせと循環した。待ってから差し替え、元の関数を呼ばないようにした
-  - `PrintWindow` でも画面からの切り出しでも、取り込んだ画面に snacks の通知の窓が写らなかった。窓が作られていることは RPC で確かめた
+  - 取り込みのスクリプトが DPI に対応しておらず、表示倍率 175% のモニターでは、窓の左上 (縦横とも約 57%) だけを撮っていた。右上の通知と下端のステータスラインが写らなかったのは、このためだった。DPI に対応させて撮り直すと、どちらも写った
   - `nostartofline` のため、`gg` や `5G` は前の桁を引き継ぐ。保存の後にカーソルが行末に見えたのは、このためだった
 
 #### 未確認事項 (2026-10-08 の Windows 11 の GLFM 整形器)
 
-- Neovide の画面での snacks の通知の見え方 (取り込みには写らなかった)
 - 物理キーボードでの打鍵 (`SendInput` で代えた)、WezTerm の中の nvim
 - GitLab の版の違いと、非公開のプロジェクトを `project` に付けたときの描画
 - 遅い PC (1 CPU の VM や Raspberry Pi) での保存にかかる時間 (この PC で計った)
