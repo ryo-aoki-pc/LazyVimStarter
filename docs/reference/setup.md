@@ -144,6 +144,9 @@
 - `zenhan` / `neovim` / `ripgrep` / `fd` / `gcc` / `nodejs` は scoop の `main` バケット、`vcredist2022` / `lazygit` は `extras` にある (バケットの定義で確認)
 - `curl` と `tar` は Windows 11 が `C:\Windows\System32` に同梱している
 - scoop の `neovim` は VC++ のランタイム (`VCRUNTIME140.dll`) を同梱しない。`extras/vcredist2022` の提案だけでは自動導入されないため、この手順で先に入れて揃える ([注意点](../setup.md#注意点))
+- ランタイムは `System32\vcruntime140.dll` が無いときだけ入れる。ほかのアプリや winget (`Microsoft.VCRedist.2015+.x64`) で入れてある PC で `vcredist2022` を入れると、x64・x86 の 2 つのインストーラーの UAC が余計に出るため
+  - 見るのはファイルの有無だけで、版は見ない
+  - `nvim.exe` は x64 なので、64 ビットの PowerShell (既定) で `System32` を見る。32 ビットの PowerShell では `System32` が `SysWOW64` に読み替えられ、x86 のランタイムを見てしまう
 - `gzip` と `unzip` は要らない。Mason は Windows では zip を PowerShell の `Expand-Archive` で、`.tar.gz` を同梱の `tar` で展開する。この設定で入る 11 個は、どちらかか、展開の要らない exe・npm で済む
 - `:checkhealth mason` の `unzip` / `gzip` / `wget` の WARNING は無視してよい
 - C コンパイラは `gcc` が PATH にあれば、LazyVim が見つけて `CC` に設定する
