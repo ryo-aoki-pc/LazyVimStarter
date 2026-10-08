@@ -304,7 +304,9 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   - 背景説明は `docs/reference/setup.md`、検証記録は `docs/verification/setup.md`。必要なもの一覧・前提条件・操作上の注意・期待結果は手順書に残す。過去の記録はリンクと手順番号以外を書き直さない
   - 検証済みとする範囲は `docs/verification/setup.md` に記載する。開発ガイドにあった従来の要約は `docs/verification/claude.md` に保存する
 
-- `README.md` — この設定で何ができるかの説明。機能の挙動と設計上の判断、運用上の注意。
+- `README.md` — 概要と導入の入口。
+- `docs/README.md` — 導入・任意機能・更新・参考資料・検証記録の目的別索引。
+- `docs/reference/configuration.md` — 機能の操作と制約、外部依存、設計上の判断、`lazy-lock.json` の運用。
 
 ## 手順書と記録の分離
 

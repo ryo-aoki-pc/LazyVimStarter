@@ -403,7 +403,7 @@
    - 確かめることは [AlmaLinux 導入の手順 19](#almalinux-10-に導入する-1-度だけ) と同じ (`/kensaku`・`<Tab>`・`:w`・`<C-j>`・アイコン)
    - 初めてなら [安全な整形の導入](#gitlab-markdown-の安全な整形を導入する-初回と依存の変更後) を済ませる
    - `:lua =vim.fn.executable("zenhan")` が `1` なら IME 連携が有効 (`0` でもほかは動く)
-   - OS 側で IME を切り替えても、Neovim は気付けない (lualine の `あ` / `A` がずれることがある。[README](../README.md#日本語入力検索))
+   - OS 側で IME を切り替えても、Neovim は気付けない (lualine の `あ` / `A` がずれることがある。[機能と設定](reference/configuration.md#日本語入力検索))
    - `:qa!` で閉じる。これで導入は終わり
 
 ### ほかのマシンの変更を取り込む (繰り返し)
@@ -595,7 +595,7 @@
 
 - `<leader>cp` のプレビューを、GitLab 本体の描画 (GitLab の Markdown API) で見るための設定。しなくても、プレビューは近似表示で動く
 - 先に GitLab で、スコープが `read_api` の個人アクセストークンを作っておく (GitLab の「ユーザー設定」→「アクセストークン」)
-- 編集中の内容とトークンは、ここで設定する GitLab (空なら gitlab.com) にだけ送られる ([README](../README.md#markdown--glfm-執筆))
+- 編集中の内容とトークンは、ここで設定する GitLab (空なら gitlab.com) にだけ送られる ([機能と設定](reference/configuration.md#markdown--glfm-執筆))
 - AlmaLinux 10 はこの節の手順 1・2・5、Windows 11 はこの節の手順 3・4・6 を貼る。消すときは手順 7 (AlmaLinux 10) / 手順 8 (Windows 11)
 
 1. AlmaLinux 10 では、トークンを入力して `~/.bashrc` に書く。
@@ -721,7 +721,7 @@
 
 - Neovim・外部コマンド・プラグインを上げる。設定そのものの取り込みは[ほかのマシンの変更を取り込む](#ほかのマシンの変更を取り込む-繰り返し)
 - AlmaLinux 10 はこの節の手順 1・3、Windows 11 はこの節の手順 2・4 を貼る
-- プラグインを上げると `lazy-lock.json` が変わる。確かめてからコミットし、push する ([README の lazy-lock.json の運用](../README.md#lazy-lockjson-の運用))
+- プラグインを上げると `lazy-lock.json` が変わる。確かめてからコミットし、push する ([機能と設定の lazy-lock.json の運用](reference/configuration.md#lazy-lockjson-の運用))
 
 1. AlmaLinux 10 では、Homebrew で入れたものを上げる。
 

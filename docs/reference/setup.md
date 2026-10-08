@@ -82,7 +82,7 @@
 - GNOME の端末ではもともと同じ値が入っているので、`export` しても変わらない
 - **`/usr/bin/gsettings` と書く理由**: Homebrew の glib (cairo・ffmpeg・imagemagick・gnupg などの依存で入る) にも `gsettings` があり、`brew shellenv` の後は PATH の先頭に来る。これは dconf を使えず、`~/.config/glib-2.0/settings/keyfile` に黙って書くので、GNOME も Anthy も読まない
 - Neovim から ibus への通信には `busctl` (systemd) か `gdbus` (glib2) を使う。`gdbus` があれば OS 側の切り替えも検知できるので、lualine の `あ` / `A` がずれない
-- 実装と運用上の注意 (変換中の `<Esc>` は 2 回、Neovim を 2 つ起動したときの制限など) は [README の日本語入力・検索](../../README.md#日本語入力検索)
+- 実装と運用上の注意 (変換中の `<Esc>` は 2 回、Neovim を 2 つ起動したときの制限など) は [機能と設定の日本語入力・検索](configuration.md#日本語入力検索)
 
 ### Anthy のキーの書き換え方
 
@@ -102,7 +102,7 @@
 - 記録にある 39 個のうち render-markdown.nvim は無効にしてあるので、入るのは 38 個
 - headless では画面が無いので `VeryLazy` が発火しない。treesitter のパーサー・Mason のツールの導入と、`lua/config/autocmds.lua` (IME 連携・CJK スペル・Markdown の conceal) は、この節の手順 17 の起動で動く
 - `nvim --headless "+Lazy! sync" +qa` は update を含むので、`lazy-lock.json` より新しい版に上げてしまう。揃えるときは使わない
-- 運用の方針は [README の lazy-lock.json の運用](../../README.md#lazy-lockjson-の運用)
+- 運用の方針は [機能と設定の lazy-lock.json の運用](configuration.md#lazy-lockjson-の運用)
 
 ### 初回起動で入るもの
 
@@ -241,4 +241,4 @@
 - [Neovim の clipboard-osc52](https://neovim.io/doc/user/provider/#clipboard-osc52): OSC 52 の提供元と、自動検出が効く条件 (`clipboard` が空のときだけ)
 - [wezterm#5917](https://github.com/wezterm/wezterm/issues/5917): 設定ファイルがあると OSC 52 が効かない (nightly で直った)
 - [folke/noice.nvim#1229](https://github.com/folke/noice.nvim/issues/1229): noice が XTGETTCAP の応答を受け取らせず、DA1 に `52` を出さない端末では OSC 52 の自動検出が効かない
-- [README](../../README.md): この設定で何ができるか、IME 連携の設計と運用上の注意
+- [機能と設定](configuration.md): この設定で何ができるか、IME 連携の設計と運用上の注意
