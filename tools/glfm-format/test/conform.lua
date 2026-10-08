@@ -118,6 +118,23 @@ assert(not partial_result.err, vim.inspect(partial_result.err))
 assert(vim.deep_equal(partial_lines, task_lines))
 vim.fn.delete(vim.fs.joinpath(sandbox, ".markdownlint.json"))
 
+-- 以前の markdownlint-cli2 --fix と同じく、Neovim の作業ディレクトリにあるプロジェクト設定が
+-- 下のフォルダーのバッファにも効く。末尾の余分な空行も消える。
+vim.fn.writefile(
+  { vim.json.encode({ default = false, MD004 = { style = "asterisk" }, MD012 = true }) },
+  vim.fs.joinpath(sandbox, ".markdownlint.json")
+)
+vim.fn.mkdir(vim.fs.joinpath(sandbox, "下の階層"), "p")
+local previous_cwd = vim.fn.getcwd()
+vim.api.nvim_set_current_dir(sandbox)
+local nested = buffer({ "- one", "- two", "" })
+vim.api.nvim_buf_set_name(nested, vim.fs.joinpath(sandbox, "下の階層", "文書.md"))
+local nested_result, nested_lines = format(nested)
+assert(not nested_result.err, vim.inspect(nested_result.err))
+assert(vim.deep_equal(nested_lines, { "* one", "* two" }), vim.inspect(nested_lines))
+vim.api.nvim_set_current_dir(previous_cwd)
+vim.fn.delete(vim.fs.joinpath(sandbox, ".markdownlint.json"))
+
 -- runtime 未導入時はエラーにし、stock markdownlint や LSP の結果へ置き換えない。
 local runtime_dir = glfm.runtime_dir
 glfm.runtime_dir = function()

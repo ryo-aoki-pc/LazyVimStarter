@@ -90,8 +90,9 @@ local specs = {
 if #disabled_rules > 0 then
   -- disabled_rules から markdownlint 設定 (JSON) を組み立て、cache 配下に書き出す。
   -- markdownlint-cli2 には --config でこのファイルを渡す。--config はあくまで「基準設定」で、
-  -- 対象ファイルのあるプロジェクトに .markdownlint(.json/.yaml) 等があれば、CLI2 の探索に
-  -- 従ってその設定が適用される (基準設定のルールがすべて引き継がれるとは限らない)。
+  -- 対象ファイルのあるプロジェクトに .markdownlint(.json/.yaml) 等があれば、CLI2 の探索
+  -- (Neovim の作業ディレクトリからファイルのフォルダーまで) に従ってその設定が適用される
+  -- (基準設定のルールがすべて引き継がれるとは限らない)。
   -- ファイル名を *.markdownlint.jsonc にしておくと markdownlint-cli2 が「素の markdownlint
   -- 設定 (ルールをトップレベルに書く形式)」として解釈する。
   config_path = vim.fn.stdpath("cache") .. "/lazyvim.markdownlint.jsonc"

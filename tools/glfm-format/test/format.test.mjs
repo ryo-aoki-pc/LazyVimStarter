@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -449,5 +449,95 @@ test("CLI fails clearly with no stdout when its dependency runtime is missing", 
     assert.notEqual(child.status, 0);
     assert.equal(child.stdout, "");
     assert.match(child.stderr, /runtime|dependenc|module|install|Cannot find/i);
+  });
+});
+
+test("CLI reads parent project configuration below the process working directory like markdownlint-cli2 --fix", async (t) => {
+  await inProject(t, { MD004: { style: "dash" }, MD009: true }, async (options) => {
+    const nested = path.join(options.cwd, "docs");
+    await mkdir(nested);
+    const filename = path.join(nested, "unsaved.md");
+    const input = "* one \n* two\n";
+    const run = (cwd) => spawnSync(process.execPath, [formatterPath, "--runtime-dir", runtimeDir, "--filename", filename], {
+      cwd, input, encoding: "utf8", timeout: 15000,
+    });
+    const fromRoot = run(options.cwd);
+    assert.equal(fromRoot.status, 0, fromRoot.stderr);
+    assert.equal(fromRoot.stdout, "- one\n- two\n", "the project configuration above the file applies");
+    const fromNested = run(nested);
+    assert.equal(fromNested.status, 0, fromNested.stderr);
+    assert.equal(fromNested.stdout, "* one\n* two\n", "a working directory below the project root does not see its configuration");
+    assert.equal(existsSync(filename), false);
+  });
+});
+
+test("extra blank lines at the end of the file are removed like markdownlint-cli2 --fix", async (t) => {
+  await inProject(t, { MD012: true }, async (options) => {
+    assert.equal(await formatMarkdown("# Title\n\ntext\n\n", options), "# Title\n\ntext\n");
+    assert.equal(await formatMarkdown("# Title\n\ntext\n\n\n", options), "# Title\n\ntext\n");
+    assert.equal(await formatMarkdown("Term\n: Description\n\n", options), "Term\n: Description\n");
+    assert.equal(await formatMarkdown("# Title\r\n\r\ntext\r\n\r\n", options), "# Title\r\n\r\ntext\r\n");
+  });
+});
+
+test("many safe fixes are applied together while rejected description fixes are isolated", async (t) => {
+  await inProject(t, { MD007: true, MD009: true }, async (options) => {
+    const block = (index) => `Term ${index}\n: Description ${index} \n\n  - child ${index} \n    - grandchild ${index} \n`;
+    const input = Array.from({ length: 60 }, (_, index) => block(index)).join("\n");
+    const output = await formatMarkdown(input, options);
+    assert.equal(output, input.replace(/ +$/gm, ""));
+    assert.deepEqual(definitionHTML(output), definitionHTML(input));
+    assert.equal(await formatMarkdown(output, options), output);
+  });
+});
+
+test("blank lines added next to description content keep the real container prefix, not the projected quote", async (t) => {
+  await inProject(t, { MD032: true, MD058: true }, async (options) => {
+    for (const [input, expected] of [
+      ["Term\n: Description\n\n    - child\n<div>after</div>\n", "Term\n: Description\n\n    - child\n\n<div>after</div>\n"],
+      ["Term\n: Description\n\n    - child\n***\n", "Term\n: Description\n\n    - child\n\n***\n"],
+      ["Term\n: Description\n\n    | a | b |\n    | - | - |\n    | 1 | 2 |\nafter\n",
+        "Term\n: Description\n\n    | a | b |\n    | - | - |\n    | 1 | 2 |\n\nafter\n"],
+      ["> Term\n> : Description\n>\n>     - child\n> <div>after</div>\n", "> Term\n> : Description\n>\n>     - child\n>\n> <div>after</div>\n"],
+    ]) {
+      const output = await formatMarkdown(input, options);
+      assert.equal(output, expected);
+      assert.equal(rendered(output), rendered(input), "no empty blockquote appears");
+    }
+  });
+});
+
+test("the projected quote marker does not make MD027 re-indent description content", async (t) => {
+  await inProject(t, { MD027: true }, async (options) => {
+    const input = "Term\n:  Description\n   more\n\n    | a | b |\n    | - | - |\n\n>  Real quote\n";
+    assert.equal(await formatMarkdown(input, options), input.replace(">  Real quote", "> Real quote"));
+  });
+});
+
+test("lowercase table of contents markers stay intact because GitLab renders them too", async (t) => {
+  await inProject(t, { MD049: true }, async (options) => {
+    assert.equal(await formatMarkdown("*a*\n\n[[_toc_]]\n\n[toc]\n\n_b_\n", options), "*a*\n\n[[_toc_]]\n\n[toc]\n\n*b*\n");
+  });
+});
+
+test("tabs and trailing spaces inside code stay while nearby prose is fixed", async (t) => {
+  await inProject(t, { MD009: true, MD010: true }, async (options) => {
+    const input = "Term\n: Description \n\n```make\nall:\n\techo done \n```\n\ntext \n";
+    assert.equal(await formatMarkdown(input, options), "Term\n: Description\n\n```make\nall:\n\techo done \n```\n\ntext\n");
+  });
+});
+
+test("CLI formats when its path goes through a symbolic link or junction", async (t) => {
+  await inProject(t, { MD018: true }, async (options) => {
+    const real = path.join(options.cwd, "real");
+    const link = path.join(options.cwd, "link");
+    await mkdir(real);
+    await copyFile(formatterPath, path.join(real, "format.mjs"));
+    await symlink(real, link, "junction");
+    const child = spawnSync(process.execPath, [path.join(link, "format.mjs"), "--runtime-dir", runtimeDir, "--filename", options.filename], {
+      cwd: options.cwd, input: "#Title\n", encoding: "utf8", timeout: 15000,
+    });
+    assert.equal(child.status, 0, child.stderr);
+    assert.equal(child.stdout, "# Title\n");
   });
 });

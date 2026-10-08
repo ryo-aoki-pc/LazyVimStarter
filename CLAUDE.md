@@ -161,6 +161,10 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   (prettier は GLFM の数式 `$...$`・複数行脚注・`[[_TOC_]]` を壊すため)。
   `tools/glfm-format/format.mjs` が markdownlint-cli2 の公式 API で修正候補を集め、Comrak の
   構文木で説明リストの対応・所属・本文を検査する。安全な修正は説明内部にも適用する。
+  修正候補はまとめて当てて 1 回で検査し、構造が変わるときだけ半分に分けて原因を除く (修正ごとに
+  文書全体を解析すると、違反の多い長い文書で保存の上限を超えるため)。markdownlint の設定は、
+  以前の `markdownlint-cli2 --fix` と同じく Neovim の作業ディレクトリを基準に探す (ファイルが
+  その下にあるとき。上の階層のプロジェクト設定も効く)。
   固定した npm 依存は `stdpath("data")/glfm-format` に `:GlfmFormatInstall` で導入する。
   保存時に依存を自動取得しない。Node.js 22 以上が必要。conform の
   `formatters_by_ft` は `opts` 関数で明示代入して置き換え、`markdown.mdx` の連鎖も全部書いている。
@@ -169,7 +173,10 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   deep-merge されるので、表の `opts` に戻すと extra の prettier 等が残る。
   実 UI の保存と GLFM 数式・目次の保持、連鎖・既定値を確認した (docs/verification/setup.md の新規 VM 記録)。
 - フォーマッターの回帰テストは `tools/glfm-format/test/`。説明リストと GLFM 固有記法の
-  保持・説明内部の安全な修正・設定の優先順位・冪等性・CLI の失敗時を確認する。
+  保持・説明内部の安全な修正・設定の優先順位・冪等性・CLI の失敗時を確認する。説明の後に
+  `>` だけの行 (空の引用) を足さないこと・上の階層の設定・末尾の空行・小文字の目次・
+  シンボリックリンク経由の起動も確かめる。Windows 11 の実機・Neovide の実キー・gitlab.com の
+  描画での確認は docs/verification/setup.md の付録にある。
 - **markdown-toc は外した** (npm の最終リリースが 2017 年)。整形連鎖から抜くのに加え、Mason の
   `ensure_installed` からも opts 関数で取り除く (LazyVim の mason.nvim の spec は `opts_extend` で
   リストを連結するので、テーブルで書いても消せない)。

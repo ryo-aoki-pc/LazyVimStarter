@@ -36,6 +36,8 @@ const literalNodes = new Set([
   "Code", "CodeBlock", "Math", "HtmlBlock", "HtmlInline", "Raw",
   "MultilineBlockQuote", "FootnoteDefinition", "FootnoteReference", "TaskItem",
 ]);
+const literalSpanTypes = new Set(["Code", "CodeBlock", "Math", "HtmlBlock", "HtmlInline"]);
+const indentRules = new Set(["MD005", "MD007"]);
 
 async function runtime(directory) {
   const resolved = path.resolve(directory);
@@ -129,16 +131,17 @@ function frontMatter(source, lines) {
   return null;
 }
 
+// Comrak の列は UTF-8 のバイト数、JavaScript と fixInfo の列は UTF-16。
+function sourceOffset(source, lines, position, inclusive) {
+  const line = lines[position.line - 1];
+  if (!line) return source.length;
+  const bytes = Math.max(0, position.column - (inclusive ? 0 : 1));
+  return line.start + Buffer.from(line.content).subarray(0, bytes).toString("utf8").length;
+}
+
 function sourceSlice(source, lines, sourcepos) {
   if (!sourcepos?.start.line || !sourcepos?.end.line) return "";
-  // Comrak の列は UTF-8 のバイト数、JavaScript と fixInfo の列は UTF-16。
-  const offset = (position, inclusive) => {
-    const line = lines[position.line - 1];
-    if (!line) return source.length;
-    const bytes = Math.max(0, position.column - (inclusive ? 0 : 1));
-    return line.start + Buffer.from(line.content).subarray(0, bytes).toString("utf8").length;
-  };
-  return source.slice(offset(sourcepos.start, false), offset(sourcepos.end, true));
+  return source.slice(sourceOffset(source, lines, sourcepos.start, false), sourceOffset(source, lines, sourcepos.end, true));
 }
 
 function projection(source, parseMarkdown) {
@@ -149,6 +152,9 @@ function projection(source, parseMarkdown) {
   const replacements = [];
   const blankRequests = [];
   const itemLists = new Map();
+  // 見立てた行ごとの、元の行の本来の接頭辞 (見立てた部分より前)。
+  const realPrefixes = new Map();
+  const literalSpans = [];
   for (let index = 0; index < nodes.length; index++) {
     const node = nodes[index];
     const type = nodeType(node);
@@ -156,6 +162,12 @@ function projection(source, parseMarkdown) {
     if (!position || !lines[position.line - 1]) continue;
     const line = lines[position.line - 1];
     const column = Buffer.from(line.content).subarray(0, position.column - 1).toString("utf8").length;
+    if (literalSpanTypes.has(type) && node.data.sourcepos.end?.line) {
+      literalSpans.push([
+        sourceOffset(source, lines, position, false),
+        sourceOffset(source, lines, node.data.sourcepos.end, true),
+      ]);
+    }
     if (type === "DescriptionDetails" && /[:~]/u.test(line.content[column] || "")) {
       const item = nodes[node.parent]?.data.value.DescriptionItem;
       const marker = /^[:~][ \t]+/u.exec(line.content.slice(column));
@@ -166,6 +178,7 @@ function projection(source, parseMarkdown) {
         // 説明を同じ幅の引用として見せる。架空のリスト階層を作らず sublist の意味を保つ。
         const prefix = "> ".repeat(Math.floor(width / 2)) + (width % 2 ? " " : "");
         replacements.push({ start: line.start + base, width, prefix });
+        realPrefixes.set(position.line, { text: line.content.slice(0, base), base });
         for (let row = position.line + 1; row <= node.data.sourcepos.end.line; row++) {
           const continuation = lines[row - 1];
           if (continuation && /^(?:[ \t]*>)*[ \t]*$/u.test(continuation.content)) {
@@ -173,6 +186,7 @@ function projection(source, parseMarkdown) {
           } else if (continuation && continuation.content.length >= base + width &&
               /^ +$/u.test(continuation.content.slice(base, base + width))) {
             replacements.push({ start: continuation.start + base, width, prefix });
+            realPrefixes.set(row, { text: continuation.content.slice(0, base), base });
           }
         }
       }
@@ -193,11 +207,45 @@ function projection(source, parseMarkdown) {
     const prefix = projectedLines[markerRow - 1].content.slice(0, markerEnd).trimEnd();
     if (prefix.length > (blankPrefixes.get(row)?.length || 0)) blankPrefixes.set(row, prefix);
   }
+  const projectedRows = new Set(realPrefixes.keys());
   for (const [row, prefix] of [...blankPrefixes].sort((a, b) => b[0] - a[0])) {
     const original = lines[row - 1];
     projected = projected.slice(0, original.start) + prefix + projected.slice(original.start + original.content.length);
+    realPrefixes.set(row, { text: original.content, base: original.content.length });
   }
-  return { source: projected, itemLists, syntheticBlankRows: new Set(blankPrefixes.keys()) };
+  return {
+    source: projected, lines, itemLists, projectedRows, realPrefixes, literalSpans,
+    syntheticBlankRows: new Set(blankPrefixes.keys()),
+  };
+}
+
+// 引用に見立てた行では、markdownlint が空行を足すときに見立ての > まで写す。そのまま元の文書に
+// 当てると空の引用ができるので、足す行を元の行の本来の接頭辞に戻す。
+// MD027 (> の後の空白) も、見立てた部分では説明の字下げを指すだけなので当てない。
+function fromProjection(fix, projected) {
+  const [row, column] = fixPosition(fix);
+  const own = projected.realPrefixes.get(row);
+  if (fix.ruleNames[0] === "MD027" && own && column - 1 >= own.base) return null;
+  const text = fix.fixInfo.insertText;
+  if (!text || !text.includes("\n")) return fix;
+  const source = [row - 1, row].find((candidate) => projected.realPrefixes.has(candidate));
+  if (source === undefined) return fix;
+  const raw = projected.realPrefixes.get(source).text.replace(/[^>]/gu, " ");
+  const prefix = fix.ruleNames[0] === "MD031" ? raw.trim() : raw.trimEnd();
+  const lines = text.split("\n");
+  const insertText = lines.map((line, index) => (index < lines.length - 1 && /^[> \t]*$/u.test(line) ? prefix : line)).join("\n");
+  return { ...fix, fixInfo: { ...fix.fixInfo, insertText } };
+}
+
+// コードや数式などの中身に掛かる修正か。
+function touchesLiteral(fix, projected) {
+  const [row, column] = fixPosition(fix);
+  const line = projected.lines[row - 1];
+  if (!line) return false;
+  const count = fix.fixInfo.deleteCount || 0;
+  const start = count === -1 ? line.start : line.start + column - 1;
+  const end = count === -1 ? line.start + line.content.length + line.ending.length : start + Math.max(0, count);
+  return projected.literalSpans.some(([from, to]) => (end > start ? start < to && end > from : from < start && start < to));
 }
 
 function semanticSnapshot(source, parseMarkdown) {
@@ -223,7 +271,8 @@ function semanticSnapshot(source, parseMarkdown) {
     }
   }
   // Comrak に専用ノードがない GitLab の記法も、原文と出現順を保つ。
-  const atoms = [...source.matchAll(/\[\[_TOC_\]\]|\[TOC\]|\[~\]|\[\^[^\]\r\n]+\](?::)?|::include\{[^\r\n]*?\}|\{[+-][^\r\n]*?[+-]\}|\[[+-][^\r\n]*?[+-]\]/gu)]
+  // GitLab は [[_toc_]] のような小文字の目次も目次として描くので、大文字小文字を区別しない。
+  const atoms = [...source.matchAll(/\[\[_TOC_\]\]|\[TOC\]|\[~\]|\[\^[^\]\r\n]+\](?::)?|::include\{[^\r\n]*?\}|\{[+-][^\r\n]*?[+-]\}|\[[+-][^\r\n]*?[+-]\]/giu)]
     .map((match) => match[0]);
   return JSON.stringify({ frontMatter: matter?.raw || null, descriptions, literals, atoms });
 }
@@ -241,7 +290,8 @@ function fixPosition(error) {
 function applyFix(source, error) {
   const fix = error.fixInfo;
   const [lineNumber, column] = fixPosition(error);
-  const line = linesOf(source)[lineNumber - 1];
+  const lines = linesOf(source);
+  const line = lines[lineNumber - 1];
   if (!line) throw new Error("整形ツールが不正な修正位置を返しました。");
   const start = line.start + column - 1;
   const count = fix.deleteCount || 0;
@@ -250,6 +300,12 @@ function applyFix(source, error) {
     throw new Error("整形ツールが不正な修正範囲を返しました。");
   }
   if (count === -1) {
+    // 改行の無い最後の行は、前の行の改行ごと消す (markdownlint が行を結合し直すのと同じ)。
+    // そうしないと、末尾の余分な空行を消す MD012 の修正が何も変えない。
+    if (!line.ending && lineNumber > 1) {
+      const previous = lines[lineNumber - 2];
+      return source.slice(0, previous.start + previous.content.length) + source.slice(line.start + line.content.length);
+    }
     return source.slice(0, line.start) + source.slice(line.start + line.content.length + line.ending.length);
   }
   const insertion = (fix.insertText || "").replace(/\n/gu, preferredEnding(source));
@@ -296,7 +352,13 @@ async function lint(source, { main }, { filename, cwd, config }) {
   if (results.some((result) => result.errorDetail?.startsWith("This rule threw an exception:"))) {
     throw new Error("Markdownlint のルール実行に失敗しました。");
   }
-  return results.filter((result) => result.fixInfo && path.resolve(cwd, result.fileName) === filename);
+  // Windows のドライブ文字の大小が違っても同じファイルと見なす。
+  return results.filter((result) => result.fixInfo && path.relative(path.resolve(cwd, result.fileName), filename) === "");
+}
+
+function isInside(directory, file) {
+  const relative = path.relative(directory, file);
+  return relative !== "" && !path.isAbsolute(relative) && relative.split(/[\\/]/u)[0] !== "..";
 }
 
 function selectedRange(source, range) {
@@ -395,37 +457,77 @@ export async function formatMarkdown(source, options = {}) {
     let fixes = await lint(current, dependencies, settings);
     if (projected.source !== current) {
       // リストの表記は正しい階層を持つ引用版を基準とし、元の解析との往復を防ぐ。
-      fixes = fixes.filter((fix) => fix.ruleNames[0] !== "MD004");
+      // 説明の中の行の字下げ (MD005 / MD007) も引用版だけで見る。元の解析は説明リストを知らず、
+      // その修正は必ず却下されるので、保存のたびに検証の手間だけが掛かる。
+      fixes = fixes.filter((fix) => fix.ruleNames[0] !== "MD004" &&
+        !(indentRules.has(fix.ruleNames[0]) && projected.projectedRows.has(fixPosition(fix)[0])));
       fixes.push(...(await lint(projected.source, dependencies, settings))
-        .filter((fix) => !projected.syntheticBlankRows.has(fixPosition(fix)[0])));
+        .filter((fix) => !projected.syntheticBlankRows.has(fixPosition(fix)[0]))
+        .map((fix) => fromProjection(fix, projected))
+        .filter(Boolean));
     }
     // 範囲で先に絞ると、通常のリストでも一部のマーカーだけが変わって分裂する。
     const groups = fixGroups(fixes, projected.itemLists)
       .filter((group) => group.every((fix) => inRange(current, fix, selection)));
-    let changed = false;
-    const appliedRanges = [];
-    for (const group of groups) {
-      attempted += group.length;
-      if (attempted > MAX_FIXES) throw new Error("修正が多すぎるため整形を中止しました。");
-      const ranges = group.map((fix) => {
-        const [line, column] = fixPosition(fix);
-        return { line, column, end: column + Math.max(0, fix.fixInfo.deleteCount || 0), deleted: fix.fixInfo.deleteCount === -1 };
-      });
-      // 同じ解析結果に基づく重複修正は、次の解析で再評価する。
-      if (ranges.some((candidate) => appliedRanges.some((range) => range.line === candidate.line &&
-          (candidate.deleted || range.deleted || (candidate.end > range.column && candidate.column < range.end) ||
-           candidate.column === range.column)))) continue;
-      // 同じリストのマーカー変更だけはまとめて検証し、途中の混在でリストが分裂するのを避ける。
-      // 全て同じ幅の１文字置換なので、下の行からまとめて変えても他の修正位置はずれない。
-      const candidate = group.reduce((value, fix) => applyFix(value, fix), current);
-      if (candidate === current) continue;
+    // 検証は文書全体を Comrak で解析し直すので、修正ごとに確かめると長い文書で保存の上限を超える。
+    // まとめて当てて 1 回で確かめ、構造が変わるときだけ半分に分けて原因の修正を除く。
+    // まとめは下の行から並んでいるので、どの部分を当てても残りの修正位置はずれない。
+    // 同じリストのマーカー変更は 1 つのまとめのまま扱い、途中の混在でリストが分裂するのを避ける。
+    const accept = (batch) => {
+      if (!batch.length) return;
+      const candidate = batch.flat().reduce((value, fix) => applyFix(value, fix), current);
+      if (candidate === current) return;
       if (semanticSnapshot(candidate, dependencies.parseMarkdown) === originalSnapshot) {
         // 範囲内の改行増減に追従し、次の解析で元の選択範囲外を整形しない。
         if (selection) selection.end += candidate.length - current.length;
         current = candidate;
-        changed = true;
-        appliedRanges.push(...ranges);
+        return;
       }
+      if (batch.length === 1) return;
+      const middle = Math.ceil(batch.length / 2);
+      accept(batch.slice(0, middle));
+      accept(batch.slice(middle));
+    };
+    let changed = false;
+    let pending = groups;
+    while (pending.length && !changed) {
+      const batch = [];
+      const deferred = [];
+      const selectedRanges = [];
+      for (const group of pending) {
+        const ranges = group.map((fix) => {
+          const [line, column] = fixPosition(fix);
+          return { line, column, end: column + Math.max(0, fix.fixInfo.deleteCount || 0), deleted: fix.fixInfo.deleteCount === -1 };
+        });
+        // 同じ解析結果に基づく重複修正は同時に当てない。ほかが当たれば次の解析で再評価し、
+        // 何も当たらなかったときは、位置がずれていないのでこのまま残りを試す。
+        if (ranges.some((candidate) => selectedRanges.some((range) => range.line === candidate.line &&
+            (candidate.deleted || range.deleted || (candidate.end > range.column && candidate.column < range.end) ||
+             candidate.column === range.column)))) {
+          deferred.push(group);
+          continue;
+        }
+        attempted += group.length;
+        if (attempted > MAX_FIXES) throw new Error("修正が多すぎるため整形を中止しました。");
+        selectedRanges.push(...ranges);
+        batch.push(group);
+      }
+      const before = current;
+      // コードや数式の中身を変える修正は、ほとんど却下される。まとめに混ぜると半分に分ける検証が
+      // 増えるので、前後のまとめと順番を保ったまま 1 つずつ確かめる (結果は同じで、手間だけが減る)。
+      let run = [];
+      for (const group of batch) {
+        if (group.some((fix) => touchesLiteral(fix, projected))) {
+          accept(run);
+          run = [];
+          accept([group]);
+        } else {
+          run.push(group);
+        }
+      }
+      accept(run);
+      changed = current !== before;
+      pending = deferred;
     }
     if (!changed) {
       if (semanticSnapshot(current, dependencies.parseMarkdown) !== originalSnapshot) {
@@ -454,6 +556,11 @@ async function cli() {
     options[name] = arguments_[++index];
   }
   if (!options.runtimeDir) throw new Error("--runtime-dir を指定してください。");
+  // conform は Neovim の作業ディレクトリでこのスクリプトを起動する。以前の markdownlint-cli2 --fix と
+  // 同じく、ファイルがその下にあればそこを CLI2 の基準にし、上の階層のプロジェクト設定も読ませる。
+  if (options.filename && path.isAbsolute(options.filename) && isInside(process.cwd(), options.filename)) {
+    options.cwd = process.cwd();
+  }
   if (options.rangeStart !== undefined || options.rangeEnd !== undefined ||
       options.rangeStartColumn !== undefined || options.rangeEndColumn !== undefined) {
     if (!options.rangeStart || !options.rangeEnd) throw new Error("範囲の開始行と終了行を指定してください。");
@@ -466,7 +573,18 @@ async function cli() {
   process.stdout.write(output);
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// Node は実体のパスで読み込むので、シンボリックリンクやジャンクションを通った起動も実体で比べる。
+// 一致しないと何も出力せずに終わり、conform は空の出力として黙って整形をやめる。
+function isMainScript() {
+  if (!process.argv[1]) return false;
+  try {
+    return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isMainScript()) {
   cli().catch((error) => {
     const detail = error?.message?.split(/[\r\n]/u)[0] || "不明なエラー";
     process.stderr.write(`GitLab Markdown の整形に失敗しました: ${detail}\n`);
