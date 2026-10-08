@@ -7,8 +7,8 @@
 > [!IMPORTANT]
 > - **AlmaLinux 10 では、GNOME にログインしたデスクトップの端末で、自分のユーザーのまま実行する** ([SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)だけは、手元の WezTerm から ssh したシェルで貼る)。`sudo -i` した root のシェルでは行わない (Homebrew は root で動かず、`gsettings` は実行したユーザーの設定しか変えない)
 > - **AlmaLinux 10 で実行するユーザーは `sudo` できる必要がある** ([AlmaLinux 導入の手順 2・3・8](#almalinux-10-に導入する-1-度だけ))
-> - **Windows 11 では、管理者ではない PowerShell で実行する** (手順 6 の VC++ ランタイムのインストーラーだけは UAC を許可する。標準ユーザーなら管理者の認証が必要)
-> - **対話入力がある**: AlmaLinux 導入の手順 3 (`[y/N]` と EPEL の鍵)、手順 8 (Homebrew の `RETURN` と `sudo` のパスワード)、手順 10 (`brew` の `[y/n]`)、Windows 導入の手順 6 (VC++ ランタイムの UAC)、[GitLab プレビューのトークンの節](#gitlab-プレビューのトークンを設定する-任意)の手順 1〜4 (トークンと GitLab の URL)。答えてから次の手順を貼る
+> - **Windows 11 では、管理者ではない PowerShell で実行する** (手順 6 で VC++ ランタイムを入れるときだけ、インストーラーの UAC を許可する。標準ユーザーなら管理者の認証が必要)
+> - **対話入力がある**: AlmaLinux 導入の手順 3 (`[y/N]` と EPEL の鍵)、手順 8 (Homebrew の `RETURN` と `sudo` のパスワード)、手順 10 (`brew` の `[y/n]`)、Windows 導入の手順 6 (VC++ ランタイムが無いときの UAC)、[GitLab プレビューのトークンの節](#gitlab-プレビューのトークンを設定する-任意)の手順 1〜4 (トークンと GitLab の URL)。答えてから次の手順を貼る
 > - **Neovim の画面が開く**: AlmaLinux 導入の手順 17・19、Windows 導入の手順 9・11、[SSH の節](#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 2。`:qa` で閉じてから次の手順を貼る
 > - **AlmaLinux 導入の手順 15 の後で、ログアウトしてログインし直す** (入れた ibus-anthy と入力ソースを読み直させる)。[上部バーの節](#gnome-の上部バーを-ime-連携に合わせる-任意)の手順 2 でも、拡張を読ませるためにログインし直す
 
@@ -330,14 +330,15 @@
    - `custom` と出ればよい
    - すでに clone してあれば、`git clone` は飛ばされる
 
-1. Visual C++ のランタイムと、外部コマンド・Neovim・zenhan・lazygit を scoop で入れる。
+1. Visual C++ のランタイムが無いときだけ入れ、外部コマンド・Neovim・zenhan・lazygit を scoop で入れる。
 
    ```powershell
-   scoop install vcredist2022
+   if (-not (Test-Path -LiteralPath "$env:WINDIR\System32\vcruntime140.dll")) { scoop install vcredist2022 }
    scoop install neovim ripgrep fd gcc nodejs zenhan lazygit
    ```
 
-   - PowerShell は非管理者のまま、Visual C++ のインストーラーの UAC を許可する (x64・x86 の両方を入れる。標準ユーザーなら管理者の認証情報が要る)
+   - 1 行目は、ランタイム (`System32\vcruntime140.dll`) がすでにあれば何もしない (ほかのアプリや winget で入れてある PC では、UAC も出ない)
+   - ランタイムが無ければ `vcredist2022` を入れる。PowerShell は非管理者のまま、Visual C++ のインストーラーの UAC を許可する (x64・x86 の両方を入れる。標準ユーザーなら管理者の認証情報が要る)
    - `zenhan` は IME 連携に使う。無ければ IME 連携だけが静かに無効になる
    - `lazygit` は任意 (無ければ `<leader>gg` が定義されないだけ)
    - 2 行目のパッケージは、導入済みなら何も出さずに飛ばされる (scoop は複数を並べると `already installed` を出さない)
@@ -849,7 +850,8 @@
 ### 注意点
 
 - **Windows で `nvim` が起動しない (`VCRUNTIME140.dll が見つからない` / `0xC0000135`)**: Visual C++ のランタイムが入っていない
-  - scoop の `neovim` は `VCRUNTIME140.dll` を同梱しない (`nvim.exe` と `lua51.dll` が読み込む)。[Windows 導入の手順 6](#windows-11-に導入する-1-度だけ)で `vcredist2022` を入れ、手順 7 の `nvim --version` で確かめる
+  - scoop の `neovim` は `VCRUNTIME140.dll` を同梱しない (`nvim.exe` と `lua51.dll` が読み込む)。[Windows 導入の手順 6](#windows-11-に導入する-1-度だけ)の 1 行目が、`System32\vcruntime140.dll` が無いときだけ `vcredist2022` を入れる。手順 7 の `nvim --version` で確かめる
+  - `vcruntime140.dll` があるのに手順 7 の `nvim --version` が通らないときは、`scoop install vcredist2022` を条件を付けずに貼り、今の版のランタイムを入れる (手順 6 の 1 行目はファイルの有無だけを見て、版は見ない)。`already installed` と出たら、`scoop uninstall vcredist2022` の後にもう一度貼る (uninstall で消えるのはインストーラーだけで、ランタイムは残る)
   - VC++ のランタイムが無いクリーンインストールの Windows 11 VM では、Neovim 0.12.5 が終了コード `-1073741515` (`0xC0000135`) になり、起動しなかった
 - **一部の Mason のツールだけが入らない (`stylua` など)**: `unzip` が無い
   - Mason は zip で配布されるツールの展開に `unzip` を使い、無いと**そのツールだけ**が静かに失敗する

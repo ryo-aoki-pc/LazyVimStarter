@@ -1,6 +1,7 @@
 # LazyVim 導入の検証記録
 
 以下は既存文書から移した記録。本文の「本書」「この文書」と手順番号は、記録元の手順書を指す。新しく検証した記録ではない。
+ただし、「付録: Windows 導入の手順 6 の VC++ ランタイムを条件付きにした記録 (2026-10-08)」は新しく検証した記録 (Windows では実行していない)。
 
 手順は [setup.md](../setup.md)、背景説明は [補足資料](../reference/setup.md) を参照する。日付・対象の版・実施範囲は各記録に記載する。
 
@@ -69,6 +70,8 @@
 ## 手順冒頭の検証範囲
 
 > [!WARNING]
+> **2026-10-08 に、Windows 導入の手順 6 の VC++ ランタイムの導入を、`System32\vcruntime140.dll` が無いときだけにした。この変更は Windows では流していない** (Linux の PowerShell 7.6.6 で、ブロックの構文と分岐だけを確かめた。[記録](#付録-windows-導入の手順-6-の-vc-ランタイムを条件付きにした記録-2026-10-08))。
+>
 > **2026-10-06 に現行 `ae7f049` を、新規 AlmaLinux 10.2 の x86_64 VM で公開 URL から新規導入した**。CLI の前提・lock 復元・Mason 11 個・パーサー 30 個・検索・保存時の整形を確認し、遅い VM の Markdown 整形の待ち時間を修正した（[今回の CLI 記録](#付録-新規-almalinux-102-vm-での-cli-導入整形の再検証2026-10-06)）。別の新規 GNOME VM でも入力ソース・通常 GUI・IBus の Ctrl+J / Esc・検索 sticky・アイコン・修正後の保存を確認した（[今回の GUI 記録](#付録-現行手順を別のクリーン-vm-の-gnome-で再検証-2026-10-06)）。物理キー・上部バー拡張・画像貼り付け等は今回未実施。以下は過去の検証範囲。
 >
 > **AlmaLinux 10 の手順は x86_64 のコンテナで通した。GNOME の実機では、導入済みの PC で AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 だけを通した** (手順 1〜15 は、システムを変えずに到達点を確かめただけ)。aarch64 では通していない。**上部バーの節は、画面の無い gnome-shell でだけ確かめた** (本物のログインでは通していない)。**Windows 11 の手順は実機とクリーンインストールした VM で通した** (scoop も Git for Windows も PATH に無い状態からの通しと、本物の IME を含む)。VM では VC++ ランタイム不足の起動失敗を再現し、手順 6 に導入を追加して起動できることを確かめた。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、GNOME の画面では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた。Windows からは、WezTerm の nightly と Windows Terminal で WSL の AlmaLinux 10 に ssh して確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
@@ -197,6 +200,8 @@
     - 有効なプラグイン 38 個の HEAD が lock と一致し、`core.autocrlf=true` でも Git の変更表示は空で lock は LF。実 UI で Mason の 11 個、パーサー 30 個とハイライト、marksman の初期化を確認した
     - Windows Terminal と Microsoft IME で、日本語入力・`<C-j>`・Esc の英数化・検索の sticky と状態表示・`/kensaku`・Tab の補完・保存時の Markdown 整形・アイコンを確認した。キーは VirtualBox の仮想キーボードから入れ、OS の IME を通した。health は無視してよい `fzf` の WARNING だけだった
     - 更新・ロールバック・任意の節・Neovide は今回の VM では確認していない
+  - **2026-10-08 に、Windows 導入の手順 6 の VC++ ランタイムを、`System32\vcruntime140.dll` が無いときだけ入れる形にした。Windows では流していない** ([付録](#付録-windows-導入の手順-6-の-vc-ランタイムを条件付きにした記録-2026-10-08))
+    - Linux の PowerShell 7.6.6 で、ブロックの構文と、`scoop` をモックにした分岐 (ファイルが無ければ `vcredist2022` も入れ、あれば飛ばす) だけを確かめた
   - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
 | 項目 | AlmaLinux 10 | Windows 11 |
@@ -686,6 +691,27 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
 入力は Mutter の RemoteDesktop を通る実 evdev keycode の押下・解放を使った。`nvim_input` / `--remote-send` による IME 試験はしていない。スクリーンショットと通常 GUI の表示で確認し、`VeryLazy` を手で発火していない。
 
 今回の GUI 試験には、挿入カーソル近くの一時表示の撮影、上部バー追従の拡張、Neovide、物理キーボード、画像貼り付け、SSH / tmux 越しのローカルクリップボード、JIS 配列、Windows / aarch64、設定の更新・削除を含めない。上部バーは拡張を入れていないので英語の表示が残った。通常 GUI と IBus の経路を確認した範囲であり、物理キーの実測とは分ける。
+
+### 付録: Windows 導入の手順 6 の VC++ ランタイムを条件付きにした記録 (2026-10-08)
+
+- **対象**: `custom` の `6c894ee` の作業ツリー (コミット前)。Windows 導入の手順 6 の 1 行目を、`scoop install vcredist2022` から `if (-not (Test-Path -LiteralPath "$env:WINDIR\System32\vcruntime140.dll")) { scoop install vcredist2022 }` に変えた
+  - ほかのアプリや winget (`Microsoft.VCRedist.2015+.x64`) でランタイムを入れてある PC で、`vcredist2022` の x64・x86 の UAC を余計に出さないため
+- **環境**: x86_64 のクラウドのコンテナ (Linux 6.18)。PowerShell 7.6.6 (公式の Linux 版のリリース `powershell-7.6.6-linux-x64.tar.gz`)。**Windows では何も実行していない**
+- **実行したこと**: 手順 6 のブロックを docs/setup.md から取り出し、PowerShell 7.6.6 に渡した
+  - `[System.Management.Automation.Language.Parser]::ParseInput` の構文エラーは 0 件、`&&` / `||` のトークンも 0 件だった
+  - `scoop` を、引数を記録するだけの関数に替え、`WINDIR` を一時的なディレクトリに向けて、ブロックをそのまま実行した
+  - `System32\vcruntime140.dll` が無いときは、`install vcredist2022` と `install neovim ripgrep fd gcc nodejs zenhan lazygit` の 2 回呼んだ
+  - 仮のファイル (中身は 1 文字) を `System32\vcruntime140.dll` に置くと、`install neovim ripgrep fd gcc nodejs zenhan lazygit` の 1 回だけ呼んだ
+  - Linux の PowerShell は `\` をパスの区切りとして扱った。Windows のファイルシステム (大文字と小文字を区別しない `VCRUNTIME140.dll`、32 ビットのプロセスの `SysWOW64` への読み替え) は、この確認に含まれない
+
+#### 未確認事項 (2026-10-08 の手順 6)
+
+- Windows PowerShell 5.1 での構文と実行 (使っているのは `if`・`-not`・`Test-Path -LiteralPath` と文字列の中の `$env:WINDIR` だけ)
+- ランタイムが入っている Windows 11 で、1 行目が何も出さず、UAC も出ないこと
+- ランタイムが無い Windows 11 で、これまでどおり x64・x86 の UAC が出て、手順 7 の `nvim --version` が通ること
+- winget の `Microsoft.VCRedist.2015+.x64` だけ (x86 なし) で入れた PC で、Neovim が起動すること (`nvim.exe` は x64 なので、x64 のランタイムで足りるはず)
+- 古い版のランタイムだけがある PC での Neovim の起動 (1 行目は版を見ない)
+- 注意点の、`already installed` と出たときの `scoop uninstall vcredist2022` → `scoop install vcredist2022` の入れ直し。uninstall でランタイムが残ることは、Extras のマニフェスト (`bucket/vcredist2022.json`、2026-10-08 に取得した `14.51.36247.0`) に uninstaller が無く、インストーラーを `post_install` で実行するだけで、`notes` が `You can now remove this installer with 'scoop uninstall vcredist2022'` であることから読んだだけ
 
 ## 補足資料に記載していた観測
 

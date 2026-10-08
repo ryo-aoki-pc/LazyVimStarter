@@ -263,6 +263,10 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   `clipboard` や `g:clipboard` を触るときはそこも見る。`p` で端末に問い合わせる形に戻すと、読み出しに応えない端末で 1 回ごとに 10 秒待つ。
 - 長い日本語の文字列を含む行は、stylua の整形が 1 回で落ち着かないことがある (整形した結果を `--check` が
   また直せと言う)。そのときは行を分けるか文字列を短くする。
+- `<leader>gg` の lazygit の `e` は `lua/plugins/lazygit.lua` が OS ごとに決める (Windows は `nvim` のプリセットで
+  入れ子の Neovim、Linux は snacks 既定の `nvim-remote`)。lazygit は `editInTerminal` を明示するとプリセットの判定より
+  優先するので、両方の OS で明示している。snacks は自分の設定を `LG_CONFIG_FILE` の最後に足すので、自分用の lazygit の
+  config.yml より勝つ。Linux で `true` にすると、`e` の後に lazygit の窓が閉じずに残る。
 
 ## 既存ドキュメント
 
