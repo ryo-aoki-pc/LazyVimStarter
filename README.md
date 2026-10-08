@@ -150,7 +150,11 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
 
 - LazyVim extra `lang.markdown` を有効化し、以下を上書き:
   - 整形連鎖から **prettier を除外** (GLFM の数式・脚注・`[[_TOC_]]` を壊すため)。
-    整形は markdownlint-cli2 `--fix` のみ。Markdown / MDX の待ち時間の上限は 10 秒
+    Markdown は `glfm_markdownlint` が markdownlint-cli2 の修正候補を Comrak で検査して適用する。
+    説明リスト内の安全な空白修正や箇条書きの記号統一も行い、用語と説明の対応・継続行・
+    内部リストの所属・本文が変わる修正は除外する。保存時と `<leader>cf` で動き、診断を待たずに整形できる。
+    初回と依存の変更後は [安全な整形の導入](docs/setup.md#gitlab-markdown-の安全な整形を導入する-初回と依存の変更後) が必要。
+    MDX は prettier と markdownlint-cli2。Markdown / MDX の待ち時間の上限は 10 秒
     (速い環境では処理が終わった時点で戻る)。ほかのファイルは LazyVim 既定の 3 秒。
   - **markdown-toc を外した** (npm の最終リリースが 2017 年で、更新が止まっている)。目次は GitLab が
     `[[_TOC_]]` から描画のたびに作る。ファイルに書き込む目次が要るときは、marksman のコードアクション

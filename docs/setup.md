@@ -17,6 +17,8 @@
 | [AlmaLinux 10 に導入する](#almalinux-10-に導入する-1-度だけ) | マシンごとに 1 度 | 外部コマンド・Neovim・日本語入力・フォントを入れ、この設定を clone して初回起動する |
 | [Windows 11 に導入する](#windows-11-に導入する-1-度だけ) | マシンごとに 1 度 | scoop で外部コマンド・Neovim・zenhan を入れ、この設定を clone して初回起動する |
 | [ほかのマシンの変更を取り込む](#ほかのマシンの変更を取り込む-繰り返し) | 繰り返し | 別のマシンで push した設定と `lazy-lock.json` を取り込み、プラグインの版を揃える |
+| [GitLab Markdown の安全な整形を導入する](#gitlab-markdown-の安全な整形を導入する-初回と依存の変更後) | 初回と整形用依存の変更後 | 説明リストを検査する整形用の npm 依存を入れ、保存と手動整形を確かめる |
+| [GitLab Markdown 整形器の回帰テストを実行する](#gitlab-markdown-整形器の回帰テストを実行する-開発時) | 開発時 | 説明リストの保持、整形用設定、Neovim の配線を確認する |
 | [カーソル色を tmux で効かせる (任意)](#カーソル色を-tmux-で効かせる-任意) | 任意、1 度だけ | tmux の中でも、挿入モードのカーソル色を IME の状態で変える (AlmaLinux 10) |
 | [GNOME の上部バーを IME 連携に合わせる (任意)](#gnome-の上部バーを-ime-連携に合わせる-任意) | 任意、1 度だけ | Neovim が IME を切り替えても、GNOME の上部バーと Super+Space の順番がずれないようにする (AlmaLinux 10 + GNOME 49) |
 | [GitLab プレビューのトークンを設定する (任意)](#gitlab-プレビューのトークンを設定する-任意) | 任意、1 度だけ | `<leader>cp` のプレビューを GitLab 本体に描かせるため、アクセストークン (と GitLab の URL) を環境変数にする |
@@ -263,7 +265,8 @@
 
    - `/kensaku` と打って Enter を押す。3 行目の「検索」にカーソルが移り、`[1/1]` と出る
    - `/kensaku` と打って `<Tab>` を押す。入力が「検索」に置き換わる (候補が 1 つなので、すぐ確定する)。`<Esc>` で抜ける
-   - `:w` で保存する。1 行目が `# 動作確認` に直る (markdownlint-cli2 の整形)
+   - 初めてなら [安全な整形の導入](#gitlab-markdown-の安全な整形を導入する-初回と依存の変更後) を済ませる
+   - `:w` で保存する。1 行目が `# 動作確認` に直る (glfm_markdownlint の整形)
    - 遅い VM では整形に数秒掛かる。Markdown / MDX の待ち時間の上限は 10 秒で、処理が終わればすぐ戻る
    - `o` で行を開き、`<C-j>` を押す。下の表示が `A` から `あ` に変わる。`<Esc>` で `A` に戻る
    - `<C-j>` を押したときは、カーソルのすぐ下にも `あ` / `A` が約 1 秒出る
@@ -398,6 +401,7 @@
    ```
 
    - 確かめることは [AlmaLinux 導入の手順 19](#almalinux-10-に導入する-1-度だけ) と同じ (`/kensaku`・`<Tab>`・`:w`・`<C-j>`・アイコン)
+   - 初めてなら [安全な整形の導入](#gitlab-markdown-の安全な整形を導入する-初回と依存の変更後) を済ませる
    - `:lua =vim.fn.executable("zenhan")` が `1` なら IME 連携が有効 (`0` でもほかは動く)
    - OS 側で IME を切り替えても、Neovim は気付けない (lualine の `あ` / `A` がずれることがある。[README](../README.md#日本語入力検索))
    - `:qa!` で閉じる。これで導入は終わり
@@ -407,6 +411,7 @@
 - 別のマシンで push した設定の変更と `lazy-lock.json` を取り込み、プラグインをその版に揃える
 - AlmaLinux 10 はこの節の手順 1、Windows 11 はこの節の手順 2 を貼る
 - Mason のツールや treesitter のパーサーが増えたときは、次に Neovim でファイルを開いたときに入る
+- 初回と `tools/glfm-format/package-lock.json` が変わったときは、取り込み後に [安全な整形の導入](#gitlab-markdown-の安全な整形を導入する-初回と依存の変更後) を行う
 - 外したプラグインとツールは、自動では消えない。消すなら Neovim で `:Lazy clean` (無効にしたプラグインのディレクトリ) と `:MasonUninstall <名前>` (例: markdown-preview.nvim と markdown-toc を外した変更の後なら `:MasonUninstall markdown-toc`)
 
 1. AlmaLinux 10 では、設定を最新にしてプラグインを揃える。
@@ -432,6 +437,67 @@
    - `git status --short` が `M lazy-lock.json` を出したら、取り込んだ変更で増えたプラグインを起動時に入れたとき、lock が入っていた古い版で書き直されている (`restore` はその lock に揃えた)。`git -C "$env:LOCALAPPDATA\nvim" checkout -- lazy-lock.json` で戻し、`nvim --headless "+Lazy! restore" +qa` をもう一度貼る (2 回目は入れるものが無いので書き直されない)
    - `pull` が `Not possible to fast-forward` で止まったときは、`restore` は走らず、`git status --short` も何も出さない。このマシンに push していないコミットがある。先に push するか、`git -C "$env:LOCALAPPDATA\nvim" log --oneline '@{u}..'` で中身を見る
    - `pull` が `Your local changes to the following files would be overwritten by merge:` で `lazy-lock.json` を挙げて止まったら、このマシンで lock が書き換わっている。`:Lazy update` の結果として残すのでなければ、`git -C "$env:LOCALAPPDATA\nvim" checkout -- lazy-lock.json` で戻してから、この手順を貼り直す
+
+---
+
+### GitLab Markdown の安全な整形を導入する (初回と依存の変更後)
+
+- AlmaLinux 10 / Windows 11 共通。Node.js 22 以上と npm が必要
+- 初回と `tools/glfm-format/package-lock.json` の変更後に行う
+- 整形用依存は Neovim のデータディレクトリの `glfm-format` に入る。Mason のツールとは別に管理する
+
+1. Neovim で整形用の依存を導入する。
+
+   ```vim
+   :GlfmFormatInstall
+   ```
+
+   - 完了の通知が出るまで待つ
+   - 取得するのは lock ファイルで固定した markdownlint-cli2 と Comrak (WASM 版)。整形時は通信しない
+   - 失敗したら Node.js と npm が PATH にあるか確かめ、同じコマンドを入力し直す
+   - lint の診断用は `:MasonInstall markdownlint-cli2` で導入する
+
+1. Markdown ファイルで保存と手動整形を確かめる。
+
+   ```markdown
+   #動作確認
+
+   用語
+   : 説明
+
+     - 内部の項目
+   ```
+
+   - `:w` または `<leader>cf` で `#動作確認` が `# 動作確認` に直る
+   - `内部の項目` の行頭の 2 スペースが保たれる
+   - `<leader>cf` はビジュアル選択した範囲にも使える
+   - 説明の対応や本文を変える修正は除外するため、一部の lint 診断は残ることがある
+   - `:ConformInfo` に `glfm_markdownlint` が出る。依存不足・設定不正・時間切れのときは原文を保持し、エラーを知らせる
+
+### GitLab Markdown 整形器の回帰テストを実行する (開発時)
+
+- 整形器を開発するときに行う。[安全な整形の導入](#gitlab-markdown-の安全な整形を導入する-初回と依存の変更後)を先に済ませる
+- Node.js 22 以上と、インストール済みの conform.nvim が必要
+
+1. AlmaLinux 10 では、説明リスト・GLFM 記法・設定の引き継ぎと Neovim の配線を確かめる。
+
+   ```bash
+   GLFM_FORMAT_RUNTIME_DIR="$HOME/.local/share/nvim/glfm-format" node --test ~/.config/nvim/tools/glfm-format/test/*.test.mjs
+   nvim --headless -u NONE -i NONE -l ~/.config/nvim/tools/glfm-format/test/conform.lua
+   ```
+
+   - Node のテストがすべて通り、Neovim が `GLFM conform / installer integration: PASS` を出せばよい
+   - Neovim の確認では lazy.nvim の導入・更新を起動しない
+
+1. Windows 11 では、(この節の手順 1 の代わりに) 同じ回帰テストを実行する。
+
+   ```powershell
+   $env:GLFM_FORMAT_RUNTIME_DIR = "$env:LOCALAPPDATA\nvim-data\glfm-format"
+   node --test "$env:LOCALAPPDATA\nvim\tools\glfm-format\test\format.test.mjs"
+   nvim --headless -u NONE -i NONE -l "$env:LOCALAPPDATA\nvim\tools\glfm-format\test\conform.lua"
+   ```
+
+   - 期待する結果はこの節の手順 1 と同じ
 
 ---
 
@@ -814,7 +880,7 @@
 | C コンパイラ (gcc または MSVC の cl) | treesitter のパーサーのビルド | 必須 |
 | tree-sitter CLI | treesitter のパーサーのビルド。PATH に無ければ LazyVim が Mason で入れる | 必須 (自動で入る) |
 | curl / tar / gzip / unzip | treesitter と Mason の取得・展開。curl は GitLab プレビューが GitLab の API を呼ぶのにも使う (8.3 以上) | 必須 (Windows 11 は同梱の curl と tar だけでよい。[Windows の外部コマンドの説明](reference/setup.md#windows-の外部コマンド)) |
-| [Node.js](https://nodejs.org/) (node + npm) | Mason が npm で入れる LSP・整形ツール | 必須 |
+| [Node.js](https://nodejs.org/) 22 以上 (node + npm) | Mason の LSP・lint と、安全な Markdown 整形用依存 | 必須 |
 | Nerd Font ([HackGen Console NF](https://github.com/yuru7/HackGen)) | アイコン表示と `guifont` | 実質必須 (無いと記号が豆腐になる) |
 | ibus + ibus-anthy、`busctl` か `gdbus` | 日本語入力 (Linux)。global engine を切り替える | Linux で必須 |
 | [zenhan](https://github.com/iuchim/zenhan) または im-select | 日本語入力 (Windows) | 任意 (無ければ IME 連携のみ無効) |
@@ -862,10 +928,10 @@
   - `:checkhealth lazyvim` の `LazyVim nvim-treesitter` の節で `C compiler` と `tree-sitter (CLI)` を見る
   - Windows で `gcc` を入れた直後は PATH が反映されていないことがある。端末を開き直してから `nvim` を起動する
 - **ファイルピッカーが空のまま**: `fd` も `rg` も無い。Linux には `find` へのフォールバックがあるが、Windows には無い
-- **保存しても Markdown が整形されない / lint が出ない**: `markdownlint-cli2` は npm のパッケージ
-  - node を入れ替えたり消したりすると、Mason で入れたものごと壊れる
-  - `:Mason` で状態を見て、`:MasonInstall markdownlint-cli2` で入れ直す
-  - 診断が出ているのに直らなければ `:ConformInfo` を開く。`Formatter 'markdownlint-cli2' timeout` は整形の時間切れで、ツールの未導入とは区別する
+- **保存しても Markdown が整形されない / lint が出ない**: Node.js 22 以上と npm が必要
+  - 整形用の依存は `:GlfmFormatInstall` で導入する。設定を取り込んで lock ファイルが変わったときも入力する
+  - lint の診断用は `:Mason` で状態を見て、`:MasonInstall markdownlint-cli2` で入れ直す
+  - `:ConformInfo` を開く。`Formatter 'glfm_markdownlint' timeout` は整形の時間切れで、ツールの未導入とは区別する
   - Markdown / MDX の整形上限は 10 秒。ほかのファイルは既定の 3 秒
 - **GitLab プレビュー (`<leader>cp`) が `近似表示` になる**: ページの上のバナーに理由が出る
   - `GITLAB_TOKEN が未設定`: [トークンの節](#gitlab-プレビューのトークンを設定する-任意)を行い、端末 (と Neovide) を開き直す

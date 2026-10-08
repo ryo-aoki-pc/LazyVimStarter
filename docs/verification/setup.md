@@ -713,6 +713,15 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
 - 古い版のランタイムだけがある PC での Neovim の起動 (1 行目は版を見ない)
 - 注意点の、`already installed` と出たときの `scoop uninstall vcredist2022` → `scoop install vcredist2022` の入れ直し。uninstall でランタイムが残ることは、Extras のマニフェスト (`bucket/vcredist2022.json`、2026-10-08 に取得した `14.51.36247.0`) に uninstaller が無く、インストーラーを `post_install` で実行するだけで、`notes` が `You can now remove this installer with 'scoop uninstall vcredist2022'` であることから読んだだけ
 
+### 付録: GLFM 整形器の検証 (2026-10-08)
+
+- 環境は導入済みの AlmaLinux 10.2 aarch64、Neovim 0.12.5。Homebrew で Node.js 26.11.0 / npm 11.20.0 を導入した
+- 整形用の npm 依存は markdownlint-cli2 0.23.3 / Comrak 0.48.0-rc.0 (WASM) に固定した。実設定で `:GlfmFormatInstall` による取得を確認し、Mason の markdownlint-cli2 も導入した
+- Node の回帰テスト 24 件が通った。説明の対応・継続行・内部リスト・多重の説明・引用・実際のコード・GLFM の数式やアラート・フロントマター、日本語と CRLF、設定の優先順位、未保存バッファ、範囲指定と冪等性を確認した
+- headless でインストール済みの conform.nvim を使い、診断が無い状態の整形、範囲の行と UTF-8 の列指定、依存不足・時間切れでの原文保持、導入時の引数を確認した。Windows の npm.cmd / Scoop shim の解決は模擬のプロセスで確認した
+- 実設定とインストール済みの LazyVim の整形処理を使い、headless の `:w` と `<leader>cf` と同じコールバックを通した。見出しと説明内部の末尾空白が直り、子リストの 2 スペースが保たれた。ビジュアル選択からの範囲の自動検出と、範囲外の保持も確認した。lazy.nvim の導入・更新は起動せず、既存の `lazy-lock.json` と `AGENTS.md` は保持した
+- 今回の新しい整形器は、通常 GUI の実キー、Windows 実機、GitLab API での描画では未確認。これらの過去の検証記録とは分ける
+
 ## 補足資料に記載していた観測
 
 ### dnf で入れるものの観測

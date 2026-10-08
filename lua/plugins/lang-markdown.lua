@@ -17,6 +17,7 @@ local disabled_rules = {
   -- "MD033",
   -- "MD041",
 }
+local config_path
 
 local specs = {
   -- ブラウザのプレビュー (markdown-preview.nvim) は外す。2023-10 を最後に更新が止まっており、
@@ -32,8 +33,8 @@ local specs = {
 
   -- GLFM (GitLab Flavored Markdown) を壊さず整形するため、markdown の整形連鎖から
   -- prettier を除外する。prettier は数式 $...$ の \$ 化・複数行脚注の破壊・[[_TOC_]] の
-  -- 再整形などで GLFM 固有構文を壊すため。代わりに GitLab 公式も採用する
-  -- markdownlint-cli2 --fix に任せる (リント違反のみ修正し、本文や GLFM 構文は書き換えない)。
+  -- 再整形などで GLFM 固有構文を壊すため。説明リストを理解する整形器を通して
+  -- markdownlint の修正を適用し、説明の内側も構造を保って整える。
   -- markdown-toc も外す。npm の最終リリースが 2017 年で更新が止まっている。GitLab は [[_TOC_]] で
   -- 目次を描画時に作り、ファイルに書き込む目次が要るときは marksman のコードアクション
   -- ("Table of Contents"。見出し ID は GitLab 方式) で作れる。
@@ -51,14 +52,19 @@ local specs = {
   -- 追加する際は markdown の整形連鎖を必ず確認すること。
   --
   -- 一部だけ整形: 整形したい行をビジュアル選択 (V) → <leader>cf。conform が選択範囲を
-  -- 自動検出し、markdownlint-cli2 をバッファ全体に適用した上で「選択範囲に重なる差分だけ」反映する
-  -- (markdownlint-cli2 は range 非対応だが conform が差分を範囲で絞る。範囲外は不変)。
-  -- 注: markdownlint-cli2 はバッファに markdownlint 診断がある時のみ動作 (extra の condition)。
+  -- 自動検出して整形器に渡す。選択範囲に収まる修正だけを候補にし、バッファ全体で
+  -- GLFM の構造を検証してから反映するため、リストの一部だけを整形しても構造を保てる。
+  -- Markdown は診断の完了を待たず、初回の保存や手動整形でも実行する。
   {
     "stevearc/conform.nvim",
     optional = true,
+    cmd = { "GlfmFormatInstall" },
     opts = function(_, opts)
-      opts.formatters_by_ft.markdown = { "markdownlint-cli2", timeout_ms = 10000 }
+      local glfm = require("config.glfm_format")
+      glfm.setup()
+      opts.formatters = opts.formatters or {}
+      opts.formatters.glfm_markdownlint = glfm.formatter({ config_path = config_path })
+      opts.formatters_by_ft.markdown = { "glfm_markdownlint", timeout_ms = 10000, lsp_format = "never" }
       opts.formatters_by_ft["markdown.mdx"] = { "prettier", "markdownlint-cli2", timeout_ms = 10000 }
     end,
   },
@@ -84,11 +90,11 @@ local specs = {
 if #disabled_rules > 0 then
   -- disabled_rules から markdownlint 設定 (JSON) を組み立て、cache 配下に書き出す。
   -- markdownlint-cli2 には --config でこのファイルを渡す。--config はあくまで「基準設定」で、
-  -- 対象ファイルのあるプロジェクトに .markdownlint(.json/.yaml) 等があればそちらがマージ・
-  -- 優先される (プロジェクト個別設定を壊さない)。
+  -- 対象ファイルのあるプロジェクトに .markdownlint(.json/.yaml) 等があれば、CLI2 の探索に
+  -- 従ってその設定が適用される (基準設定のルールがすべて引き継がれるとは限らない)。
   -- ファイル名を *.markdownlint.jsonc にしておくと markdownlint-cli2 が「素の markdownlint
   -- 設定 (ルールをトップレベルに書く形式)」として解釈する。
-  local config_path = vim.fn.stdpath("cache") .. "/lazyvim.markdownlint.jsonc"
+  config_path = vim.fn.stdpath("cache") .. "/lazyvim.markdownlint.jsonc"
   local cfg = { default = true } -- 既定は全ルール有効。下で除外分だけ false にする。
   for _, rule in ipairs(disabled_rules) do
     cfg[rule] = false
@@ -117,8 +123,9 @@ if #disabled_rules > 0 then
     },
   })
 
-  -- 整形 (--fix) でも lint と同じ除外ルールを使うよう、--config を prepend して渡す
+  -- MDX の整形 (--fix) でも lint と同じ除外ルールを使うよう、--config を prepend して渡す
   -- (lint で無効化したルールを整形が勝手に直し返さないよう整合させる)。
+  -- Markdown の GLFM 整形器には、上の formatter() がスクリプト名の後に --config を渡す。
   -- 同一プラグインの spec は上の formatters_by_ft と deep-merge される (lazy.nvim の標準動作)。
   table.insert(specs, {
     "stevearc/conform.nvim",
