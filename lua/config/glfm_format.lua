@@ -150,7 +150,10 @@ function M.install(opts, callback)
     { text = true, timeout = 10000 },
     vim.schedule_wrap(function(version)
       local parsed, info = pcall(vim.json.decode, version.stdout or "")
-      local major = parsed and type(info) == "table" and tonumber((info.version or ""):match("^v(%d+)"))
+      local major = parsed
+        and type(info) == "table"
+        and type(info.version) == "string"
+        and tonumber(info.version:match("^v(%d+)"))
       if version.code ~= 0 or not major or major < 22 or type(info.execPath) ~= "string" then
         finish(
           false,

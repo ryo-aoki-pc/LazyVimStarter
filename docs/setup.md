@@ -493,7 +493,8 @@
 
    ```powershell
    $env:GLFM_FORMAT_RUNTIME_DIR = "$env:LOCALAPPDATA\nvim-data\glfm-format"
-   node --test "$env:LOCALAPPDATA\nvim\tools\glfm-format\test\format.test.mjs"
+   $glfm_test_files = (Get-ChildItem -LiteralPath "$env:LOCALAPPDATA\nvim\tools\glfm-format\test" -Filter '*.test.mjs').FullName
+   node --test $glfm_test_files
    nvim --headless -u NONE -i NONE -l "$env:LOCALAPPDATA\nvim\tools\glfm-format\test\conform.lua"
    ```
 
