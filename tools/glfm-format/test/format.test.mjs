@@ -5,18 +5,21 @@ import { copyFile, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 import { formatMarkdown } from "../format.mjs";
 
 const packageDir = fileURLToPath(new URL("../", import.meta.url));
 const formatterPath = path.join(packageDir, "format.mjs");
 const runtimeDir = process.env.GLFM_FORMAT_RUNTIME_DIR || packageDir;
-const { markdownToHTML, parseMarkdown } = createRequire(path.join(runtimeDir, "package.json"))("comrak");
+const runtimeRequire = createRequire(path.join(runtimeDir, "package.json"));
+const { markdownToHTML, parseMarkdown } = runtimeRequire("comrak");
+const { lint: lintMarkdown } = await import(pathToFileURL(runtimeRequire.resolve("markdownlint/promise")));
 const parserOptions = {
   extension: {
     descriptionLists: true,
     table: true,
+    autolink: true,
     tasklist: true,
     strikethrough: true,
     footnotes: true,
@@ -220,6 +223,50 @@ test("range columns use Neovim UTF-8 byte offsets around Japanese text and emoji
   });
 });
 
+test("ranges round Japanese and emoji byte boundaries without changing unselected CRLF text", async (t) => {
+  await inProject(t, { MD009: true, MD018: true }, async (options) => {
+    const input = "Outside \r\n\r\n#日本語🌸 \r\n\r\nTerm\r\n: Description \r\n";
+    assert.equal(descriptionNodeCount(input, "DescriptionList"), 1);
+    // 「日」と絵文字の途中のバイトから始め、終点は絵文字の先頭バイトも含めて確かめる。
+    const variants = [
+      {
+        name: "Japanese start and emoji end leave trailing whitespace outside the range",
+        range: { start: [3, 2], end: [3, Buffer.byteLength("#日本語")] },
+        expected: input.replace("#日本語🌸", "# 日本語🌸"),
+      },
+      {
+        name: "including the trailing space permits both heading and whitespace fixes",
+        range: { start: [3, 2], end: [3, Buffer.byteLength("#日本語🌸")] },
+        expected: input.replace("#日本語🌸 \r\n", "# 日本語🌸\r\n"),
+      },
+      {
+        name: "an emoji start excludes the heading marker but includes trailing whitespace",
+        range: { start: [3, Buffer.byteLength("#日本語") + 2], end: [3, Infinity] },
+        expected: input.replace("#日本語🌸 \r\n", "#日本語🌸\r\n"),
+      },
+    ];
+    for (const { name, range, expected } of variants) {
+      const output = await formatMarkdown(input, { ...options, range });
+      assert.equal(output, expected, name);
+      assert.deepEqual(definitionHTML(output), definitionHTML(input), name);
+      assert.equal(output.replaceAll("\r\n", "").includes("\n"), false, name);
+      assert.equal(await formatMarkdown(output, { ...options, range }), output, name);
+    }
+  });
+});
+
+test("CRLF range anchors retain outside text across inserted and deleted lines around GLFM descriptions", async (t) => {
+  await inProject(t, { MD009: true, MD012: true, MD018: true, MD022: true }, async (options) => {
+    const input = "#外側前 \r\n\r\n#選択🌸 \r\n本文 \r\n\r\n\r\n\r\n用語\r\n: 説明🌸 \r\n\r\n#外側後 \r\n";
+    assert.equal(descriptionNodeCount(input, "DescriptionList"), 1);
+    const output = await formatMarkdown(input, { ...options, range: { start: [3, 0], end: [10, -1] } });
+    assert.equal(output, "#外側前 \r\n\r\n# 選択🌸\r\n\r\n本文\r\n\r\n用語\r\n: 説明🌸\r\n\r\n#外側後 \r\n");
+    assert.deepEqual(definitionHTML(output), definitionHTML(input));
+    assert.equal(output.replaceAll("\r\n", "").includes("\n"), false);
+    assert.equal(await formatMarkdown(output, { ...options, range: { start: [3, 0], end: [9, -1] } }), output);
+  });
+});
+
 test("range anchors follow deleted blank lines without admitting originally outside text on a later pass", async (t) => {
   await inProject(t, { MD009: true, MD012: true, MD018: true }, async (options) => {
     const input = "#OutsideBefore \n\n#Selected \n\n\n\n#OutsideAfter \n";
@@ -288,6 +335,49 @@ test("quote container and tab indentation survive safe description repairs", asy
   });
 });
 
+test("descriptions keep their multiline quote and numbered-list containers while safe fixes converge", async (t) => {
+  await inProject(t, { MD004: { style: "dash" }, MD007: true, MD009: true }, async (options) => {
+    const variants = [
+      {
+        name: "GitLab multiline quote",
+        input: ">>>\nTerm\n: Description \n\n  * child \n>>>\n\nOutside \n",
+        expected: ">>>\nTerm\n: Description\n\n  - child\n>>>\n\nOutside\n",
+        container: "MultilineBlockQuote",
+      },
+      {
+        name: "numbered list starting at three",
+        input: "3. Term\n   : Description \n\n     * child \n       * grandchild \n\n4. After \n",
+        expected: "3. Term\n   : Description\n\n     - child\n       - grandchild\n\n4. After\n",
+        container: "List",
+      },
+    ];
+    for (const { name, input, expected, container } of variants) {
+      const nodes = parseMarkdown(input, parserOptions).nodes;
+      const description = nodes.find((node) => {
+        const value = node.data.value;
+        return (typeof value === "string" ? value : Object.keys(value)[0]) === "DescriptionList";
+      });
+      assert.ok(description, `${name}: fixture contains a real description list`);
+      // 引用や番号付きリストの所属を、描画前の公式パーサーでも確認する。
+      const ancestors = [];
+      for (let parent = description.parent; parent !== undefined; parent = nodes[parent].parent) {
+        const value = nodes[parent].data.value;
+        ancestors.push(typeof value === "string" ? value : Object.keys(value)[0]);
+      }
+      assert.ok(ancestors.includes(container), `${name}: description belongs to its intended container`);
+      if (container === "List") {
+        const list = nodes.find((node) => node.data.value?.List?.list_type === "Ordered");
+        assert.equal(list?.data.value.List.start, 3, "the numbered list really starts at three");
+      }
+      const output = await formatMarkdown(input, options);
+      assert.equal(output, expected, name);
+      assert.equal(rendered(output), rendered(input), name);
+      assert.deepEqual(definitionHTML(output), definitionHTML(input), name);
+      assert.equal(await formatMarkdown(output, options), output, name);
+    }
+  });
+});
+
 test("fenced examples and unmatched fences are not mistaken for descriptions", async (t) => {
   await inProject(t, { MD007: true, MD009: true, MD018: true }, async (options) => {
     const input = [
@@ -336,6 +426,37 @@ test("GLFM math, inline diffs, TOC, inapplicable tasks, includes, and footnotes 
     assert.ok(output.includes("  ```math\n  x + y = z\n  ```\n"));
     assert.ok(output.endsWith("[^note]: Footnote\n    continuation\n"));
     assert.deepEqual(definitionHTML(output), definitionHTML(input));
+  });
+});
+
+test("GLFM math and both inline diff forms keep their contents while prose is fixed and includes stay intact", async (t) => {
+  const rules = { MD009: true, MD049: { style: "asterisk" }, MD050: { style: "asterisk" } };
+  await inProject(t, rules, async (options) => {
+    const displayMath = "$$\n_variable_ \n$$\n";
+    // 説明リストの構造保護で試験が通らないよう、表示数式を説明の外に置く。
+    const input = displayMath + "\nOutside _emphasis_ and __strong__ \n\nTerm\n: $_variable_$ and $`_code_`$ and [+_added_+] and [-__removed__-] and {+_added_+} and {-__removed__-} \n\n  ::include{file=_example_.md}\n";
+    assert.equal(descriptionNodeCount(input, "DescriptionList"), 1);
+    assert.equal(descriptionNodeCount(input, "Math"), 3, "display, dollar, and code math are recognized by Comrak");
+    const nodes = parseMarkdown(input, parserOptions).nodes;
+    const math = nodes.find((node) => node.data.value?.Math?.display_math);
+    assert.equal(math?.data.value.Math.literal, "\n_variable_ \n", "display math actually contains the trailing space");
+    for (let parent = math.parent; parent !== undefined; parent = nodes[parent].parent) {
+      assert.notEqual(nodes[parent].data.value, "DescriptionList", "display math is outside the description list");
+    }
+    // 独立した lint で、保護対象の数式内部に実際の修正候補があることを確認する。
+    const results = await lintMarkdown({ strings: { fixture: input }, config: { default: false, ...rules } });
+    const mathFix = results.fixture.find((result) => result.lineNumber === 2 && result.ruleNames.includes("MD009"));
+    assert.ok(mathFix?.fixInfo, "MD009 requests a fix inside display math");
+    assert.equal(mathFix.fixInfo.editColumn, "_variable_".length + 1);
+    assert.equal(mathFix.fixInfo.deleteCount, 1);
+    assert.equal(mathFix.fixInfo.insertText || "", "");
+    const output = await formatMarkdown(input, options);
+    const expected = input.replace("Outside _emphasis_ and __strong__ \n", "Outside *emphasis* and **strong**\n").replace("{-__removed__-} \n", "{-__removed__-}\n");
+    assert.equal(output, expected);
+    assert.ok(output.startsWith(displayMath + "\n"), "display math source bytes remain intact despite the MD009 candidate");
+    assert.equal(rendered(output), rendered(input));
+    assert.deepEqual(definitionHTML(output), definitionHTML(input));
+    assert.equal(await formatMarkdown(output, options), output);
   });
 });
 
@@ -503,6 +624,30 @@ test("blank lines added next to description content keep the real container pref
       const output = await formatMarkdown(input, options);
       assert.equal(output, expected);
       assert.equal(rendered(output), rendered(input), "no empty blockquote appears");
+    }
+  });
+});
+
+test("heading and fence blank-line fixes retain real quote prefixes around description content", async (t) => {
+  await inProject(t, { MD009: true, MD022: true, MD031: true }, async (options) => {
+    for (const quoted of [false, true]) {
+      for (const fenced of [false, true]) {
+        const name = `${quoted ? "quoted" : "plain"} ${fenced ? "fence" : "heading"}`;
+        const prefix = quoted ? "> " : "";
+        const blank = quoted ? ">" : "";
+        const block = fenced ? ["    ```text", "    literal ", "    ```"] : ["    # Inner heading"];
+        const body = ["Term", ": Description ", "", ...block, "    continuation "];
+        const quotedBody = (lines) => lines.map((line) => line ? prefix + line : blank).join("\n") + "\n";
+        const input = "Outside \n\n" + quotedBody(body);
+        assert.equal(descriptionNodeCount(input, "DescriptionList"), 1, name);
+        assert.equal(descriptionNodeCount(input, fenced ? "CodeBlock" : "Heading"), 1, name);
+        const expectedBody = ["Term", ": Description", "", ...block, "", "    continuation"];
+        const output = await formatMarkdown(input, options);
+        assert.equal(output, "Outside\n\n" + quotedBody(expectedBody), name);
+        assert.equal(rendered(output), rendered(input), `${name}: inserted blanks do not create extra blockquotes`);
+        assert.deepEqual(definitionHTML(output), definitionHTML(input), name);
+        assert.equal(await formatMarkdown(output, options), output, name);
+      }
     }
   });
 });

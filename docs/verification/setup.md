@@ -771,6 +771,47 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
 - 遅い PC (1 CPU の VM や Raspberry Pi) での保存にかかる時間 (この PC で計った)
 - 行頭の `#1234` を見出しにする MD018 の修正 (以前の `markdownlint-cli2 --fix` と同じ動きで、直していない)
 
+### 付録: GLFM の追加回帰テストの検証記録 (2026-10-09)
+
+- **対象**: `06317cf` の GLFM 整形器に追加した Node 回帰テストと Neovim 統合テスト、導入処理の版情報の型チェック
+- **環境**: Linux x86_64 のクラウド環境。Node.js 24.19.0・npm 11.9.0・Neovim 0.12.5。conform.nvim は `lazy-lock.json` と同じ `016802de402556da54c36bd7359b441266b01cdd`
+  - `package.json` と `package-lock.json` を `/tmp/glfm-additional.VMj3Gj` にコピーし、`npm ci --ignore-scripts --no-audit --no-fund` で 88 個の依存を導入した。Comrak は 0.48.0-rc.0、markdownlint-cli2 は 0.23.3
+  - 実行前の既存 Node 32 件と `test/conform.lua` はすべて通った。Neovim は `-u NONE -i NONE` で起動し、インストール済み conform.nvim を使った
+- **最終結果**: Node は既存 32 件と追加 11 件の計 43 件が成功し、実出力は `tests 43`・`pass 43`・`fail 0`・`skipped 0` (2.86 秒)。Neovim は `GLFM conform / installer integration: PASS` を出し、終了コード 0 (2.69 秒)。StyLua 2.3.1 の `--check`・`node --check`・`git diff --check` も通った
+- **追加した Node の検証**:
+  - MD049 / MD050 と inline diff の両形式 (`{+ +}` / `{- -}` / `[+ +]` / `[- -]`) が競合しても記法を保ち、周囲の強調や末尾空白は直ること。数式と include も保持すること
+  - 数式の内部に実際に末尾空白の修正候補を発生させ、原文の保持と周囲の修正が両立すること
+  - 説明リスト付近の MD022 / MD031 による空行挿入で、本来の引用の接頭辞を保ち、空の引用を作らないこと (通常・引用内、見出し・コードフェンスの 4 通り)
+  - `>>>` と 3 から始まる番号付きリストの中にある説明リストで、用語・説明・子リストの所属を保つこと。公式パーサーで対象構文と親コンテナの実在も確認した
+  - 日本語・絵文字の途中バイトを含む範囲と CRLF、範囲内の改行挿入・削除が共存しても、範囲外の見出し・末尾空白を保持すること。記法・構造・範囲の正常系では固定期待値・描画・冪等性を確認した
+  - API / CLI の不正な入力・ファイル名・範囲・引数を拒否し、CLI が置換用の本文を stdout に出さず、保存済みファイルを書き換えないこと。正しい指定での再試行と、同じ runtime への依存追加後の再読み込みも確認した
+  - プロジェクトのカスタムルールによる include の参照先変更は見送り、同じルールの通常本文への修正は適用すること。説明リストの外に include を置き、独立した lint で内部への修正候補が出ることも確認した
+    - 一時コピーで include の原文保護だけを外すと、この追加テストが失敗した。保護が欠けても試験が通ってしまう入力ではないことを確認した
+- **Neovim と導入処理の追加検証**:
+  - 依存不足・壊れた設定・不正な範囲・時間切れで本文を保持し、原因の解消後に同じバッファを再整形できた。再整形済みのバッファは変更されなかった
+  - 模擬プロセスで Node/npm の不足、Node 22 未満、不正な版応答、Node/npm の起動失敗、manifest の部分コピー失敗、二重導入、npm-cli.js の不足を発生させた。失敗時の結果通知と、その後の正常な再試行を確認した
+- **見つけて直したこと**:
+  - 模擬の版応答で `version` が数値の `22` だと、版番号を解析する `:match()` が例外になり、結果のコールバックが返らなかった。修正前の追加統合テストは終了コード 1 で失敗した
+  - `version` が文字列であることを確認してから解析するようにした。数値・辞書・配列の応答は失敗として通知し、導入中の状態を解除して次の導入を受け付けることを確認した
+- **検証範囲**: 今回の追加検証は Linux 上の Node と headless Neovim。Windows 実キーと GitLab API の描画に関する実測は、前の 2026-10-08 の記録にある
+
+### 付録: GLFM の追加回帰テストを Windows でも検証した記録 (2026-10-09)
+
+- **対象**: 上の追加回帰テストと導入処理の修正を含む 5 ファイル。検証用ブランチ `codex/glfm-windows-verify-m01zej` の `7db6e94b436d6f4f860e133f020acf44d4a147c3` で実行した。実行したファイルと作業中のファイルの SHA256 が一致することも確認した
+- **実行結果**: [GitHub Actions の Windows 検証](https://github.com/ryo-aoki-pc/LazyVimStarter/actions/runs/37888876704)。Node.js 22・24 の両ジョブで、追加ケースを含む Node 43 件と Neovim 統合テストが通った
+- **環境**: `windows-latest` の Microsoft Windows Server 2025 Datacenter x64、版 `10.0.26100`、build `26100`。runner image は `win25-vs2026 / 20260925.250.1`、PowerShell は 7.6.6。Node の `process.platform` は `win32`、`process.arch` は `x64`
+  - Neovim は公式 Windows 版 0.12.5 を公開 SHA256 と照合して導入した。conform.nvim は `lazy-lock.json` と同じ `016802de402556da54c36bd7359b441266b01cdd`
+  - 整形器の manifest を一時ディレクトリにコピーし、`npm ci --ignore-scripts --no-audit --no-fund` で固定された依存を導入した。通常のプラグイン更新は起動していない
+
+| Node.js | npm | Node の結果 | Node の時間 | Neovim 統合 |
+| --- | --- | --- | --- | --- |
+| 22.23.3 | 10.9.9 | `tests 43`・`pass 43`・`fail 0`・`skipped 0` | 6.31 秒 | `GLFM conform / installer integration: PASS`、終了コード 0 |
+| 24.21.0 | 11.19.0 | `tests 43`・`pass 43`・`fail 0`・`skipped 0` | 3.23 秒 | `GLFM conform / installer integration: PASS`、終了コード 0 |
+
+- **実行方法**: PowerShell で `*.test.mjs` の実ファイルを列挙し、`node --test --test-reporter=tap` に 3 ファイルすべてを渡した。Neovim は `nvim.exe --headless -u NONE -i NONE -l tools/glfm-format/test/conform.lua` で起動した。GitHub API から取得した実行ログで、版情報・件数・終了コードを確認した
+- **手順の修正**: `docs/setup.md` の Windows 用コマンドも全 `*.test.mjs` を列挙する形にした。追加した引数検証とカスタムルールのテストも実行対象になる
+- **検証範囲**: Windows の Node と headless Neovim で、GLFM 記法・CRLF・UTF-8 の範囲・日本語と空白のあるパス・異常系からの再試行を含む回帰テストを実行した。Windows 11 の実キーと GUI の実測は、前の 2026-10-08 の記録にある
+
 ## 補足資料に記載していた観測
 
 ### dnf で入れるものの観測
