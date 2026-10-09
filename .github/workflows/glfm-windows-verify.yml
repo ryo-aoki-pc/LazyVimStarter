@@ -1,0 +1,176 @@
+name: GLFM Windows verification
+
+on:
+  push:
+    branches:
+      - 'codex/glfm-windows-verify-*'
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows / Node ${{ matrix.node }}
+    runs-on: windows-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Check out verification branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install pinned verification dependencies
+        id: runtime
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $logDir = Join-Path $env:RUNNER_TEMP 'glfm-windows-logs'
+          New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+
+          # 公式の Windows 版を公開された SHA256 と照合する。
+          $archive = Join-Path $env:RUNNER_TEMP 'nvim-win64.zip'
+          $nvimRoot = Join-Path $env:RUNNER_TEMP 'glfm-neovim'
+          Invoke-WebRequest -Uri 'https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-win64.zip' -OutFile $archive
+          $actualHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expectedHash = 'de8625ba8cf65ebf40eb80a388ba1ec8e9c15b30218821e2c639119b05920de1'
+          "Neovim archive SHA256: $actualHash" | Tee-Object -FilePath (Join-Path $logDir 'neovim-install.log')
+          if ($actualHash -ne $expectedHash) { throw 'Neovim archive SHA256 mismatch' }
+          Expand-Archive -LiteralPath $archive -DestinationPath $nvimRoot -Force
+          $nvimBin = Join-Path $nvimRoot 'nvim-win64\bin'
+          if (-not (Test-Path -LiteralPath (Join-Path $nvimBin 'nvim.exe'))) { throw 'nvim.exe was not extracted' }
+          $nvimBin | Out-File -LiteralPath $env:GITHUB_PATH -Encoding utf8 -Append
+
+          # lazy-lock.json の commit を固定し、通常のプラグイン更新は起動しない。
+          $lock = Get-Content -LiteralPath 'lazy-lock.json' -Raw | ConvertFrom-Json
+          $commit = $lock.'conform.nvim'.commit
+          if ($commit -notmatch '^[0-9a-f]{40}$') { throw 'Invalid conform.nvim commit in lazy-lock.json' }
+          $conformDir = Join-Path $env:RUNNER_TEMP 'glfm-conform.nvim'
+          $conformLog = Join-Path $logDir 'conform-install.log'
+          & git clone --no-checkout --depth=1 'https://github.com/stevearc/conform.nvim.git' $conformDir 2>&1 | Tee-Object -FilePath $conformLog
+          if ($LASTEXITCODE -ne 0) { throw "conform.nvim clone failed: $LASTEXITCODE" }
+          & git -C $conformDir fetch --depth=1 origin $commit 2>&1 | Tee-Object -FilePath $conformLog -Append
+          if ($LASTEXITCODE -ne 0) { throw "conform.nvim fetch failed: $LASTEXITCODE" }
+          & git -C $conformDir checkout --detach $commit 2>&1 | Tee-Object -FilePath $conformLog -Append
+          if ($LASTEXITCODE -ne 0) { throw "conform.nvim checkout failed: $LASTEXITCODE" }
+          $actualCommit = (& git -C $conformDir rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actualCommit -ne $commit) { throw 'conform.nvim commit mismatch' }
+          "GLFM_CONFORM_DIR=$conformDir" | Out-File -LiteralPath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          # manifest だけを一時ディレクトリに写し、固定された依存を導入する。
+          $runtimeDir = Join-Path $env:RUNNER_TEMP 'glfm-runtime'
+          New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
+          Copy-Item -LiteralPath 'tools/glfm-format/package.json', 'tools/glfm-format/package-lock.json' -Destination $runtimeDir
+          Push-Location $runtimeDir
+          try {
+            & npm.cmd ci --ignore-scripts --no-audit --no-fund 2>&1 | Tee-Object -FilePath (Join-Path $logDir 'runtime-install.log')
+            $installExit = $LASTEXITCODE
+          } finally {
+            Pop-Location
+          }
+          if ($installExit -ne 0) { exit $installExit }
+          "GLFM_FORMAT_RUNTIME_DIR=$runtimeDir" | Out-File -LiteralPath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Record actual environment versions
+        id: versions
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $log = Join-Path $env:RUNNER_TEMP 'glfm-windows-logs\environment.log'
+          $os = Get-CimInstance Win32_OperatingSystem
+          @(
+            "Repository commit: $env:GITHUB_SHA"
+            "Windows: $($os.Caption) / $($os.Version) / build $($os.BuildNumber) / $($os.OSArchitecture)"
+            "Runner image: $env:ImageOS / $env:ImageVersion"
+            "PowerShell: $($PSVersionTable.PSVersion)"
+          ) | Tee-Object -FilePath $log
+          & node -p 'JSON.stringify({ node: process.version, platform: process.platform, arch: process.arch, execPath: process.execPath })' 2>&1 | Tee-Object -FilePath $log -Append
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          'npm:' | Tee-Object -FilePath $log -Append
+          & npm.cmd --version 2>&1 | Tee-Object -FilePath $log -Append
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & nvim.exe --version 2>&1 | Tee-Object -FilePath $log -Append
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          'conform.nvim commit:' | Tee-Object -FilePath $log -Append
+          & git -C $env:GLFM_CONFORM_DIR rev-parse HEAD 2>&1 | Tee-Object -FilePath $log -Append
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run all Node regression tests
+        id: node_tests
+        if: ${{ !cancelled() && steps.runtime.outcome == 'success' && steps.versions.outcome == 'success' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $log = Join-Path $env:RUNNER_TEMP 'glfm-windows-logs\node-tests.log'
+          # PowerShell と Node 22 の glob 展開の違いを避け、3 ファイルすべてを渡す。
+          $testFiles = @(Get-ChildItem -LiteralPath 'tools/glfm-format/test' -Filter '*.test.mjs' -File | Sort-Object Name | ForEach-Object FullName)
+          if ($testFiles.Count -ne 3) { throw "Expected 3 test files, found $($testFiles.Count)" }
+          "Test files: $($testFiles -join ', ')" | Tee-Object -FilePath $log
+          & node --test --test-reporter=tap @testFiles 2>&1 | Tee-Object -FilePath $log -Append
+          $testExit = $LASTEXITCODE
+          "Node test exit code: $testExit" | Tee-Object -FilePath $log -Append
+          if ($testExit -ne 0) { exit $testExit }
+
+      - name: Run Neovim conform and installer integration
+        id: conform_tests
+        if: ${{ !cancelled() && steps.runtime.outcome == 'success' && steps.versions.outcome == 'success' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $log = Join-Path $env:RUNNER_TEMP 'glfm-windows-logs\conform-tests.log'
+          # 日本語と空白のあるパスも既存 fixture で検証する。
+          & nvim.exe --headless -u NONE -i NONE -l tools/glfm-format/test/conform.lua 2>&1 | Tee-Object -FilePath $log
+          $testExit = $LASTEXITCODE
+          "Neovim integration exit code: $testExit" | Tee-Object -FilePath $log -Append
+          if ($testExit -ne 0) { exit $testExit }
+
+      - name: Write verification summary
+        if: always()
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $summary = [System.Collections.Generic.List[string]]::new()
+          $summary.Add('## GLFM Windows verification / Node ${{ matrix.node }}')
+          $summary.Add('')
+          $summary.Add('- Repository commit: `' + $env:GITHUB_SHA + '`')
+          $summary.Add('- Scope: Node regression tests and headless Neovim integration; GUI and physical key input are outside this run.')
+          $summary.Add('')
+          $summary.Add('| Check | Outcome |')
+          $summary.Add('| --- | --- |')
+          $summary.Add('| Dependency setup | ${{ steps.runtime.outcome }} |')
+          $summary.Add('| Environment versions | ${{ steps.versions.outcome }} |')
+          $summary.Add('| Node regression tests | ${{ steps.node_tests.outcome }} |')
+          $summary.Add('| Neovim integration | ${{ steps.conform_tests.outcome }} |')
+          $logDir = Join-Path $env:RUNNER_TEMP 'glfm-windows-logs'
+          if (Test-Path -LiteralPath $logDir) {
+            foreach ($log in Get-ChildItem -LiteralPath $logDir -Filter '*.log' -File | Sort-Object Name) {
+              $summary.Add('')
+              $summary.Add('<details><summary>' + $log.Name + '</summary>')
+              $summary.Add('')
+              $summary.Add('```text')
+              foreach ($line in Get-Content -LiteralPath $log.FullName) { $summary.Add($line) }
+              $summary.Add('```')
+              $summary.Add('')
+              $summary.Add('</details>')
+            }
+          }
+          $summary | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+      - name: Preserve raw verification logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: glfm-windows-node-${{ matrix.node }}-logs
+          path: ${{ runner.temp }}/glfm-windows-logs/*.log
+          if-no-files-found: ignore
+          retention-days: 7

@@ -144,8 +144,46 @@ local missing_input = { "#Heading", "", "Term", ": Description.   " }
 local missing = buffer(missing_input)
 local missing_result, missing_lines = format(missing)
 assert(missing_result.err)
+assert(not missing_result.edited)
 assert(vim.deep_equal(missing_lines, missing_input))
 glfm.runtime_dir = runtime_dir
+local recovered_result, recovered_lines = format(missing)
+assert(not recovered_result.err, vim.inspect(recovered_result.err))
+assert(recovered_result.edited)
+assert(vim.deep_equal(recovered_lines, { "# Heading", "", "Term", ": Description." }))
+local recovered_again, recovered_again_lines = format(missing)
+assert(not recovered_again.err, vim.inspect(recovered_again.err))
+assert(not recovered_again.edited)
+assert(vim.deep_equal(recovered_again_lines, recovered_lines))
+
+-- 壊れた設定を直すと、失敗時に保持した同じバッファを再整形できる。
+vim.fn.writefile({ "{ broken JSON" }, config_file)
+conform.formatters.glfm_config_test = glfm.formatter({ config_path = config_file })
+local config_input = { "#Heading", "", "Term", ": Description.   " }
+local config_buf = buffer(config_input)
+local config_result, config_lines = format(config_buf, { formatters = { "glfm_config_test" }, lsp_format = "never" })
+assert(config_result.err)
+assert(not config_result.edited)
+assert(vim.deep_equal(config_lines, config_input))
+vim.fn.writefile({ vim.json.encode({ default = false, MD018 = true, MD009 = true }) }, config_file)
+local fixed_config_result, fixed_config_lines =
+  format(config_buf, { formatters = { "glfm_config_test" }, lsp_format = "never" })
+assert(not fixed_config_result.err, vim.inspect(fixed_config_result.err))
+assert(fixed_config_result.edited)
+assert(vim.deep_equal(fixed_config_lines, { "# Heading", "", "Term", ": Description." }))
+
+-- 不正な範囲指定を CLI が拒否しても原文を保持し、正しい範囲で再試行できる。
+local invalid_range_buf = buffer({ "#Heading" })
+local invalid_range_result, invalid_range_lines =
+  format(invalid_range_buf, { range = { start = { 0, 0 }, ["end"] = { 1, 0 } } })
+assert(invalid_range_result.err)
+assert(not invalid_range_result.edited)
+assert(vim.deep_equal(invalid_range_lines, { "#Heading" }))
+local valid_range_result, valid_range_lines =
+  format(invalid_range_buf, { range = { start = { 1, 0 }, ["end"] = { 1, 7 } } })
+assert(not valid_range_result.err, vim.inspect(valid_range_result.err))
+assert(valid_range_result.edited)
+assert(vim.deep_equal(valid_range_lines, { "# Heading" }))
 
 -- 外部プロセスを使うので、conform の timeout が待機だけでなくプロセスにも効く。
 conform.formatters.glfm_timeout_test = {
@@ -154,7 +192,7 @@ conform.formatters.glfm_timeout_test = {
   args = { "-e", "setTimeout(() => {}, 5000)" },
   stdin = true,
 }
-local timeout_buf = buffer({ "変更しない" })
+local timeout_buf = buffer({ "#Heading" })
 local began = uv.hrtime()
 local timeout_result, timeout_lines = format(timeout_buf, {
   formatters = { "glfm_timeout_test" },
@@ -162,8 +200,13 @@ local timeout_result, timeout_lines = format(timeout_buf, {
   lsp_format = "never",
 })
 assert(timeout_result.err and timeout_result.err:lower():find("timeout", 1, true))
+assert(not timeout_result.edited)
 assert((uv.hrtime() - began) / 1e6 < 1000)
-assert(vim.deep_equal(timeout_lines, { "変更しない" }))
+assert(vim.deep_equal(timeout_lines, { "#Heading" }))
+local timeout_retry_result, timeout_retry_lines = format(timeout_buf)
+assert(not timeout_retry_result.err, vim.inspect(timeout_retry_result.err))
+assert(timeout_retry_result.edited)
+assert(vim.deep_equal(timeout_retry_lines, { "# Heading" }))
 
 -- 導入テストはプロセスだけを置き換え、通信せず manifest のコピーと argv を確かめる。
 local original_system, original_exepath = vim.system, vim.fn.exepath
@@ -174,24 +217,56 @@ vim.fn.writefile({ '{"private":true}' }, vim.fs.joinpath(source_dir, "package.js
 vim.fn.writefile({ '{"lockfileVersion":3}' }, vim.fs.joinpath(source_dir, "package-lock.json"))
 local calls = {}
 local npm_result = { code = 0, stdout = "", stderr = "" }
+local valid_version = {
+  code = 0,
+  stdout = vim.json.encode({ version = "v22.0.0", execPath = original_exepath("node") }),
+}
+local version_result = valid_version
+local spawn_failure
+local hold_version = false
+local held_version_callback
 vim.system = function(command, options, callback)
   calls[#calls + 1] = { command = vim.deepcopy(command), options = options }
   if command[2] == "-p" then
-    callback({ code = 0, stdout = vim.json.encode({ version = "v22.0.0", execPath = original_exepath("node") }) })
+    if spawn_failure == "node" then
+      error("mock node spawn failure")
+    end
+    if hold_version then
+      held_version_callback = callback
+    else
+      callback(version_result)
+    end
   else
+    if spawn_failure == "npm" then
+      error("mock npm spawn failure")
+    end
     callback(npm_result)
   end
   return {}
 end
 
-local function install()
+local function install(extra, expected_started)
   local outcome
-  assert(glfm.install({ source_dir = source_dir, runtime_dir = install_dir, quiet = true }, function(ok, message)
-    outcome = { ok = ok, message = message }
-  end))
-  assert(vim.wait(1000, function()
-    return outcome ~= nil
-  end, 5))
+  local callback_count = 0
+  local started = glfm.install(
+    vim.tbl_extend("force", {
+      source_dir = source_dir,
+      runtime_dir = install_dir,
+      quiet = true,
+    }, extra or {}),
+    function(ok, message)
+      callback_count = callback_count + 1
+      outcome = { ok = ok, message = message }
+    end
+  )
+  assert(started == (expected_started ~= false), "導入を開始したかどうかが一致しない")
+  assert(
+    vim.wait(1000, function()
+      return outcome ~= nil
+    end, 5),
+    "導入結果のコールバックが返らない"
+  )
+  assert(callback_count == 1, "導入結果は一度だけ返す")
   return outcome
 end
 
@@ -206,12 +281,90 @@ assert(uv.fs_stat(copied_lock).mtime.sec == 100, "同じ manifest を再コピ�
 npm_result = { code = 1, stdout = "", stderr = "offline" }
 local failed = install()
 assert(not failed.ok and failed.message:find("offline", 1, true))
+npm_result = { code = 0, stdout = "", stderr = "" }
+assert(install().ok, "npm ci 失敗後も再試行できる")
+
+-- Node/npm の不足はプロセスを起動せず報告し、PATH を直した後は再試行できる。
+for _, missing_command in ipairs({ "node", "npm" }) do
+  local call_count = #calls
+  vim.fn.exepath = function(name)
+    return name == missing_command and "" or original_exepath(name)
+  end
+  local missing_tool = install(nil, false)
+  assert(not missing_tool.ok and missing_tool.message:find("Node.js 22", 1, true))
+  assert(#calls == call_count, "外部コマンド不足時にはプロセスを起動しない")
+  vim.fn.exepath = original_exepath
+  assert(install().ok, missing_command .. " 導入後は再試行できる")
+end
+
+-- 版の確認に失敗した場合は npm ci へ進まず、修復後に導入状態が解除されている。
+for _, invalid_version in ipairs({
+  { code = 0, stdout = vim.json.encode({ version = "v20.0.0", execPath = original_exepath("node") }) },
+  { code = 0, stdout = "not JSON" },
+  { code = 0, stdout = vim.json.encode({ version = "v22.0.0" }) },
+  { code = 0, stdout = vim.json.encode({ version = 22, execPath = original_exepath("node") }) },
+  { code = 0, stdout = vim.json.encode({ version = vim.empty_dict(), execPath = original_exepath("node") }) },
+  { code = 0, stdout = vim.json.encode({ version = { "v22.0.0" }, execPath = original_exepath("node") }) },
+  { code = 1, stdout = "", stderr = "version failed" },
+}) do
+  version_result = invalid_version
+  local call_count = #calls
+  local invalid = install()
+  assert(not invalid.ok and invalid.message:find("Node.js 22", 1, true))
+  assert(#calls == call_count + 1, "版の確認失敗時には npm ci を起動しない")
+  version_result = valid_version
+  assert(install().ok, "版の確認失敗後も再試行できる")
+end
+
+-- プロセス起動自体の失敗は同期・非同期の両経路で報告し、再試行できる。
+for _, command in ipairs({ "node", "npm" }) do
+  spawn_failure = command
+  local spawn_result = install(nil, command ~= "node")
+  assert(not spawn_result.ok and spawn_result.message:find("mock " .. command .. " spawn failure", 1, true))
+  spawn_failure = nil
+  assert(install().ok, command .. " 起動失敗後も再試行できる")
+end
+
+-- manifest のコピーが途中で失敗しても、不足したファイルの復元後に再試行できる。
+local incomplete_source = vim.fs.joinpath(sandbox, "incomplete-source")
+local incomplete_runtime = vim.fs.joinpath(sandbox, "incomplete-runtime")
+vim.fn.mkdir(incomplete_source, "p")
+vim.fn.writefile({ '{"private":true}' }, vim.fs.joinpath(incomplete_source, "package.json"))
+local copy_options = { source_dir = incomplete_source, runtime_dir = incomplete_runtime }
+local copy_call_count = #calls
+local copy_result = install(copy_options)
+assert(not copy_result.ok and copy_result.message:find("コピーできません", 1, true))
+assert(#calls == copy_call_count + 1, "コピー失敗時には npm ci を起動しない")
+assert(uv.fs_stat(vim.fs.joinpath(incomplete_runtime, "package.json")))
+vim.fn.writefile({ '{"lockfileVersion":3}' }, vim.fs.joinpath(incomplete_source, "package-lock.json"))
+assert(install(copy_options).ok)
+assert(uv.fs_stat(vim.fs.joinpath(incomplete_runtime, "package-lock.json")))
+
+-- 二重導入は先行プロセスの結果を壊さず拒否し、完了後の再実行は受け付ける。
+hold_version = true
+local first_install_result
+local first_install_callbacks = 0
+assert(glfm.install({ source_dir = source_dir, runtime_dir = install_dir, quiet = true }, function(ok, message)
+  first_install_callbacks = first_install_callbacks + 1
+  first_install_result = { ok = ok, message = message }
+end))
+assert(type(held_version_callback) == "function")
+local pending_call_count = #calls
+local duplicate_result = install(nil, false)
+assert(not duplicate_result.ok and duplicate_result.message:find("実行中", 1, true))
+assert(#calls == pending_call_count, "二重導入で追加プロセスを起動しない")
+assert(first_install_result == nil, "拒否された二重導入は先行導入の結果を返さない")
+hold_version = false
+held_version_callback(valid_version)
+assert(vim.wait(1000, function()
+  return first_install_result ~= nil
+end, 5))
+assert(first_install_result.ok and first_install_callbacks == 1)
+assert(install().ok, "先行導入の完了後は再試行できる")
 
 -- Scoop の npm.cmd shim の隣に npm-cli.js がない場合は、Node の実体の隣を探す。
 local app_dir = vim.fs.joinpath(sandbox, "node-app")
 local npm_cli = vim.fs.joinpath(app_dir, "node_modules", "npm", "bin", "npm-cli.js")
-vim.fn.mkdir(vim.fs.dirname(npm_cli), "p")
-vim.fn.writefile({}, npm_cli)
 vim.fn.exepath = function(name)
   return name == "node" and vim.fs.joinpath(app_dir, "node.exe") or vim.fs.joinpath(sandbox, "shims", "npm.cmd")
 end
@@ -223,6 +376,12 @@ vim.system = function(command, options, callback)
   } or { code = 0, stdout = "", stderr = "" })
   return {}
 end
+local missing_cli_calls = #calls
+local missing_cli_result = install()
+assert(not missing_cli_result.ok and missing_cli_result.message:find("npm-cli.js", 1, true))
+assert(#calls == missing_cli_calls + 1, "npm-cli.js 不足時には npm ci を起動しない")
+vim.fn.mkdir(vim.fs.dirname(npm_cli), "p")
+vim.fn.writefile({}, npm_cli)
 assert(install().ok)
 assert(calls[#calls].command[1] == vim.fs.joinpath(app_dir, "node.exe"))
 assert(calls[#calls].command[2] == npm_cli)
