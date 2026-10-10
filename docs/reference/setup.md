@@ -8,7 +8,8 @@
 
 元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 2 に対応する。
 
-- `ripgrep` と `fd-find` は AlmaLinux の BaseOS / AppStream に無く、EPEL にある。EPEL を入れずにこの節の手順 3 を貼ると `Unable to find a match: ripgrep fd-find` で止まる
+- `wl-clipboard` は AlmaLinux の BaseOS / AppStream に無く、EPEL にある。EPEL を入れずにこの節の手順 3 を貼ると `Unable to find a match: wl-clipboard` で止まる
+- `ripgrep` と `fd-find` も EPEL にあるが、この設定では Homebrew の `ripgrep` と `fd` を入れる (この節の手順 10。[Homebrew を使う理由と導入先](#homebrew-を使う理由と導入先))
 - `epel-release` は AlmaLinux の `extras` リポジトリにあり、追加のリポジトリ設定は要らない。弱い依存として `dnf-plugins-core` も入る
 
 ### dnf で入れるもの
@@ -46,6 +47,7 @@
 元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 8 に対応する。
 
 - Neovim を Homebrew で入れるため (EPEL の Neovim は古い。[選択した方針](#選択した方針))
+- ripgrep と fd も Homebrew で入れる。yazi などのほかのツールも Homebrew の `fd` / `ripgrep` を入れるので、EPEL の `fd-find` / `ripgrep` と二重にしない (実行ファイルの名前が同じで、PATH の先頭の Homebrew 版が使われ、`dnf upgrade` で上がる方は使われない)
 - `/home/linuxbrew/.linuxbrew` に入れた場合だけ、ビルド済みのボトルが使える。ほかの場所ではソースからのビルドになる
 - root では動かない。`sudo -i` のシェルで実行すると、インストーラが止まる
 - **Homebrew の依存に `python@3.x` が入ると、OS 全体で日本語が打てなくなることがある**。症状と対処は[注意点](../setup.md#注意点)
@@ -54,7 +56,7 @@
 
 元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 10 に対応する。
 
-- 依存は `libuv` / `lpeg` / `luajit` / `luv` / `tree-sitter` / `unibilium` / `utf8proc`。どれもボトルで降りる。`tree-sitter` はライブラリで、treesitter が使う CLI (`tree-sitter`) は Mason が入れる
+- Neovim の依存は `libuv` / `lpeg` / `luajit` / `luv` / `tree-sitter` / `unibilium` / `utf8proc`。どれもボトルで降りる。`tree-sitter` はライブラリで、treesitter が使う CLI (`tree-sitter`) は Mason が入れる
 
 ### Neovim の版
 
