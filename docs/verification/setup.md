@@ -812,6 +812,23 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
 - **手順の修正**: `docs/setup.md` の Windows 用コマンドも全 `*.test.mjs` を列挙する形にした。追加した引数検証とカスタムルールのテストも実行対象になる
 - **検証範囲**: Windows の Node と headless Neovim で、GLFM 記法・CRLF・UTF-8 の範囲・日本語と空白のあるパス・異常系からの再試行を含む回帰テストを実行した。Windows 11 の実キーと GUI の実測は、前の 2026-10-08 の記録にある
 
+### 付録: AlmaLinux 導入の ripgrep と fd を Homebrew に移した記録 (2026-10-10)
+
+- **対象**: `custom` の `5e09da1` の作業ツリー (コミット前)。AlmaLinux 導入の手順 3・4 の dnf から `ripgrep` と `fd-find` を外し、手順 10 を `brew install neovim lazygit ripgrep fd` に、手順 11 の確かめを `command -v nvim lazygit rg fd` にした。更新の手順 1 にも 2 つを足した。Windows の手順は変えていない
+  - setup-notes の AlmaLinux 10 の初期設定が、この導入の手順 3〜6・10・11・13〜18 を名指しして通すようになった。同じ初期設定の yazi が Homebrew の `fd` と `ripgrep` を入れるので、EPEL の `fd-find` / `ripgrep` と二重に入れないため
+- **環境**: x86_64 のクラウドのコンテナ (Linux 6.18)。**AlmaLinux 10 では何も実行していない**
+- **確かめたこと**:
+  - 2026-10-10 に取った AlmaLinux 10 の BaseOS・AppStream (x86_64) と EPEL 10 (Everything、x86_64) の repodata の primary では、手順 3 に残したパッケージのうち EPEL にしか無いのは `wl-clipboard` (2.2.1-3.el10_0) だけだった。ほかは BaseOS か AppStream にある。EPEL の手順 1・2 は、`wl-clipboard` のために残した
+  - 外した `ripgrep` (15.2.0-1.el10_3) と `fd-find` (10.4.2-4.el10_3) も、EPEL にだけあった
+  - formulae.brew.sh の API (2026-10-10) では、`ripgrep` 15.2.0 の依存は `pcre2`、`fd` 10.5.0 は依存なし。どちらも `x86_64_linux` と `arm64_linux` のボトルがある
+  - 変えた 5 つのブロックは、`bash -n` と ShellCheck 0.11.0 で誤りも警告も 0
+  - 上の「AlmaLinux 10 の実機での導入と取り込みの検証記録 (2026-09-29)」の PC は、ripgrep 15.2.0 と fd 10.5.0 を Homebrew で入れた状態 (dnf の `ripgrep` / `fd-find` は無い) だった。そこで `checkhealth` の `grep` が何も出さず、`/kensaku<Tab>` と Files のピッカーが動いた
+
+#### 未確認事項 (2026-10-10 の ripgrep と fd)
+
+- AlmaLinux 10 での、変えた手順 3・4・10・11 と更新の手順 1 の実行 (手順 10 の `[y/n]` の前の一覧と、依存の数を含む)
+- EPEL の `ripgrep` / `fd-find` を前の版の手順で入れてあった PC で、Homebrew の `rg` / `fd` が PATH の先に来ること (dnf の 2 つは、この変更では外さない)
+
 ## 補足資料に記載していた観測
 
 ### dnf で入れるものの観測

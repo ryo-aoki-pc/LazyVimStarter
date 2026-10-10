@@ -62,10 +62,11 @@
 1. 外部コマンドと日本語入力 (ibus-anthy) を dnf で入れる。
 
    ```bash
-   sudo dnf install git ripgrep fd-find gcc curl tar gzip unzip nodejs nodejs-npm file procps-ng ibus-anthy wl-clipboard
+   sudo dnf install git gcc curl tar gzip unzip nodejs nodejs-npm file procps-ng ibus-anthy wl-clipboard
    ```
 
    - 何に使うかは[必要なもの一覧](#必要なもの一覧)
+   - ripgrep と fd は、この節の手順 10 で Homebrew から入れる (EPEL の `ripgrep` / `fd-find` は入れない)
    - EPEL の署名鍵をまだ取り込んでいなければ、ここで 1 回だけ確認を求められる
    - 鍵の fingerprint が `7D8D 15CB FC4E 6268 8591 FB26 33D9 8517 E37E D158` (`Fedora (epel10)`) であることを確かめてから `y` と答える
    - **次の手順は、トランザクション表の `[y/N]` と鍵の確認に答えてから貼る** (続けて貼ると答えとして食われる)
@@ -74,14 +75,14 @@
 1. dnf で入ったか確かめる。
 
    ```bash
-   rpm -q git ripgrep fd-find gcc curl tar gzip unzip nodejs nodejs-npm file procps-ng ibus-anthy wl-clipboard
+   rpm -q git gcc curl tar gzip unzip nodejs nodejs-npm file procps-ng ibus-anthy wl-clipboard
    node --version
-   command -v fd rg gdbus busctl wl-paste
+   command -v gdbus busctl wl-paste
    ```
 
    - どの行も `package … is not installed` にならなければよい
    - `node --version` が `v22.…` と出る
-   - `fd` / `rg` / `gdbus` / `busctl` / `wl-paste` の 5 つの場所が出る (`gdbus` と `busctl` は IME 連携が ibus と話すのに使う)
+   - `gdbus` / `busctl` / `wl-paste` の 3 つの場所が出る (`gdbus` と `busctl` は IME 連携が ibus と話すのに使う)
 
 1. 既存の Neovim の設定とデータがあれば、`.bak` を付けて退避する。
 
@@ -141,26 +142,27 @@
    - ほかの端末は、開き直すと `brew` が使える
    - 自分用の bash の設定 (`ryo-aoki-pc/bash`) を入れたホストでは、このブロックは貼らない。代わりに `. ~/.bashrc` と `brew --version` を実行する (その設定が同じ 1 行を読む)
 
-1. Neovim と lazygit を Homebrew で入れる。
+1. Neovim・lazygit・ripgrep・fd を Homebrew で入れる。
 
    ```bash
-   brew install neovim lazygit
+   brew install neovim lazygit ripgrep fd
    ```
 
-   - 入るものの一覧 (依存 7 つを含む) の後に `Do you want to proceed with the installation? [y/n]` と聞かれる。`y` と答える
+   - 入るものの一覧 (依存を含む) の後に `Do you want to proceed with the installation? [y/n]` と聞かれる。`y` と答える
    - lazygit は任意 (無ければ `<leader>gg` が定義されないだけ)
+   - ripgrep (`rg`) と fd は、ピッカーと Migemo の候補が使う。EPEL の `ripgrep` / `fd-find` と二重に入れない (実行ファイルの名前が同じで、PATH の先頭の Homebrew 版が使われる)
    - **次の手順は、`[y/n]` に答えてインストールが終わってから貼る** (続けて貼ると答えとして食われる)
 
 
-1. Neovim と lazygit が入ったか確かめる。
+1. Neovim・lazygit・ripgrep・fd が入ったか確かめる。
 
    ```bash
    nvim --version | head -1
-   command -v nvim lazygit
+   command -v nvim lazygit rg fd
    ```
 
    - `NVIM v0.12.…` と出ればよい (0.12 以上が要る)
-   - 2 つとも `/home/linuxbrew/.linuxbrew/bin/…` と出る
+   - 4 つとも `/home/linuxbrew/.linuxbrew/bin/…` と出る
 
 
 1. フォント HackGen Console NF を Homebrew の cask で入れる。
@@ -727,13 +729,13 @@
 1. AlmaLinux 10 では、Homebrew で入れたものを上げる。
 
    ```bash
-   brew upgrade neovim lazygit
+   brew upgrade neovim lazygit ripgrep fd
    brew upgrade --cask font-hackgen-nerd
    nvim --version | head -1
    ```
 
    - 最新なら `Warning: neovim 0.12.5_1 already installed` のように出て、何も上げない
-   - dnf で入れたもの (git・ripgrep・node など) は、OS の更新 (`sudo dnf upgrade`) で上がる
+   - dnf で入れたもの (git・node など) は、OS の更新 (`sudo dnf upgrade`) で上がる
 
 1. Windows 11 では、(この節の手順 1 の代わりに) scoop で入れたものを上げる。
 
@@ -770,7 +772,7 @@
 
 - この設定とプラグインを消し、[AlmaLinux 導入の手順 5](#almalinux-10-に導入する-1-度だけ) / [Windows 導入の手順 4](#windows-11-に導入する-1-度だけ) で退避したものを戻す
 - AlmaLinux 10 はこの節の手順 1〜4、Windows 11 はこの節の手順 5〜7 を、上から順に貼る
-- dnf / scoop で入れた共通のコマンド (git・ripgrep・node など) と Homebrew 本体は、ほかでも使うので残す
+- dnf / Homebrew / scoop で入れた共通のコマンド (git・ripgrep・fd・node など) と Homebrew 本体は、ほかでも使うので残す
 - GitLab プレビューのトークンを設定していたら、[その節](#gitlab-プレビューのトークンを設定する-任意)の手順 7 (AlmaLinux 10) / 手順 8 (Windows 11) で消す
 - Windows 11 の手順 5〜7 は、設定の置き場所と scoop を一時的な場所に差し替えた環境で通した
 
@@ -822,6 +824,7 @@
 
    - `brew uninstall` が、Neovim の依存 7 つ (`luajit` など) のうち、ほかに使われていないものも消す (`==> Autoremoving 7 unneeded formulae:`)
    - `brew autoremove` は、それでも残った不要な依存を消す
+   - ripgrep と fd はほかでも使うので残す。消すなら 1 行目に足す
    - ibus-anthy は日本語入力そのものなので残す
 
 1. Windows 11 では、(この節の手順 1 の代わりに) push していない変更が無いか確かめる。
