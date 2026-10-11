@@ -235,4 +235,4 @@ wl-clipboard が要る (どれも任意。無ければその機能だけが使�
 (別マシンでは `:Lazy restore` で同じバージョンに揃う)。
 `:Lazy sync` は update を含むので、揃えるだけのときは使わない。
 初めてのマシンでは初回の導入が lock ファイルを書き換えるので、
-[docs/setup.md の AlmaLinux 導入の手順 16](docs/setup.md#almalinux-10-に導入する-1-度だけ) の形で揃える。
+[正本の LazyVim 導入の手順 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-の設定を導入する) の形で揃える。
