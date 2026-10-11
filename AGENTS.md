@@ -4,6 +4,12 @@
 
 利用者への回答・質問・報告は、常に日本語で書く（コードのコメントなどの言語は、このファイルのほかの決まりに従う）。
 
+## 導入手順の正本
+
+Windows 11・AlmaLinux 10 の導入・利用・更新・任意操作は、setup-notes の [windows-setup.md](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/windows-setup.md) と [almalinux-setup.md](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md) に集約する。既存の手順も対象とし、このリポジトリには移動先の案内・設定仕様・開発者検査・参考資料・検証記録・ロールバックを残す。
+
+以下の旧手順書を参照する規則は、実行手順については上の正本へ適用する。操作を変えたら正本・案内・参照情報を同期し、過去の検証本文は保持する。共通 bash 設定が読むツールの初期化を `~/.bashrc` に直接追記しない。
+
 ## このリポジトリについて
 
 LazyVim をベースにした Neovim 設定。リポジトリのルートが **Neovim の設定ディレクトリそのもの**
@@ -28,7 +34,7 @@ LazyVim をベースにした Neovim 設定。リポジトリのルートが **N
 ## コマンド
 
 Markdown 整形器の Node 回帰テストは `tools/glfm-format/test/` にある。CI・ビルドは無い。
-整形器の導入・検証の実行手順は `docs/setup.md` にまとめる。ほかに使うのは以下。
+整形器の導入は setup-notes の2冊、開発者検査は `docs/setup.md` にまとめる。ほかに使うのは以下。
 
 ```sh
 # 整形 (stylua.toml = 2 スペース / 120 桁)。PATH には無く Mason 導入版を使う
@@ -57,7 +63,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
   `:Lazy restore` で揃える)。`:Lazy sync` は update を含むので、揃えるだけのときは使わない。
 - **初回導入は `lazy-lock.json` を書き換える**。lazy.nvim の起動時の導入は何回かに分かれ、1 回目の後に
   導入済みの分だけで lock を書き直す (`lazy/manage/lock.lua` の `update()`) ため、後から入るプラグインが最新になる。
-  git で lock を戻してから `:Lazy restore` し直すと揃う (`docs/setup.md` の AlmaLinux 導入の手順 16)。
+  git で lock を戻してから `:Lazy restore` し直すと揃う (正本の「LazyVim の設定を導入する」の手順 10)。
 - `checkhealth lazyvim` を headless で見るときは、先に `mason.nvim` を読み込む (Mason の `bin` が PATH に
   入るのは Mason を読み込んだときだけで、読み込まないと `tree-sitter (CLI)` が ERROR になる)。
 
@@ -123,7 +129,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
   Anthy が実際に使うキー割り当ては、`/usr/share/ibus-anthy/setup` の `AnthyPrefs` で読むと確かめられる
 - IME のキー (`<C-j>` など) を確かめるときは、キーを本物のキーボードから打つ。`--remote-send` や `nvim_input` は
   IBus を通らないので、Anthy がキーを食う不具合を見逃す
-- GNOME Shell の拡張は内部の関数 (`_currentInputSourceChanged`) に頼る。GNOME を上げたら docs/setup.md の上部バーの節の
+- GNOME Shell の拡張は内部の関数 (`_currentInputSourceChanged`) に頼る。GNOME を上げたら 正本の上部バーの節の
   手順 4 で確かめ、動けば `metadata.json` の `shell-version` に版を足す
 - IME 連携を触るときは、対応環境が無くても静かに無効化される性質を壊さないこと
   (headless やコンテナで設定全体が落ちる)。
@@ -162,27 +168,8 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
 
 ## 既存ドキュメント
 
-内容を重複させず、これらを参照・更新すること。**実行手順は `docs/setup.md` に一本化**して
-あるので、README に手順を書き足さない。
 
-- `docs/setup.md` — 新しいマシン (AlmaLinux 10 + GNOME / Windows 11) でのセットアップ手順書。
-  `## 実施手順` の下を、シナリオの見出し (`###`、末尾の括弧に頻度) に分ける:
-  「AlmaLinux 10 に導入する (1 度だけ)」手順 1〜19、「Windows 11 に導入する (1 度だけ)」手順 1〜11、
-  「ほかのマシンの変更を取り込む (繰り返し)」手順 1〜2。後ろに「カーソル色を tmux で効かせる (任意)」
-  「GNOME の上部バーを IME 連携に合わせる (任意)」「GitLab プレビューのトークンを設定する (任意)」「SSH 越しのヤンクを手元のクリップボードに送る (任意)」「更新」「ロールバック」(OS ごとの手順は
-  「(この節の手順 N の代わりに)」)を置く。前提条件・注意・期待結果は手順書に残す。
-  - 記法は `~/setup-notes` の `docs/dev/writing-rules.md` の「手順の形」「表現の規則」と kvm-container の `docs/setup.md` に揃える:
-    太字にしない 1 行の説明「〜する。」→ ブロック → 箇条書き (末尾に「。」を付けない) 。
-    止める手順は「**次の手順は、〜してから貼る**」で終える。アラートは最上位だけに 5 個まで
-  - 変数は無い (設定の置き場所と clone 元の URL は変える必要が無いので、コマンドに直接書く)。
-    例外は GitLab プレビューのトークンの節だけで、トークンと GitLab の URL は文書に書かず、貼った人に入力させる。
-    AlmaLinux 10 のブロックは bash、Windows 11 のブロックだけ PowerShell (5.1 でも通る書き方にし、`&&` / `||` を使わない)
-  - 手順は「AlmaLinux 導入の手順 N」「Windows 導入の手順 N」「取り込みの手順 N」と呼び、シナリオの見出しへリンクする。
-    番号を変えたら、本文・補足・付録・`> [!IMPORTANT]`・README・この欄を付け替える
-  - 背景説明は `docs/reference/setup.md`、検証記録は `docs/verification/setup.md`。必要なもの一覧・前提条件・操作上の注意・期待結果は手順書に残す。過去の記録はリンクと手順番号以外を書き直さない
-  - 検証済みとする範囲は `docs/verification/setup.md` に記載する。開発ガイドにあった従来の要約は `docs/verification/claude.md` に保存する
-
-- `README.md` — この設定で何ができるかの説明。機能の挙動と設計上の判断、運用上の注意。
+Windows・AlmaLinux の操作は setup-notes の2冊を正本にする。執筆規則は setup-notes の `docs/dev/writing-rules.md` に従う。旧手順書は見出し・アンカーを残して新正本へ案内し、開発者検査・他OS操作・ロールバックはこのリポジトリで管理する。操作を変えたら正本と参照情報を同期する。検証記録の既存本文は実施時点のまま保持し、新しい対象版・環境・範囲を追記する。
 
 ## 手順書と記録の分離
 
