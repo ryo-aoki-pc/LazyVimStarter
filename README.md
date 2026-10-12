@@ -1,30 +1,22 @@
 # 💤 LazyVim 設定 (日本語編集 + Markdown 執筆向け)
 
+導入・利用・更新は [AlmaLinux 10 の手順](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md) / [Windows 11 の手順](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/windows-setup.md) に集約している。設定仕様・開発者向け操作・過去の検証・ロールバックはこのリポジトリで管理する。
+
+移動先は[集約対応表](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/dev/consolidation-map.md)で確認する。
+
+
 [LazyVim](https://github.com/LazyVim/LazyVim) をベースに、日本語の入力・検索と
 Markdown (GLFM) 執筆を強化した Neovim 設定。
 
-**新しいマシンで動かすまでの手順は [docs/setup.md](docs/setup.md)** にある
+**新しいマシンで動かすまでの手順は setup-notes の2冊** にある
 (外部コマンドの導入、GNOME + ibus の初期設定、初回起動と動作確認まで)。
 この README は「何ができる設定か」を説明する。
 
 
 ## 手順書
 
-- 手順書は [docs/setup.md](docs/setup.md) の 1 本。`## 実施手順` の下で、OS ごとの導入 (1 度だけ) と、
-  ほかのマシンの変更の取り込み (繰り返し) を見出しで分けてある
-- 初めてのマシンでは、自分の OS の「導入する」を上から順に貼る。以後は、必要なシナリオと節だけを貼る
-- 対象は AlmaLinux 10 + GNOME と Windows 11。実施範囲は [導入の検証記録](docs/verification/setup.md)、README の実測は [別の記録](docs/verification/readme.md) に書いてある
 
-| 節 | 頻度 | 用途 |
-|---|---|---|
-| [AlmaLinux 10 に導入する](docs/setup.md#almalinux-10-に導入する-1-度だけ) | マシンごとに 1 度 | dnf + EPEL と Homebrew で外部コマンド・Neovim・ibus-anthy・フォントを入れ、この設定を clone して初回起動する |
-| [Windows 11 に導入する](docs/setup.md#windows-11-に導入する-1-度だけ) | マシンごとに 1 度 | scoop で外部コマンド・Neovim・zenhan を入れ、この設定を clone して初回起動する |
-| [ほかのマシンの変更を取り込む](docs/setup.md#ほかのマシンの変更を取り込む-繰り返し) | 繰り返し | `git pull` と `:Lazy restore` で、設定とプラグインの版を揃える |
-| [カーソル色を tmux で効かせる (任意)](docs/setup.md#カーソル色を-tmux-で効かせる-任意) | 任意、1 度だけ | tmux の `terminal-overrides` に 1 行足す |
-| [GitLab プレビューのトークンを設定する (任意)](docs/setup.md#gitlab-プレビューのトークンを設定する-任意) | 任意、1 度だけ | GitLab のアクセストークン (と、gitlab.com 以外なら GitLab の URL) を環境変数にする |
-| [SSH 越しのヤンクを手元のクリップボードに送る (任意)](docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意) | 任意、1 度だけ | 手元の WezTerm から ssh した先の Neovim で、ヤンクが手元のクリップボードに入ることを確かめる |
-| [更新](docs/setup.md#更新) | 更新のたび | Neovim・外部コマンド・プラグインを上げる |
-| [ロールバック](docs/setup.md#ロールバック) | 戻すとき | この設定とプラグインを消し、退避した設定と入力ソースを戻す |
+導入・設定の取り込み・任意操作・更新は [AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-の設定を導入する) / [Windows 11](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/windows-setup.md#lazyvim-の設定を導入する)。元の [docs/setup.md](docs/setup.md) は移動先と開発者検査の案内。[検証記録](docs/verification/setup.md)・[ロールバック](docs/extra/setup.md)はこのリポジトリに残す。
 
 ## 主なカスタマイズ
 
@@ -243,4 +235,4 @@ wl-clipboard が要る (どれも任意。無ければその機能だけが使�
 (別マシンでは `:Lazy restore` で同じバージョンに揃う)。
 `:Lazy sync` は update を含むので、揃えるだけのときは使わない。
 初めてのマシンでは初回の導入が lock ファイルを書き換えるので、
-[docs/setup.md の AlmaLinux 導入の手順 16](docs/setup.md#almalinux-10-に導入する-1-度だけ) の形で揃える。
+[正本の LazyVim 導入の手順 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-の設定を導入する) の形で揃える。
