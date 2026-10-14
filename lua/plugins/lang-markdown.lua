@@ -9,13 +9,32 @@
 -- markdownlint で無効化 (除外) したいルールをここに列挙する。
 -- 例:
 --   "MD013" 行の長さ制限 / "MD033" インライン HTML / "MD041" 先頭は H1
--- ここでの指定は lint 診断 (nvim-lint) と整形 --fix (conform) の両方に効く。
+-- ここでの指定は lint の診断 (nvim-lint) と整形 (conform) の両方からルールを外す。
 -- もっと細かい指定 (ルールごとのオプション等) をしたくなったら、下で生成している
 -- markdownlint 設定ファイルを直接書く形に切り替えればよい。
 local disabled_rules = {
   -- "MD013",
   -- "MD033",
   -- "MD041",
+}
+-- 整形だけの対象を分類名・ルール名 (MD026 や no-trailing-punctuation) で選ぶ。lint の診断は残る。
+-- true で有効、false で無効。ルール名の指定 > 分類の指定 > Node 側の既定。検査は外れない。
+-- 分類とルール (既定で有効):
+--   heading_spacing: MD019 MD021 MD023 / heading_punctuation: MD026
+--   whitespace: MD009 MD010 MD047 / blank_lines: MD012 MD022 MD031 MD032 MD058
+--   lists: MD004 MD005 MD007 MD029 MD030 / blockquotes: MD027
+--   emphasis_style: MD049 MD050 / code: MD014 MD038
+--   link_style: MD034 MD054 / link_text: MD039 / link_fragments: MD051
+--   tables: MD060 / proper_names: MD044 (名前を設定したときだけ働く)
+-- 分類とルール (既定で無効):
+--   heading_conversion: MD018 MD020 (# の後に空白を足す。有効でも #数字 は見出しにしない)
+--   emphasis_spaces: MD037 / reversed_links: MD011 / unused_definitions: MD053
+-- カスタムルールは名前で指定し、既定で有効。詳しい例は docs/reference/glfm-format.md にある。
+-- 未知の名前や同じ名前の有効・無効の重複は Node 側でエラーになり、conform は原文を保つ。
+local format_fixes = {
+  -- heading_conversion = true,
+  -- lists = false,
+  -- MD026 = false,
 }
 local config_path
 
@@ -63,7 +82,7 @@ local specs = {
       local glfm = require("config.glfm_format")
       glfm.setup()
       opts.formatters = opts.formatters or {}
-      opts.formatters.glfm_markdownlint = glfm.formatter({ config_path = config_path })
+      opts.formatters.glfm_markdownlint = glfm.formatter({ config_path = config_path, fixes = format_fixes })
       opts.formatters_by_ft.markdown = { "glfm_markdownlint", timeout_ms = 10000, lsp_format = "never" }
       opts.formatters_by_ft["markdown.mdx"] = { "prettier", "markdownlint-cli2", timeout_ms = 10000 }
     end,
@@ -85,8 +104,8 @@ local specs = {
   },
 }
 
--- disabled_rules が空の間は以下は丸ごと不要 (設定ファイルを生成せず、lint/整形とも
--- stock の引数のまま動かす)。ルールを追加した時だけ生成と --config の受け渡しを有効化する。
+-- disabled_rules が空なら、この節の設定生成と --config の受け渡しは不要。
+-- ルールを追加した時だけ有効化する。整形だけの format_fixes は上で別に渡す。
 if #disabled_rules > 0 then
   -- disabled_rules から markdownlint 設定 (JSON) を組み立て、cache 配下に書き出す。
   -- markdownlint-cli2 には --config でこのファイルを渡す。--config はあくまで「基準設定」で、

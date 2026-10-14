@@ -22,8 +22,34 @@ local function filename(bufnr)
 end
 
 -- --config は Node のオプションではなく整形器の引数なので、スクリプト名の後に置く。
+---@param opts? {config_path?: string, fixes?: table<string, boolean>}
 function M.formatter(opts)
   opts = opts or {}
+  local enabled, disabled = {}, {}
+  if opts.fixes ~= nil then
+    if type(opts.fixes) ~= "table" then
+      error("整形対象の fixes は、名前をキー、真偽値を値とする表で指定してください。")
+    end
+    for name, value in pairs(opts.fixes) do
+      if type(name) ~= "string" then
+        error("整形対象の fixes のキーは文字列で指定してください。")
+      end
+      if type(value) ~= "boolean" then
+        error("整形対象の fixes[" .. name .. "] は true または false で指定してください。")
+      end
+      table.insert(value and enabled or disabled, name)
+    end
+  end
+  -- 分類とルール名の検証・既定値は Node 側に任せる。名前は大小文字を区別せずに並べる。
+  local function name_order(a, b)
+    local lower_a, lower_b = a:lower(), b:lower()
+    if lower_a == lower_b then
+      return a < b
+    end
+    return lower_a < lower_b
+  end
+  table.sort(enabled, name_order)
+  table.sort(disabled, name_order)
   local function args(_, ctx)
     local command = {
       vim.fs.joinpath(M.source_dir(), "format.mjs"),
@@ -34,6 +60,12 @@ function M.formatter(opts)
     }
     if opts.config_path then
       vim.list_extend(command, { "--config", opts.config_path })
+    end
+    if #enabled > 0 then
+      vim.list_extend(command, { "--enable-fixes", table.concat(enabled, ",") })
+    end
+    if #disabled > 0 then
+      vim.list_extend(command, { "--disable-fixes", table.concat(disabled, ",") })
     end
     if ctx.range then
       vim.list_extend(command, {
