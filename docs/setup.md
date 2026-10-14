@@ -48,19 +48,19 @@ Windows 11・AlmaLinux 10 の導入・利用・更新手順は setup-notes の2�
 
 ## カーソル色を tmux で効かせる (任意)
 
-[AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-のカーソル色を-tmux-で使う任意)
+[AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-のカーソル色を-tmux-で使う)
 
 ## GNOME の上部バーを IME 連携に合わせる (任意)
 
-[AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる任意)
+[AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)
 
 ## GitLab プレビューのトークンを設定する (任意)
 
-[AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-の-gitlab-プレビューを設定する任意) / [Windows 11](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/windows-setup.md#lazyvim-の-gitlab-プレビューを設定する任意)
+[AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-の-gitlab-プレビューを設定する) / [Windows 11](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/windows-setup.md#lazyvim-の-gitlab-プレビューを設定する)
 
 ## SSH 越しのヤンクを手元のクリップボードに送る (任意)
 
-[AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-のヤンクを-ssh-越しに手元へ送る任意)
+[AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-のヤンクを-ssh-越しに手元へ送る)
 
 ## 更新
 
