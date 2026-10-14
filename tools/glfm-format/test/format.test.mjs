@@ -40,6 +40,11 @@ async function inProject(t, rules, callback) {
   return callback(options);
 }
 
+// MD018 の見出し化を例に使う試験。heading_conversion は既定で無効なので、明示して有効にする。
+function headingConversion(options) {
+  return { ...options, fixes: { heading_conversion: true } };
+}
+
 function rendered(text) {
   return markdownToHTML(text, parserOptions);
 }
@@ -70,7 +75,8 @@ function descriptionNodeCount(text, kind) {
 }
 
 test("safe fixes inside and outside descriptions coexist with rejected MD007 fixes", async (t) => {
-  await inProject(t, { MD007: true, MD009: true, MD018: true }, async (options) => {
+  await inProject(t, { MD007: true, MD009: true, MD018: true }, async (project) => {
+    const options = headingConversion(project);
     const input = "#Title \n\n用語\n: 説明 \n\n  - 子の項目 \n    - 孫の項目 \n\n##After\n";
     const output = await formatMarkdown(input, options);
     assert.equal(output, "# Title\n\n用語\n: 説明\n\n  - 子の項目\n    - 孫の項目\n\n## After\n");
@@ -224,7 +230,8 @@ test("range columns use Neovim UTF-8 byte offsets around Japanese text and emoji
 });
 
 test("ranges round Japanese and emoji byte boundaries without changing unselected CRLF text", async (t) => {
-  await inProject(t, { MD009: true, MD018: true }, async (options) => {
+  await inProject(t, { MD009: true, MD018: true }, async (project) => {
+    const options = headingConversion(project);
     const input = "Outside \r\n\r\n#日本語🌸 \r\n\r\nTerm\r\n: Description \r\n";
     assert.equal(descriptionNodeCount(input, "DescriptionList"), 1);
     // 「日」と絵文字の途中のバイトから始め、終点は絵文字の先頭バイトも含めて確かめる。
@@ -256,7 +263,8 @@ test("ranges round Japanese and emoji byte boundaries without changing unselecte
 });
 
 test("CRLF range anchors retain outside text across inserted and deleted lines around GLFM descriptions", async (t) => {
-  await inProject(t, { MD009: true, MD012: true, MD018: true, MD022: true }, async (options) => {
+  await inProject(t, { MD009: true, MD012: true, MD018: true, MD022: true }, async (project) => {
+    const options = headingConversion(project);
     const input = "#外側前 \r\n\r\n#選択🌸 \r\n本文 \r\n\r\n\r\n\r\n用語\r\n: 説明🌸 \r\n\r\n#外側後 \r\n";
     assert.equal(descriptionNodeCount(input, "DescriptionList"), 1);
     const output = await formatMarkdown(input, { ...options, range: { start: [3, 0], end: [10, -1] } });
@@ -268,7 +276,8 @@ test("CRLF range anchors retain outside text across inserted and deleted lines a
 });
 
 test("range anchors follow deleted blank lines without admitting originally outside text on a later pass", async (t) => {
-  await inProject(t, { MD009: true, MD012: true, MD018: true }, async (options) => {
+  await inProject(t, { MD009: true, MD012: true, MD018: true }, async (project) => {
+    const options = headingConversion(project);
     const input = "#OutsideBefore \n\n#Selected \n\n\n\n#OutsideAfter \n";
     const output = await formatMarkdown(input, { ...options, range: { start: [3, 0], end: [6, -1] } });
     assert.equal(output, "#OutsideBefore \n\n# Selected\n\n\n#OutsideAfter \n");
@@ -279,7 +288,8 @@ test("range anchors follow deleted blank lines without admitting originally outs
 });
 
 test("range anchors follow several inserted newlines and newly exposed heading fixes across passes", async (t) => {
-  await inProject(t, { MD009: true, MD018: true, MD022: true }, async (options) => {
+  await inProject(t, { MD009: true, MD018: true, MD022: true }, async (project) => {
+    const options = headingConversion(project);
     const input = "#OutsideBefore \n\n#First \nfirst paragraph \n#Second \nsecond paragraph \n\n#OutsideAfter \n";
     const output = await formatMarkdown(input, { ...options, range: { start: [3, 0], end: [7, -1] } });
     assert.equal(output, "#OutsideBefore \n\n# First\n\nfirst paragraph\n\n# Second\n\nsecond paragraph\n\n#OutsideAfter \n");
@@ -379,7 +389,8 @@ test("descriptions keep their multiline quote and numbered-list containers while
 });
 
 test("fenced examples and unmatched fences are not mistaken for descriptions", async (t) => {
-  await inProject(t, { MD007: true, MD009: true, MD018: true }, async (options) => {
+  await inProject(t, { MD007: true, MD009: true, MD018: true }, async (project) => {
+    const options = headingConversion(project);
     const input = [
       "```markdown", "Fake term", ": fake description", "  - fake child", "#literal", "```", "",
       "#Heading", "", "Term", ": Actual description ", "", "  - actual child ", "",
@@ -396,7 +407,8 @@ test("fenced examples and unmatched fences are not mistaken for descriptions", a
 });
 
 test("YAML, TOML, and JSON front matter stay opaque while the following heading is repaired", async (t) => {
-  await inProject(t, { MD009: true, MD018: true }, async (options) => {
+  await inProject(t, { MD009: true, MD018: true }, async (project) => {
+    const options = headingConversion(project);
     for (const [delimiter, body] of [
       ["---", "title: example \n#not-a-heading\nterm:\n  - value"],
       ["+++", "title = 'example' \n#not-a-heading\nterm = ': description'"],
@@ -673,16 +685,131 @@ test("tabs and trailing spaces inside code stay while nearby prose is fixed", as
 });
 
 test("CLI formats when its path goes through a symbolic link or junction", async (t) => {
-  await inProject(t, { MD018: true }, async (options) => {
+  await inProject(t, { MD018: true }, async (project) => {
+    const options = headingConversion(project);
     const real = path.join(options.cwd, "real");
     const link = path.join(options.cwd, "link");
     await mkdir(real);
     await copyFile(formatterPath, path.join(real, "format.mjs"));
     await symlink(real, link, "junction");
-    const child = spawnSync(process.execPath, [path.join(link, "format.mjs"), "--runtime-dir", runtimeDir, "--filename", options.filename], {
+    const child = spawnSync(process.execPath, [path.join(link, "format.mjs"), "--runtime-dir", runtimeDir, "--filename", options.filename,
+      "--enable-fixes", "heading_conversion"], {
       cwd: options.cwd, input: "#Title\n", encoding: "utf8", timeout: 15000,
     });
     assert.equal(child.status, 0, child.stderr);
     assert.equal(child.stdout, "# Title\n");
+  });
+});
+
+// 修正候補が実際にあることを、整形器と独立した lint で確かめる (偶然残っただけの試験にしない)。
+async function candidateRules(input) {
+  const results = await lintMarkdown({ strings: { fixture: input }, config: { default: true } });
+  return new Set(results.fixture.filter((result) => result.fixInfo).map((result) => result.ruleNames[0]));
+}
+
+test("GitLab references at the start of a line never become headings while nearby whitespace is fixed", async (t) => {
+  await inProject(t, { default: true }, async (project) => {
+    const input = [
+      "#123 の対応 ", "", "関連する課題", "#456 で修正した", "", "##1 章", "", "#123 と #", "", "#789+ の要約", "",
+      '!12 と &3 と ~"bug" と %"v1" と @user と $4 ', "",
+    ].join("\n");
+    const results = await lintMarkdown({ strings: { fixture: input }, config: { default: true } });
+    for (const row of [1, 4, 6, 8, 10]) {
+      assert.ok(results.fixture.some((result) => result.lineNumber === row && result.fixInfo &&
+        ["MD018", "MD020"].includes(result.ruleNames[0])), `markdownlint requests a heading fix on line ${row}`);
+    }
+    const expected = input.replace(/ +$/gmu, "");
+    for (const options of [project, headingConversion(project)]) {
+      const output = await formatMarkdown(input, options);
+      assert.equal(output, expected);
+      assert.equal(await formatMarkdown(output, options), output);
+    }
+  });
+});
+
+test("headings are created only when heading_conversion is enabled and an existing heading keeps its text", async (t) => {
+  await inProject(t, { default: true }, async (project) => {
+    const input = "#Heading\n\n# C#\n";
+    const candidates = await candidateRules(input);
+    assert.ok(candidates.has("MD018") && candidates.has("MD020"));
+    assert.equal(await formatMarkdown(input, project), input);
+    const output = await formatMarkdown(input, headingConversion(project));
+    assert.equal(output, "# Heading\n\n# C#\n");
+    assert.equal(await formatMarkdown(output, headingConversion(project)), output);
+  });
+});
+
+test("fixes that change the GLFM structure are rejected while their safe counterparts still apply", async (t) => {
+  await inProject(t, { default: true }, async (options) => {
+    for (const [rule, input] of [
+      ["MD009", "一行目   \n二行目\n"],
+      ["MD049", "_強調_ と 日本*語*です\n"],
+      ["MD050", "__太字__ と 日本**語**です\n"],
+      ["MD004", "* 一\n\n+ 二\n"],
+      ["MD029", "3. 三\n4. 四\n5. 五\n"],
+      ["MD010", "- 項目\n\n\t続きの段落\n"],
+      ["MD030", "-   項目\n\n   外の段落\n"],
+      ["MD022", "- a\n  ## 見出し\n- b\n"],
+      ["MD034", "見る www.example.com を\n"],
+      ["MD039", "日本[\u3000語\u3000](https://example.com)です\n"],
+    ]) {
+      assert.ok((await candidateRules(input)).has(rule), `${rule}: markdownlint requests a fix`);
+      assert.equal(await formatMarkdown(input, options), input, rule);
+    }
+    for (const [input, expected] of [
+      ["一行目 \n二行目\n", "一行目\n二行目\n"],
+      ["_強調_ と *強調*\n", "_強調_ と _強調_\n"],
+      ["* 親\n  - 子\n* 次\n", "* 親\n  * 子\n* 次\n"],
+      ["1. 一\n3. 二\n4. 三\n", "1. 一\n2. 二\n3. 三\n"],
+      ["名前\t値\n", "名前 値\n"],
+      ["-   項目\n", "- 項目\n"],
+      ["見る https://example.com を\n", "見る <https://example.com> を\n"],
+      ["[ リンク ](https://example.com)\n", "[リンク](https://example.com)\n"],
+    ]) {
+      assert.equal(await formatMarkdown(input, options), expected);
+    }
+  });
+});
+
+test("format_fixes selects categories and rules, and invalid selections fail before formatting", async (t) => {
+  await inProject(t, { default: true }, async (options) => {
+    const input = "# 見出し\n本文 \n\n-   一\n-   二\n\n1. 一\n3. 二\n";
+    const format = (fixes, extra) => formatMarkdown(input, { ...options, fixes, ...extra });
+    assert.equal(await format(undefined), "# 見出し\n\n本文\n\n- 一\n- 二\n\n1. 一\n2. 二\n");
+    assert.equal(await format({ whitespace: false }), "# 見出し\n\n本文 \n\n- 一\n- 二\n\n1. 一\n2. 二\n");
+    assert.equal(await format({ lists: false, MD030: true }), "# 見出し\n\n本文\n\n- 一\n- 二\n\n1. 一\n3. 二\n");
+    assert.equal(await format({ "no-trailing-spaces": false, md022: false }), "# 見出し\n本文 \n\n- 一\n- 二\n\n1. 一\n2. 二\n");
+    assert.equal(await format({ whitespace: false }, { range: { start: [1, 0], end: [3, 0] } }),
+      "# 見出し\n\n本文 \n\n-   一\n-   二\n\n1. 一\n3. 二\n");
+    for (const [fixes, message] of [
+      [{ list: false }, /分類名にもルール名にも/],
+      [{ MD099: true }, /分類名にもルール名にも/],
+      [{ lists: "no" }, /true か false/],
+      [{ MD026: true, "no-trailing-punctuation": false }, /両方/],
+      [["lists"], /表/],
+    ]) {
+      await assert.rejects(format(fixes), message);
+    }
+  });
+});
+
+test("range formatting converts a heading only when all of its text is selected", async (t) => {
+  await inProject(t, { MD018: true }, async (project) => {
+    const options = headingConversion(project);
+    const input = "#Before\n\n#Selected\n#123 の対応\n\n#After\n";
+    assert.equal(await formatMarkdown(input, { ...options, range: { start: [3, 0], end: [4, Infinity] } }),
+      "#Before\n\n# Selected\n#123 の対応\n\n#After\n");
+    assert.equal(await formatMarkdown(input, { ...options, range: { start: [3, 0], end: [3, 3] } }), input);
+  });
+});
+
+test("many rejected structure-changing candidates still finish with the safe fixes applied", async (t) => {
+  await inProject(t, { default: true }, async (options) => {
+    const block = (index) => `_a${index}_ と 日本*語${index}*です \n\n3. 三${index}\n4. 四${index}\n`;
+    const input = Array.from({ length: 40 }, (_, index) => block(index)).join("\n");
+    const output = await formatMarkdown(input, options);
+    assert.equal(output, input.replace(/ +$/gmu, ""));
+    assert.equal(rendered(output), rendered(input));
+    assert.equal(await formatMarkdown(output, options), output);
   });
 });

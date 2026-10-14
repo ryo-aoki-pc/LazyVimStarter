@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
-import { formatMarkdown } from "../format.mjs";
+import { builtinRuleNames, fixCategories, formatMarkdown } from "../format.mjs";
 
 const packageDir = fileURLToPath(new URL("../", import.meta.url));
 const runtimeDir = process.env.GLFM_FORMAT_RUNTIME_DIR || packageDir;
@@ -56,4 +56,71 @@ test("project custom fixes cannot change include targets while safe prose fixes 
   // 同じルールの本文側の修正が適用され、カスタムルール自体が無視されていないことも確かめる。
   assert.equal(output, "Outside replacement.md\n\n::include{file=example.md}\n\nTerm\n: Description\n");
   assert.equal(await formatMarkdown(output, options), output);
+  // カスタムルールも名前で止められる。
+  assert.equal(await formatMarkdown(input, { ...options, fixes: { "test-include-filename": false } }),
+    "Outside example.md\n\n::include{file=example.md}\n\nTerm\n: Description\n");
+});
+
+async function customRuleProject(t, name, source) {
+  const cwd = await mkdtemp(path.join(tmpdir(), "glfm-custom-rule-test-"));
+  t.after(() => rm(cwd, { recursive: true, force: true }));
+  const rulePath = path.join(cwd, "custom-rule.cjs");
+  await writeFile(rulePath, source);
+  await writeFile(path.join(cwd, ".markdownlint-cli2.jsonc"), JSON.stringify({
+    config: { default: false, MD009: true, [name]: true }, customRules: ["./custom-rule.cjs"],
+  }));
+  return { filename: path.join(cwd, "example.md"), cwd, runtimeDir };
+}
+
+test("custom fixes cannot change GitLab references, the start of an include line, or image attributes", async (t) => {
+  // 参照の番号を変える・include の行頭に空白を足す・画像と属性の間に空白を足す修正を、カスタムルールで出す。
+  const options = await customRuleProject(t, "test-gitlab-atoms", `module.exports = {
+    names: ["test-gitlab-atoms"],
+    description: "Rewrite GitLab syntax",
+    tags: ["test"],
+    parser: "none",
+    function(params, onError) {
+      params.lines.forEach((line, index) => {
+        const edit = (column, deleteCount, insertText) => onError({ lineNumber: index + 1, fixInfo: { editColumn: column, deleteCount, insertText } });
+        if (line.includes("#12")) edit(line.indexOf("#12") + 3, 1, "3");
+        if (line.startsWith("::include")) edit(1, 0, " ");
+        if (line.includes("){width")) edit(line.indexOf("){width") + 2, 0, " ");
+      });
+    }
+  };\n`);
+  const input = "Fix #12 \n\n::include{file=a.md}\n\n![x](a.png){width=10}\n";
+  const output = await formatMarkdown(input, options);
+  assert.equal(output, input.replace("#12 \n", "#12\n"));
+  assert.equal(await formatMarkdown(output, options), output);
+});
+
+test("a fix from a built-in rule missing from the classification table is not applied", async (t) => {
+  // markdownlint を上げて増えたルールに見立て、MD と 3 桁の名前のルールが行末の空白以外を書き換える。
+  const options = await customRuleProject(t, "MD099", `module.exports = {
+    names: ["MD099"],
+    description: "Unreviewed rule",
+    tags: ["test"],
+    parser: "none",
+    function(params, onError) {
+      params.lines.forEach((line, index) => {
+        if (line.includes("old")) onError({ lineNumber: index + 1, fixInfo: { editColumn: line.indexOf("old") + 1, deleteCount: 3, insertText: "new" } });
+      });
+    }
+  };\n`);
+  assert.equal(await formatMarkdown("old text \n", options), "old text\n");
+});
+
+test("every markdownlint rule is classified so an upgrade cannot apply unreviewed fixes", async () => {
+  const rulesPath = path.join(path.dirname(runtimeRequire.resolve("markdownlint/promise")), "rules.mjs");
+  const { default: rules } = await import(pathToFileURL(rulesPath));
+  // 組み込みルールの名前の一覧が表と一致しなければ、markdownlint を上げた後に表を見直す。
+  assert.deepEqual(Object.fromEntries(rules.map((rule) => [rule.names[0], [...rule.names]])),
+    Object.fromEntries(Object.entries(builtinRuleNames).map(([id, names]) => [id, [...names]])));
+  const categorized = new Set(Object.values(fixCategories).flat());
+  for (const rule of rules) {
+    // 修正をルールの中で組み立てるルールは、どれかの分類に入っている (補助関数で組み立てるルールはここでは見分けられない)。
+    if (/fixInfo|insertText|deleteCount|editColumn/u.test(rule.function.toString())) {
+      assert.ok(categorized.has(rule.names[0]), `${rule.names[0]} has fixes but no category`);
+    }
+  }
 });
