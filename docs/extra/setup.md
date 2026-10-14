@@ -2,7 +2,7 @@
 
 ## ロールバック
 
-- この設定とプラグインを消し、[AlmaLinux 導入の手順 3](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-の設定を導入する) / [Windows 導入の手順 2](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/windows-setup.md#lazyvim-の設定を導入する) で退避したものを戻す
+- この設定とプラグインを消し、[AlmaLinux 導入の手順 3](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) / [Windows 導入の手順 2](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する) で退避したものを戻す
 - AlmaLinux 10 はこの節の手順 1〜4、Windows 11 はこの節の手順 5〜7 を、上から順に貼る
 - dnf / Homebrew / scoop で入れた共通のコマンド (git・ripgrep・fd・node など) と Homebrew 本体は、ほかでも使うので残す
 - GitLab プレビューのトークンを設定していたら、[設定を消す手順](#gitlab-プレビューの設定を消す)を行う
@@ -44,7 +44,7 @@
    ```
 
    - `'on_off': <['Zenkaku_Hankaku', 'Ctrl+space', 'Ctrl+J']>` と出ればよい
-   - 入力ソースは既定 (空) に戻る。導入の前の値に戻すなら、[AlmaLinux 導入の手順 7](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-の設定を導入する) の最初の行に出た値を `/usr/bin/gsettings set` で書く
+   - 入力ソースは既定 (空) に戻る。導入の前の値に戻すなら、[AlmaLinux 導入の手順 7](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) の最初の行に出た値を `/usr/bin/gsettings set` で書く
 
 1. AlmaLinux 10 で、Homebrew で入れたものも消すときだけ、消す。
 
@@ -152,11 +152,11 @@
 | [zenhan](https://github.com/iuchim/zenhan) または im-select | 日本語入力 (Windows) | 任意 (無ければ IME 連携のみ無効) |
 | [Neovide](https://neovide.dev/) 0.16 以上 | GUI クライアント。IME の未確定文字列の表示には Neovim 0.12 以上も要る | 任意 (端末で使うなら不要) |
 | lazygit | `<leader>gg` | 任意 (無ければキーマップが定義されないだけ) |
-| GitLab の個人アクセストークン (`read_api`) | GitLab プレビューで、GitLab 本体に描かせる ([トークンの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-の-gitlab-プレビューを設定する)) | 任意 (無ければ近似表示になる) |
+| GitLab の個人アクセストークン (`read_api`) | GitLab プレビューで、GitLab 本体に描かせる ([トークンの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを設定する)) | 任意 (無ければ近似表示になる) |
 | ブラウザ | GitLab プレビューのページ | 任意 (プレビューを使うときだけ) |
 | wl-clipboard (`wl-paste`) | `<leader>ci` での画像の貼り付け (Linux) | 任意 (無ければ `<leader>ci` だけが使えない) |
-| GNOME Shell 49 | [上部バーの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)の拡張 (上部バーと Super+Space の順番を Neovim の IME の切り替えに合わせる) | 任意 (無ければ上部バーが Neovim の切り替えに付いてこないだけ) |
-| OSC 52 の書き込みに対応した端末 (WezTerm の nightly など) | SSH 越しのヤンクを手元のクリップボードに入れる ([SSH の節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-のヤンクを-ssh-越しに手元へ送る)) | 任意 (SSH で使うときだけ) |
+| GNOME Shell 49 | [上部バーの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)の拡張 (上部バーと Super+Space の順番を Neovim の IME の切り替えに合わせる) | 任意 (無ければ上部バーが Neovim の切り替えに付いてこないだけ) |
+| OSC 52 の書き込みに対応した端末 (WezTerm の nightly など) | SSH 越しのヤンクを手元のクリップボードに入れる ([SSH の節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のヤンクを-ssh-越しに手元へ送る)) | 任意 (SSH で使うときだけ) |
 | ネットワーク | 初回のプラグイン取得、Mason、treesitter のパーサー。GitLab プレビューでは GitLab と cdn.jsdelivr.net | 初回のみ必須 |
 
 - **不要なもの**: fzf (ピッカーは snacks.nvim の Lua 実装。`:checkhealth lazyvim` が警告を出すが機能には影響しない)、telescope とその C ビルド、make、Python、Deno、win32yank (Neovim の Windows ビルドに同梱済み)、プレビュー用の node のアプリ (GitLab プレビューは Neovim の中の HTTP サーバーと curl だけで動く)、SSH 越しのクリップボードのための X11 転送・xclip・lemonade (OSC 52 で端末に渡す)
@@ -173,7 +173,7 @@
 | `~/.bashrc` | 共通 bash 設定を読む 1 行。トークンの節を行ったときは `GITLAB_TOKEN` (と `GITLAB_HOST`) の行も |
 | `org.gnome.desktop.input-sources sources` | `[('xkb', 'us'), ('ibus', 'anthy')]` (Linux) |
 | `org.freedesktop.ibus.engine.anthy.shortcut default` | `on_off` が `['Zenkaku_Hankaku']` だけ (Linux) |
-| `~/.local/share/gnome-shell/extensions/ibus-engine-follow@ryo-aoki-pc.github.com` | [上部バーの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)を行ったとき、`~/.config/nvim/gnome-shell/` の拡張へのつなぎ。`org.gnome.shell enabled-extensions` にも入る (Linux) |
+| `~/.local/share/gnome-shell/extensions/ibus-engine-follow@ryo-aoki-pc.github.com` | [上部バーの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)を行ったとき、`~/.config/nvim/gnome-shell/` の拡張へのつなぎ。`org.gnome.shell enabled-extensions` にも入る (Linux) |
 | `*.bak` | 退避した以前の設定とデータ (あった場合だけ) |
 
 - Windows のプラグインと Mason のツールは `%LOCALAPPDATA%\nvim-data` に入る
@@ -182,7 +182,7 @@
 ### 注意点
 
 - **Windows で `nvim` が起動しない (`VCRUNTIME140.dll が見つからない` / `0xC0000135`)**: Visual C++ のランタイムが入っていない
-  - scoop の `neovim` は `VCRUNTIME140.dll` を同梱しない (`nvim.exe` と `lua51.dll` が読み込む)。[Windows 導入の手順 4](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/windows-setup.md#lazyvim-の設定を導入する)の 1 行目が、`System32\vcruntime140.dll` が無いときだけ `vcredist2022` を入れる。手順 5 の `nvim --version` で確かめる
+  - scoop の `neovim` は `VCRUNTIME140.dll` を同梱しない (`nvim.exe` と `lua51.dll` が読み込む)。[Windows 導入の手順 4](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の 1 行目が、`System32\vcruntime140.dll` が無いときだけ `vcredist2022` を入れる。手順 5 の `nvim --version` で確かめる
   - `vcruntime140.dll` があるのに手順 5 の `nvim --version` が通らないときは、`scoop install vcredist2022` を条件を付けずに貼り、今の版のランタイムを入れる (手順 4 の 1 行目はファイルの有無だけを見て、版は見ない)。`already installed` と出たら、`scoop uninstall vcredist2022` の後にもう一度貼る (uninstall で消えるのはインストーラーだけで、ランタイムは残る)
   - VC++ のランタイムが無いクリーンインストールの Windows 11 VM では、Neovim 0.12.5 が終了コード `-1073741515` (`0xC0000135`) になり、起動しなかった
 - **一部の Mason のツールだけが入らない (`stylua` など)**: `unzip` が無い
@@ -200,7 +200,7 @@
   - `:ConformInfo` を開く。`Formatter 'glfm_markdownlint' timeout` は整形の時間切れで、ツールの未導入とは区別する
   - Markdown / MDX の整形上限は 10 秒。ほかのファイルは既定の 3 秒
 - **GitLab プレビュー (`<leader>cp`) が `近似表示` になる**: ページの上のバナーに理由が出る
-  - `GITLAB_TOKEN が未設定`: [トークンの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-の-gitlab-プレビューを設定する)を行い、端末 (と Neovide) を開き直す
+  - `GITLAB_TOKEN が未設定`: [トークンの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを設定する)を行い、端末 (と Neovide) を開き直す
   - `トークンが拒否された (HTTP 401)`: トークンの期限切れ、スコープ (`read_api`)、`GITLAB_HOST` の違いを確かめる。直したら `:GitLabPreview` で送り直す
   - `GitLab の API が見つからない (HTTP 404)`: `GITLAB_HOST` が GitLab を指していない。サブパスで動かしている GitLab は `https://example.com/gitlab` まで書く
   - `GitLab に接続できない (curl: …)`: ネットワーク・プロキシ (curl は `HTTPS_PROXY` を見る)・社内の CA (Windows の curl は OS の証明書ストアを使う) を確かめる。30 秒たつと送り直す
@@ -210,7 +210,7 @@
 - **`<leader>ci` で画像を貼り付けられない**: `:ImgClipDebug` で、使ったコマンドと出力を見る
   - Linux では `wl-clipboard` が要り、Wayland のセッションで起動した Neovim だけが使える (tmux の中では `WAYLAND_DISPLAY` が引き継がれないことがある)
   - `Content is not an image.` は、クリップボードの中身が画像ではないとき。Windows では、PC のロック中はクリップボードを読めない
-- **SSH 越しにヤンクしても手元のクリップボードに入らない**: [SSH の節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-のヤンクを-ssh-越しに手元へ送る)の手順 1 で、`SSH_CONNECTION` と `OSC 52 (copy only)` が出るかを確かめる
+- **SSH 越しにヤンクしても手元のクリップボードに入らない**: [SSH の節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のヤンクを-ssh-越しに手元へ送る)の手順 1 で、`SSH_CONNECTION` と `OSC 52 (copy only)` が出るかを確かめる
   - WezTerm の安定版 (20240203) は、設定ファイル (`~/.wezterm.lua` など) があると OSC 52 を捨てる (wezterm#5917)。nightly にする
   - GNOME Terminal と Ptyxis (どちらも VTE) は OSC 52 に対応していない。AlmaLinux 10 の GNOME から ssh するときも、WezTerm などを使う
   - tmux の中の Neovim では、tmux の `set-clipboard` の既定 (`external`) がアプリの OSC 52 を捨てる。この文書では扱わない (`set -g set-clipboard on` が要る)
@@ -234,7 +234,7 @@
   ```
 
 - **GNOME の上部バーが Neovim の `あ` / `A` とずれる・最初の Super+Space が空振りする**: GNOME Shell は、Neovim が切り替えた engine に上部バーを合わせない
-  - [上部バーの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)の拡張を入れると揃う。入れない場合は、Neovim の中では `<C-j>` を使う (README の補足)
+  - [上部バーの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)の拡張を入れると揃う。入れない場合は、Neovim の中では `<C-j>` を使う (README の補足)
 - **日本語が一切入力できない (Linux)**: ibus のエンジン自体が起動に失敗している可能性がある
   - Neovim の中だけでなく、OS 全体で打てなくなるのが特徴
   - ibus はエンジンの起動に失敗しても黙って英数のままになる。`ibus engine` は `anthy` を返すのに変換だけが効かない、という見え方になる
