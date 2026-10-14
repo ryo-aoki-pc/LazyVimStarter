@@ -1,6 +1,6 @@
 # Neovim 設定 (LazyVim) の導入手順 (AlmaLinux 10 + GNOME / Windows 11)
 
-Windows 11・AlmaLinux 10 の導入・利用・更新手順は setup-notes の `docs/neovim.md`（Neovim のセットアップ）に集約した。
+Windows 11・AlmaLinux 10 の Neovim の導入・利用・更新手順は、setup-notes の `docs/neovim.md`（Neovim のセットアップ）に集約した。
 
 ### AlmaLinux 10 に導入する (1 度だけ)
 
