@@ -967,7 +967,8 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
   - 1 行の `<table>` は `<tr>`・`<td>` ごとの行に分かれ、2 つずつ字下げされた。`<td>` の中の `<br>`・`<b>`・`<code>`・`<kbd>` と文は 1 行のまま
   - `<details>` と `<summary>` だけの断片は `<summary>` を字下げし、閉じタグを足さなかった。`</td>`・`</tr>`・`</table>` だけの断片は 3 行とも行頭のまま
   - `<pre>` の中は変わらなかった (`<td>` の中の `<pre>` は、開きタグの前で行が分かれた)。複数行の属性は 1 行にまとまった
-- **回帰テスト**: Node の 126 件 (`test/html.test.mjs` の 11 件と、参考資料の HTML の節の 1 件を含む)・`test/conform.lua` (予備と、予備を止めた CLI の両方で HTML を整形する節を足した)・StyLua の `--check`・`git diff --check` が通った
+- **回帰テスト**: Node の 127 件 (`test/html.test.mjs` の 11 件と、参考資料の HTML の節の 1 件・README の「整形の例」の 1 件を含む)・`test/conform.lua` (予備と、予備を止めた CLI の両方で HTML を整形する節を足した)・StyLua の `--check`・`git diff --check` が通った
+  - README の「整形の例」(見出しと空行・リスト・強調とリンク・変えない GLFM の記法・HTML の表・折りたたみの 6 つ) は、整形器の出力を写して書き、`reference.test.mjs` が整形し直して確かめる。例の 1 つ (`<summary>` の字下げ) を崩すと試験が落ちることを確かめてから戻した。GitHub の Markdown API で、11 個のコードブロックが `␣` を含めてそのまま出ることも見た
   - `html.test.mjs`: 表 (1 行・`thead`/`tbody`/`th`・`colspan`/`rowspan`/`align`・セルの中の `<br>`/`<code>`/`<kbd>`/`<pre>`・入れ子・セルの中の Markdown・リストと番号付きリストの印の行・引用・引用の中のリスト)・パイプの表・`<details>` と Markdown の本文・Markdown をはさんだ `<details>` の入れ子・説明・front matter で、整形の結果・2 回目で変わらないこと・近道の有無で同じこと・整形の前後の Comrak の描画が正規化して同じことを確かめた
   - 壊す整形 (空行を入れる・1 行目を 4 スペース字下げする・`<pre>` や `<code>` の中を変える・インライン要素の間の空白を足す/消す・閉じタグを足す・文字・参照・属性を変える) を差し替えて当て、すべて拒むこと、壊すブロックだけを外してほかのブロックを整形することを確かめた
   - 整形の途中で見つけて直した不具合: CRLF の文書で Comrak の literal に `\r` が残って整形されなかったこと、脚注の定義の行に続けて書いた 1 行の HTML を行に分けると 2 回目に字下げが変わったこと (literal の確かめを足し、変えないようにした)
