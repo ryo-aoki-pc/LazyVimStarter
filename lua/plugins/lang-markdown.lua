@@ -36,6 +36,12 @@ local format_fixes = {
   -- lists = false,
   -- MD026 = false,
 }
+-- 保存の整形を速くする予備のプロセス (lua/config/glfm_spare.lua)。Markdown のバッファを開くと、依存を読み込んだ
+-- node を 1 つ先に起動しておき (約 85 MB)、保存のときに使い切る。Markdown のバッファをすべて閉じると止まる。
+-- 整形の結果は使わないときと同じ。false にすると、保存のたびに整形器を起動する。
+local format_spare = true
+-- Markdown の整形の上限。予備のプロセスも、この時間で止める。
+local format_timeout_ms = 10000
 local config_path
 
 local specs = {
@@ -74,17 +80,24 @@ local specs = {
   -- 自動検出して整形器に渡す。選択範囲に収まる修正だけを候補にし、バッファ全体で
   -- GLFM の構造を検証してから反映するため、リストの一部だけを整形しても構造を保てる。
   -- Markdown は診断の完了を待たず、初回の保存や手動整形でも実行する。
+  -- 予備のプロセスを Markdown を開いた時点で起動するため、conform も Markdown のバッファで読み込む (ft)。
   {
     "stevearc/conform.nvim",
     optional = true,
     cmd = { "GlfmFormatInstall" },
+    ft = { "markdown" },
     opts = function(_, opts)
       local glfm = require("config.glfm_format")
-      glfm.setup()
+      glfm.setup({ spare = format_spare })
       opts.formatters = opts.formatters or {}
-      opts.formatters.glfm_markdownlint = glfm.formatter({ config_path = config_path, fixes = format_fixes })
-      opts.formatters_by_ft.markdown = { "glfm_markdownlint", timeout_ms = 10000, lsp_format = "never" }
-      opts.formatters_by_ft["markdown.mdx"] = { "prettier", "markdownlint-cli2", timeout_ms = 10000 }
+      opts.formatters.glfm_markdownlint = glfm.conform_formatter({
+        config_path = config_path,
+        fixes = format_fixes,
+        spare = format_spare,
+        timeout_ms = format_timeout_ms,
+      })
+      opts.formatters_by_ft.markdown = { "glfm_markdownlint", timeout_ms = format_timeout_ms, lsp_format = "never" }
+      opts.formatters_by_ft["markdown.mdx"] = { "prettier", "markdownlint-cli2", timeout_ms = format_timeout_ms }
     end,
   },
 

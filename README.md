@@ -148,6 +148,8 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
     `#123` はどの設定でも見出しにしない。整形する対象は `lua/plugins/lang-markdown.lua` の
     `format_fixes` で選ぶ (診断はそのまま)。ルールごとの例は [GLFM 整形器のルール一覧](docs/reference/glfm-format.md) にある。
     保存時と `<leader>cf` で動き、診断を待たずに整形できる。
+    Markdown を開くと、依存を読み込んだ整形用の node を 1 つ先に起動しておき (約 85 MB)、保存の待ち時間を縮める
+    (結果は同じ。使わないときは `lang-markdown.lua` の `format_spare = false`)。
     初回と依存の変更後は [安全な整形の導入](docs/setup.md#gitlab-markdown-の安全な整形を導入する-初回と依存の変更後) が必要。
     MDX は prettier と markdownlint-cli2。Markdown / MDX の待ち時間の上限は 10 秒
     (速い環境では処理が終わった時点で戻る)。ほかのファイルは LazyVim 既定の 3 秒。

@@ -1111,13 +1111,23 @@ export async function formatMarkdown(source, options = {}) {
   throw new Error("整形結果が収束しないため中止しました。");
 }
 
-async function cli() {
+// 予備では依存だけを先に読み、設定・ルールの読み込みとエラーの表示は要求まで待つ。
+export function preload(runtimeDir) {
+  try {
+    nodeModule.enableCompileCache?.(path.join(path.resolve(runtimeDir), ".compile-cache"));
+  } catch {
+    // compile cache は速さのためだけのもの。
+  }
+  return runtime(runtimeDir).catch(() => {});
+}
+
+export async function cli(argv = process.argv.slice(2), input = process.stdin) {
   const options = {};
   const names = new Map([["--runtime-dir", "runtimeDir"], ["--filename", "filename"], ["--config", "config"],
     ["--range-start", "rangeStart"], ["--range-end", "rangeEnd"],
     ["--range-start-column", "rangeStartColumn"], ["--range-end-column", "rangeEndColumn"],
     ["--enable-fixes", "enableFixes"], ["--disable-fixes", "disableFixes"]]);
-  const arguments_ = process.argv.slice(2);
+  const arguments_ = argv;
   for (let index = 0; index < arguments_.length; index++) {
     const name = names.get(arguments_[index]);
     if (!name || !arguments_[index + 1] || arguments_[index + 1].startsWith("--")) {
@@ -1159,7 +1169,7 @@ async function cli() {
       end: [Number(options.rangeEnd), options.rangeEndColumn === undefined ? Infinity : Number(options.rangeEndColumn)],
     };
   }
-  const output = await formatMarkdown(await readText(process.stdin), options);
+  const output = await formatMarkdown(await readText(input), options);
   process.stdout.write(output);
 }
 
@@ -1174,10 +1184,12 @@ function isMainScript() {
   }
 }
 
+export function cliFailure(error) {
+  const detail = error?.message?.split(/[\r\n]/u)[0] || "不明なエラー";
+  process.stderr.write(`GitLab Markdown の整形に失敗しました: ${detail}\n`);
+  process.exitCode = 1;
+}
+
 if (isMainScript()) {
-  cli().catch((error) => {
-    const detail = error?.message?.split(/[\r\n]/u)[0] || "不明なエラー";
-    process.stderr.write(`GitLab Markdown の整形に失敗しました: ${detail}\n`);
-    process.exitCode = 1;
-  });
+  cli().catch(cliFailure);
 }
