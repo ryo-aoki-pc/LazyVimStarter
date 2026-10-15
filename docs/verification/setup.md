@@ -958,6 +958,33 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
 - conform の非同期の整形で 10 秒を超えるとき (予備では上限で止まるが、予備を使わないときは上限が無い)
 - 物理キーボードでの打鍵・Neovide・WezTerm の中の nvim (Terminal パネルの nvim に、RPC で操作した)
 
+### 付録: GLFM 整形器の HTML のブロックの整形の検証記録 (2026-10-15)
+
+- **対象**: ブランチ `claude/glfm-html-format` の `86b04d9` (整形器・依存・試験・参考資料の例) と `1cf2081` (スニペットと説明)。元の版は `custom` の `e0f8247`
+- **環境**: Windows 11 Pro 10.0.26300・Neovim 0.12.6・Node.js 24.21.0・markdownlint-cli2 0.23.3・Comrak 0.48.0-rc.0・js-beautify 2.0.3
+  - 整形用の依存は、新しい lock で作業用のフォルダーに `npm ci --ignore-scripts` で入れた (106 個)。利用者の `nvim-data` には入れていない
+- **js-beautify の実際の出力** (設定は字下げ 2・折り返さない・空行を足さない・テンプレートの記法を解釈しない):
+  - 1 行の `<table>` は `<tr>`・`<td>` ごとの行に分かれ、2 つずつ字下げされた。`<td>` の中の `<br>`・`<b>`・`<code>`・`<kbd>` と文は 1 行のまま
+  - `<details>` と `<summary>` だけの断片は `<summary>` を字下げし、閉じタグを足さなかった。`</td>`・`</tr>`・`</table>` だけの断片は 3 行とも行頭のまま
+  - `<pre>` の中は変わらなかった (`<td>` の中の `<pre>` は、開きタグの前で行が分かれた)。複数行の属性は 1 行にまとまった
+- **回帰テスト**: Node の 127 件 (`test/html.test.mjs` の 11 件と、参考資料の HTML の節の 1 件・README の「整形の例」の 1 件を含む)・`test/conform.lua` (予備と、予備を止めた CLI の両方で HTML を整形する節を足した)・StyLua の `--check`・`git diff --check` が通った
+  - README の「整形の例」(見出しと空行・リスト・強調とリンク・変えない GLFM の記法・HTML の表・折りたたみの 6 つ) は、整形器の出力を写して書き、`reference.test.mjs` が整形し直して確かめる。例の 1 つ (`<summary>` の字下げ) を崩すと試験が落ちることを確かめてから戻した。GitHub の Markdown API で、11 個のコードブロックが `␣` を含めてそのまま出ることも見た
+  - `html.test.mjs`: 表 (1 行・`thead`/`tbody`/`th`・`colspan`/`rowspan`/`align`・セルの中の `<br>`/`<code>`/`<kbd>`/`<pre>`・入れ子・セルの中の Markdown・リストと番号付きリストの印の行・引用・引用の中のリスト)・パイプの表・`<details>` と Markdown の本文・Markdown をはさんだ `<details>` の入れ子・説明・front matter で、整形の結果・2 回目で変わらないこと・近道の有無で同じこと・整形の前後の Comrak の描画が正規化して同じことを確かめた
+  - 壊す整形 (空行を入れる・1 行目を 4 スペース字下げする・`<pre>` や `<code>` の中を変える・インライン要素の間の空白を足す/消す・閉じタグを足す・文字・参照・属性を変える) を差し替えて当て、すべて拒むこと、壊すブロックだけを外してほかのブロックを整形することを確かめた
+  - 整形の途中で見つけて直した不具合: CRLF の文書で Comrak の literal に `\r` が残って整形されなかったこと、脚注の定義の行に続けて書いた 1 行の HTML を行に分けると 2 回目に字下げが変わったこと (literal の確かめを足し、変えないようにした)
+- **実文書**: setup-notes の `docs/ai-agents.md` (4,488 行) に HTML の整形だけを当てると、変わったのは `<details>` の次の `<summary>` の 18 行 (3 スペースから 5 スペース) だけで、2 回目は変わらなかった
+  - 全ルールの整形の時間は 1,055 ms で、`html = false` では 868 ms だった (HTML の段は、解析 1 回と描画 2 回を足す)
+- **描画の比べ**: 整形の前後を GitHub の Markdown API (`gh api markdown`、`mode=markdown`) と Comrak で HTML にし、整形器の `normalizedHtml` で比べた
+  - `docs/ai-agents.md`: GitHub の HTML の違いは `<summary>` の前の空白だけで、正規化すると同じだった
+  - 表・入れ子・セルの中の Markdown・リストと引用の中の表・パイプの表・`<details>` の入れ子・`<pre>`・コメントを並べた 55 行の試験用の文書: GitHub と Comrak のどちらも、正規化すると同じだった
+
+#### 未確認事項 (2026-10-15 の GLFM 整形器の HTML のブロックの整形)
+
+- AlmaLinux 10 での実行 (Windows 11 だけで確かめた)
+- 実際の Neovim の画面での `:w` と `<leader>cf` (conform を通す経路は、headless の `conform.lua` で確かめた)。`:GlfmFormatInstall` での js-beautify の取得 (同じ lock の `npm ci` は確かめた)
+- GitLab での描画 (GitLab の Markdown API は使っていない。代わりに Comrak と GitHub で比べた)
+- Node.js 22〜23 での実行
+
 ## 補足資料に記載していた観測
 
 ### dnf で入れるものの観測

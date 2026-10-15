@@ -1,7 +1,7 @@
 # GLFM 整形器のルール一覧
 
 保存時と `<leader>cf` の Markdown の整形 (`glfm_markdownlint`、[tools/glfm-format/format.mjs](../../tools/glfm-format/format.mjs)) が、
-markdownlint の各ルールで Markdown をどう変えるかの一覧。
+markdownlint の各ルールで Markdown をどう変えるかの一覧。埋め込んだ HTML の整形は、最後の [HTML のブロック](#html-のブロック) にある。
 
 - 整形する対象は、[lua/plugins/lang-markdown.lua](../../lua/plugins/lang-markdown.lua) の `format_fixes` の表で選ぶ。
   下の分類名かルール名 (`MD026`・`no-trailing-punctuation`) を `true`・`false` にする。書かない分類は既定のまま。
@@ -857,4 +857,254 @@ GitLab のラベルの参照 (`~"javascript"`) の中は変えない (参照先�
 
 ```markdown 変わらない
 ラベル ~"javascript" の課題
+```
+
+## HTML のブロック
+
+分類 `html`、既定で有効。markdownlint のルールではないので、上の一覧の表には入れない。止めるときは `format_fixes` に `html = false` と書く。
+
+- 行頭のタグで始まり空行で終わる HTML のブロックを、[js-beautify](https://github.com/beautifier/js-beautify) でタグの入れ子に合わせて 2 つずつ字下げする。
+  ブロック要素 (`<tr>`・`<td>`・`<li>` など) は 1 行ずつにし、インライン要素 (`<b>`・`<code>` など) と文の行は分けない。折り返さない
+- 整形の前後で、Comrak の HTML の描画 (描画に出ない空白の違いを除く)・Markdown の構造・GitLab の記法が変わらないブロックだけを直す。
+  `<pre>`・`<textarea>`・`<code>`・`<kbd>`・`<samp>` の中の空白は変えない。インライン要素どうしの間の空白の有無も変えない
+- HTML の中に Markdown を書くとき (空行で区切る) は、HTML の断片ごとに整形し、間の Markdown と空行は変えない。
+  断片の 1 行目は入れ物の字下げのままにする (4 つ以上字下げすると、空行の後ではコードブロックになるため)。そのため、閉じタグだけの断片は行頭に並ぶ
+- 段落の中のインライン HTML、`<pre>`・`<script>`・`<style>`・`<textarea>` で始まるブロック、コメントのブロックは変えない
+
+### 表
+
+整形前:
+
+```markdown 整形前
+<table><tr><td>a</td><td>b</td></tr></table>
+```
+
+整形後:
+
+```markdown 整形後
+<table>
+  <tr>
+    <td>a</td>
+    <td>b</td>
+  </tr>
+</table>
+```
+
+セルの中の `<br>`・`<code>`・`<pre>` と属性は変えない。`<pre>` の中の字下げもそのまま。
+
+整形前:
+
+```markdown 整形前
+<table><thead><tr><th>キー</th><th>説明</th></tr></thead><tbody><tr><td><code>a  b</code></td><td colspan="2">一行目<br>二行目</td></tr><tr><td><pre>  x
+    y</pre></td></tr></tbody></table>
+```
+
+整形後:
+
+```markdown 整形後
+<table>
+  <thead>
+    <tr>
+      <th>キー</th>
+      <th>説明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>a  b</code></td>
+      <td colspan="2">一行目<br>二行目</td>
+    </tr>
+    <tr>
+      <td>
+        <pre>  x
+    y</pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+```
+
+### 入れ子の表
+
+整形前:
+
+```markdown 整形前
+<table>
+<tr><td><table><tr><td>入れ子</td></tr></table></td></tr>
+</table>
+```
+
+整形後:
+
+```markdown 整形後
+<table>
+  <tr>
+    <td>
+      <table>
+        <tr>
+          <td>入れ子</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+```
+
+### セルの中の Markdown
+
+開きの断片は字下げし、セルの中の Markdown と閉じの断片は変えない。
+
+整形前:
+
+```markdown 整形前
+<table>
+<tr>
+<td>
+
+- セルの中の **Markdown**
+
+</td>
+</tr>
+</table>
+```
+
+整形後:
+
+```markdown 整形後
+<table>
+  <tr>
+    <td>
+
+- セルの中の **Markdown**
+
+</td>
+</tr>
+</table>
+```
+
+### 折りたたみ
+
+`<summary>` を 2 つ字下げする。本文の Markdown と空行は変えない。
+
+整形前:
+
+```markdown 整形前
+<details>
+<summary>概要</summary>
+
+本文 **太字**
+
+</details>
+```
+
+整形後:
+
+```markdown 整形後
+<details>
+  <summary>概要</summary>
+
+本文 **太字**
+
+</details>
+```
+
+Markdown をはさんだ入れ子は、内側の断片も行頭から字下げする。
+
+整形前:
+
+```markdown 整形前
+<details>
+<summary>外</summary>
+
+<details>
+<summary>内</summary>
+
+内の本文
+
+</details>
+
+</details>
+```
+
+整形後:
+
+```markdown 整形後
+<details>
+  <summary>外</summary>
+
+<details>
+  <summary>内</summary>
+
+内の本文
+
+</details>
+
+</details>
+```
+
+### 入れ物の中
+
+リスト・引用の中のブロックは、入れ物の字下げや `>` を保って字下げする。
+
+整形前:
+
+~~~markdown 整形前
+1. 手順
+
+   <details>
+   <summary>貼るコマンド</summary>
+
+   ```bash
+   ls
+   ```
+
+   </details>
+
+> <table><tr><td>引用の中</td></tr></table>
+~~~
+
+整形後:
+
+~~~markdown 整形後
+1. 手順
+
+   <details>
+     <summary>貼るコマンド</summary>
+
+   ```bash
+   ls
+   ```
+
+   </details>
+
+> <table>
+>   <tr>
+>     <td>引用の中</td>
+>   </tr>
+> </table>
+~~~
+
+### 変えないもの
+
+段落の中のインライン HTML・パイプの表・`<pre>` で始まるブロック・コメントのブロックは変えない。
+脚注の定義の行に続けて書いた 1 行の HTML も変えない (続きの行の字下げが 1 行目と違い、行に分けると 2 回目の整形で字下げが変わるため)。
+
+変わらない:
+
+```markdown 変わらない
+段落の中の <span>インライン</span> HTML。
+
+| パイプ | 表 |
+| --- | --- |
+| <b>a</b> | b<br>c |
+
+<pre>
+  そのまま
+</pre>
+
+<!-- markdownlint-disable MD033 -->
+
+本文[^1]
+
+[^1]: <div><p>脚注</p></div>
 ```

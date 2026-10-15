@@ -63,6 +63,30 @@ export const fixCategories = Object.freeze({
 });
 // 既定では直さない分類 (見出し・強調・リンクを作る修正と、本文の行を消す修正)。
 export const defaultDisabledCategories = Object.freeze(["heading_conversion", "emphasis_spaces", "reversed_links", "unused_definitions"]);
+// HTML のブロックの整形 (markdownlint の修正ではない分類)。既定で有効。
+export const htmlCategory = "html";
+// 中の空白がそのまま描画に出る要素。整形でも中身を変えず、描画の比較でも原文のまま比べる。
+const whitespaceElements = Object.freeze(["pre", "textarea", "script", "style", "code", "kbd", "samp"]);
+// 前後の空白が描画に出ない要素 (ブロック要素・表の要素・<br>)。描画の比較では、このタグに接する空白を比べない。
+const blockElements = new Set([
+  "address", "article", "aside", "blockquote", "body", "br", "caption", "center", "col", "colgroup", "dd", "details",
+  "dialog", "dir", "div", "dl", "dt", "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5",
+  "h6", "head", "header", "hgroup", "hr", "html", "legend", "li", "main", "menu", "nav", "ol", "optgroup", "option", "p",
+  "pre", "search", "section", "summary", "table", "tbody", "td", "tfoot", "th", "thead", "title", "tr", "ul",
+]);
+// js-beautify の設定。字下げは 2 つで、折り返さず、空行を足さない (HTML のブロックは空行で終わるため)。
+// テンプレートの記法 ({{ }} など) は解釈しない。
+const beautifyOptions = Object.freeze({
+  indent_size: 2,
+  indent_char: " ",
+  eol: "\n",
+  end_with_newline: false,
+  preserve_newlines: true,
+  wrap_line_length: 0,
+  extra_liners: [],
+  templating: ["none"],
+  indent_scripts: "keep",
+});
 // markdownlint 0.41.1 の組み込みルールの別名。fixCategories に無いルールは自動修正を持たない (診断だけ)。
 // ここに無い組み込みルール (markdownlint を上げて増えたもの) の修正は、確かめて表に足すまで当てない。
 const ruleAliases = {
@@ -136,17 +160,38 @@ async function runtime(directory) {
     runtimes.set(resolved, (async () => {
       const require = createRequire(path.join(resolved, "package.json"));
       const { main } = await import(pathToFileURL(require.resolve("markdownlint-cli2")));
-      const { parseMarkdown } = require("comrak");
-      if (typeof main !== "function" || typeof parseMarkdown !== "function") {
+      const { parseMarkdown, markdownToHTML } = require("comrak");
+      if (typeof main !== "function" || typeof parseMarkdown !== "function" || typeof markdownToHTML !== "function") {
         throw new Error("整形ツールの依存パッケージを読み込めません。");
       }
-      return { main, parseMarkdown };
+      return { main, parseMarkdown, markdownToHTML };
     })().catch((error) => {
       runtimes.delete(resolved);
       throw error;
     }));
   }
   return runtimes.get(resolved);
+}
+
+// HTML のブロックの整形器 (js-beautify)。整形するブロックがあるときだけ読む (HTML の無い文書は、依存を入れ直す前でも整形できる)。
+// 読めなかったことは覚えない (後から :GlfmFormatInstall で入れたら、次の要求で読む)。
+const beautifiers = new Map();
+
+function htmlBeautifier(directory) {
+  const resolved = path.resolve(directory);
+  if (!beautifiers.has(resolved)) {
+    let html;
+    try {
+      ({ html } = createRequire(path.join(resolved, "package.json"))("js-beautify"));
+    } catch (error) {
+      throw new Error("HTML の整形器 (js-beautify) を読み込めません。:GlfmFormatInstall を実行してください。", { cause: error });
+    }
+    if (typeof html !== "function") {
+      throw new Error("HTML の整形器 (js-beautify) を読み込めません。:GlfmFormatInstall を実行してください。");
+    }
+    beautifiers.set(resolved, html);
+  }
+  return beautifiers.get(resolved);
 }
 
 // 1 回の解析の結果から何度も求める値は、ノードと解析の結果に覚えさせる (同じ結果を何度もたどらない)。
@@ -466,13 +511,13 @@ function editDistance(a, b) {
 // markdownlint と同じく、名前の大文字小文字は区別しない。
 function fixTarget(name) {
   const lower = name.toLowerCase();
-  if (Object.hasOwn(fixCategories, lower)) return `category:${lower}`;
+  if (Object.hasOwn(fixCategories, lower) || lower === htmlCategory) return `category:${lower}`;
   const id = name.toUpperCase();
   if (Object.hasOwn(ruleAliases, id)) return `rule:${id}`;
   if (ruleIdsByAlias.has(lower)) return `rule:${ruleIdsByAlias.get(lower)}`;
   // 分類名やルール名の綴り違いを、カスタムルールの名前として黙って受け取らない。
   // 分類名の形 (英字と _ だけ) と MD の番号の形は、カスタムルールの名前にしない。
-  const known = [...Object.keys(fixCategories), ...ruleIdsByAlias.keys()];
+  const known = [...Object.keys(fixCategories), htmlCategory, ...ruleIdsByAlias.keys()];
   if (/^MD\d+$/iu.test(name) || /^[a-z_]+$/iu.test(name) || known.some((candidate) => editDistance(lower, candidate) <= 2)) {
     throw new Error(`整形する対象 ${name} は、分類名にもルール名にもありません。`);
   }
@@ -492,8 +537,8 @@ function fixSelector(fixes) {
     }
     chosen.set(target, enabled);
   }
-  // ルール名の指定 > 分類の指定 > 既定。
-  return (fix) => {
+  // ルール名の指定 > 分類の指定 > 既定。HTML のブロックの整形は markdownlint の修正ではないので、select.html で別に返す。
+  const select = (fix) => {
     const id = ruleId(fix);
     if (Object.hasOwn(ruleAliases, id)) {
       if (chosen.has(`rule:${id}`)) return chosen.get(`rule:${id}`);
@@ -508,6 +553,8 @@ function fixSelector(fixes) {
     if (values.size > 1) throw new Error(`整形する対象 ${fix.ruleNames.join("・")} を、有効と無効の両方に指定しています。`);
     return values.size ? [...values][0] : true;
   };
+  select.html = chosen.get(`category:${htmlCategory}`) ?? true;
+  return select;
 }
 
 // 見出しにする修正 (MD018・MD020) を当ててよい行か。
@@ -908,6 +955,187 @@ function descendingFix(a, b) {
   return bLine - aLine || bColumn - aColumn || Number(a.fixInfo.deleteCount === -1) - Number(b.fixInfo.deleteCount === -1);
 }
 
+// 行頭 (入れ物の > ・リストの印・説明の : ・脚注の定義の後を含む) にタグのある行。HTML のブロックの無い文書を、解析せずに
+// 見分ける (広めに当たっても解析が 1 回増えるだけ)。<https://…> の autolink には当たらない。
+const htmlBlockHint = new RegExp(String.raw`^[ \t>]*(?:(?:[-*+:~]|\d{1,9}[.)]|\[\^[^\]\r\n]+\]:)[ \t]+[ \t>]*)*` +
+  String.raw`<\/?[A-Za-z][A-Za-z0-9-]*(?=[\s/>]|$)`, "mu");
+// HTML のタグ・コメント・宣言。それ以外は文字。
+const htmlTokens = new RegExp([
+  String.raw`<!--[\s\S]*?-->`, String.raw`<![^>]*>`, String.raw`<\?[\s\S]*?\?>`,
+  String.raw`<\/?[A-Za-z][A-Za-z0-9-]*(?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>\x60]+))?)*\s*\/?>`,
+].join("|"), "gu");
+
+// タグの引用符の外の空白の並びを 1 つにし、= の前後と閉じ (> と />) の前の空白を消す。
+function normalizedTag(token) {
+  return token.replace(/("[^"]*"|'[^']*')|(\s*=\s*)|(\s+(?=\/?>$))|\s+/gu,
+    (match, quoted, equals, closing) => quoted ?? (equals !== undefined ? "=" : closing !== undefined ? "" : " "));
+}
+
+// 描画が同じ HTML を同じ値にする。疑わしい差は残す (整形を拒む側に倒す)。
+// 1. 空白がそのまま出る要素 (whitespaceElements と、style に white-space を書いた要素) の中の文字は原文のまま
+// 2. それ以外の文字は、ASCII の空白の並びを空白 1 つに畳む。ブロック要素のタグ・<br>・文書の端に接する空白は消す
+// 3. インライン要素どうしの間の空白は有無を残す (<b>a</b><i>b</i> と <b>a</b> <i>b</i> は別の値)。コメントは原文のまま
+function normalizedHtml(html) {
+  const items = [];
+  // 空白がそのまま出る要素の、開いているものの名前と、同じ名前の入れ子の深さ。
+  const exact = [];
+  let last = 0;
+  const pushText = (text) => {
+    if (text) items.push(exact.length ? ["raw", text] : ["text", text.replace(/[ \t\n\f\r]+/gu, " ")]);
+  };
+  for (const match of html.matchAll(htmlTokens)) {
+    pushText(html.slice(last, match.index));
+    last = match.index + match[0].length;
+    const token = match[0];
+    if (token.startsWith("<!") || token.startsWith("<?")) {
+      items.push(["markup", token]);
+      continue;
+    }
+    const [, slash, name] = /^<(\/?)([A-Za-z][A-Za-z0-9-]*)/u.exec(token);
+    const lower = name.toLowerCase();
+    items.push(["tag", normalizedTag(token), blockElements.has(lower)]);
+    const open = exact.at(-1);
+    if (slash) {
+      if (open?.name === lower && --open.depth === 0) exact.pop();
+    } else if (!token.endsWith("/>")) {
+      if (open?.name === lower) open.depth++;
+      else if (whitespaceElements.includes(lower) || /\sstyle\s*=\s*(?:"[^"]*white-space|'[^']*white-space|[^\s>]*white-space)/iu.test(token)) {
+        exact.push({ name: lower, depth: 1 });
+      }
+    }
+  }
+  pushText(html.slice(last));
+  const result = [];
+  items.forEach((item, index) => {
+    if (item[0] !== "text") {
+      result.push(item[0] === "tag" ? ["tag", item[1]] : item);
+      return;
+    }
+    const boundary = (neighbor) => !neighbor || (neighbor[0] === "tag" && neighbor[2]);
+    let text = item[1];
+    if (boundary(items[index - 1])) text = text.replace(/^ /u, "");
+    if (boundary(items[index + 1])) text = text.replace(/ $/u, "");
+    if (text) result.push(["text", text]);
+  });
+  return JSON.stringify(result);
+}
+
+// 整形の対象にできる HTML のブロックと、整形した行。js-beautify が直すものが無ければ空。
+// 対象は一般のタグで始まるブロック (種類 6・7) だけ。pre・script・style・textarea で始まるもの (種類 1) とコメント (種類 2) などは変えない。
+// ブロックの各行が「入れ物の接頭辞 + literal の行」になっているものだけを扱う (タブや、揃わない接頭辞の続きの行があれば見送る)。
+function htmlBlockEdits(source, lines, nodes, selection, beautify) {
+  const ending = preferredEnding(source);
+  const edits = [];
+  for (const node of nodes) {
+    if (nodeType(node) !== "HtmlBlock") continue;
+    const { block_type: blockType, literal } = node.data.value.HtmlBlock;
+    const position = node.data.sourcepos;
+    if ((blockType !== 6 && blockType !== 7) || !position?.start.line || !position?.end.line) continue;
+    const rows = literal.replace(/(?:\r\n|\r|\n)$/u, "").split(/\r\n|\r|\n/u);
+    const first = position.start.line;
+    if (rows.length !== position.end.line - first + 1) continue;
+    const prefixes = [];
+    for (const [offset, row] of rows.entries()) {
+      const line = lines[first - 1 + offset];
+      if (!line || !line.content.endsWith(row)) break;
+      prefixes.push(line.content.slice(0, line.content.length - row.length));
+    }
+    if (prefixes.length !== rows.length || prefixes.some((prefix) => prefix.includes("\t")) ||
+        prefixes.slice(2).some((prefix) => prefix !== prefixes[1])) continue;
+    const start = lines[first - 1].start;
+    const lastLine = lines[first - 2 + rows.length];
+    const end = lastLine.start + lastLine.content.length;
+    // 範囲整形では、ブロックの全体 (行頭の入れ物の接頭辞を除く) が選択に入るときだけ。
+    if (selection && (start + prefixes[0].length < selection.start || end > selection.end)) continue;
+    // 中身を変えない要素の表は、整形器が書き換えても次のブロックに残らないよう毎回作る。
+    const formatted = beautify(rows.join("\n"), { ...beautifyOptions, content_unformatted: [...whitespaceElements] });
+    if (typeof formatted !== "string") throw new Error("HTML の整形器が文字列を返しませんでした。");
+    const output = formatted.split(/\r\n|\r|\n/u);
+    // 空の行はブロックを終わらせ、後ろの行を Markdown にするので当てない。
+    if (formatted === rows.join("\n") || output.some((row) => !row.trim())) continue;
+    // 2 行目からの接頭辞は元の 2 行目のもの。1 行だったブロックは、1 行目の接頭辞の > 以外 (リストの印など) を空白にする
+    // (脚注の定義のように、続きの行の字下げが 1 行目の接頭辞と違う入れ物では外れる。当てた後の literal の確かめで外す)。
+    const continuation = rows.length > 1 ? prefixes[1] : prefixes[0].replace(/[^>]/gu, " ");
+    const replacement = output.map((row, index) => (index ? continuation : prefixes[0]) + row).join(ending);
+    edits.push({ start, end, replacement, line: first, rows: rows.length, output });
+  }
+  return edits;
+}
+
+// 当てた後の文書で、整形したブロックの literal が整形の結果と同じか (入れ物が 2 行目から思ったとおりの接頭辞を取るか)。
+// 違えば、次の整形でまた字下げが変わる。
+function htmlEditsLanded(nodes, edits) {
+  const literals = new Map();
+  for (const node of nodes) {
+    if (nodeType(node) === "HtmlBlock" && node.data.sourcepos?.start.line) {
+      literals.set(node.data.sourcepos.start.line, node.data.value.HtmlBlock.literal);
+    }
+  }
+  let shift = 0;
+  return [...edits].sort((a, b) => a.start - b.start).every((edit) => {
+    const literal = literals.get(edit.line + shift);
+    shift += edit.output.length - edit.rows;
+    return literal !== undefined &&
+      literal.replace(/(?:\r\n|\r|\n)$/u, "").split(/\r\n|\r|\n/u).join("\n") === edit.output.join("\n");
+  });
+}
+
+function applyHtmlEdits(source, edits) {
+  return [...edits].sort((a, b) => b.start - a.start)
+    .reduce((text, { start, end, replacement }) => text.slice(0, start) + replacement + text.slice(end), source);
+}
+
+// HTML のブロックを整形して、描画と構造の変わらないものだけを当てる。
+// 1. 描画: Comrak の HTML (生の HTML を出す) を normalizedHtml で比べる
+// 2. 構造: 構文木の全体を、HtmlBlock の中身だけ normalizedHtml にして比べる (ブロックの分割・結合や、Markdown の行の取り込みを見つける)
+// 3. GitLab の記法: 原文と並びを比べる
+// 4. 整形したブロックの literal が整形の結果と同じ (2 回目の整形で変わらない)
+// まとめて当てて 1 回で確かめ、変わるときだけ半分に分けて原因のブロックを外す。ブロックどうしは重ならない。
+// Markdown をはさんだ断片 (<details> と </details> の間に本文があるものなど) は、断片ごとに入れ物の字下げから整形する。
+// 前の断片の深さを持ち越して 1 行目を 4 つ以上字下げすると、空行の後ではコードブロックになるため。
+function formatHtmlBlocks(source, { parse, render, beautify, selection, exhaustive }) {
+  if (!exhaustive && !htmlBlockHint.test(source)) return source;
+  const lines = linesOf(source);
+  const edits = htmlBlockEdits(source, lines, parse(parsedText(source, lines).text), selection, (text, settings) => beautify()(text, settings));
+  if (!edits.length) return source;
+  const htmlTree = (node) => (node[0] === "HtmlBlock"
+    ? [node[0], { block_type: node[1].block_type, html: normalizedHtml(node[1].literal) }, node[2]]
+    : node);
+  const snapshot = (text, applied) => {
+    const textLines = linesOf(text);
+    const { matter, text: parsed } = parsedText(text, textLines);
+    const nodes = parse(parsed);
+    if (applied && !htmlEditsLanded(nodes, applied)) return null;
+    return JSON.stringify([
+      matter?.raw || null,
+      [...text.matchAll(gitlabAtoms)].map((match) => match[0]),
+      normalizedHtml(render(parsed)),
+      mapTree(canonicalNode(nodes, 0), htmlTree),
+    ]);
+  };
+  const expected = snapshot(source);
+  const accepted = [];
+  const accept = (batch) => {
+    if (!batch.length) return;
+    const applied = [...accepted, ...batch];
+    if (snapshot(applyHtmlEdits(source, applied), applied) === expected) {
+      accepted.push(...batch);
+      return;
+    }
+    if (batch.length === 1) return;
+    const middle = Math.ceil(batch.length / 2);
+    accept(batch.slice(0, middle));
+    accept(batch.slice(middle));
+  };
+  accept(edits);
+  const result = applyHtmlEdits(source, accepted);
+  if (selection) selection.end += result.length - source.length;
+  return result;
+}
+
+// 試験用。描画の比較に使う正規化。
+export const htmlInternals = Object.freeze({ normalizedHtml });
+
 export async function formatMarkdown(source, options = {}) {
   if (typeof source !== "string") throw new TypeError("Markdown の入力は文字列にしてください。");
   if (!options.filename || !path.isAbsolute(options.filename)) {
@@ -927,12 +1155,16 @@ export async function formatMarkdown(source, options = {}) {
   if (selection && selection.end < selection.start) throw new Error("整形範囲の開始と終了が逆です。");
   const selected = fixSelector(options.fixes);
   const dependencies = await runtime(options.runtimeDir || scriptDirectory);
-  // 試験用: exhaustive は近道 (修正候補が無いときの早い終わりと、保護範囲の修正を解析せずに拒むこと) を使わない。
-  // stats には、文書全体の Comrak の解析 (parses)・コードブロックの行だけの解析 (blockParses)・lint (lints) を実際に
-  // 呼んだ回数を足す。
+  // 試験用: exhaustive は近道 (修正候補が無いときの早い終わりと、保護範囲の修正を解析せずに拒むこと、HTML のブロックの
+  // 無い文書を解析せずに見分けること) を使わない。stats には、文書全体の Comrak の解析 (parses)・コードブロックの行だけの
+  // 解析 (blockParses)・lint (lints)・HTML の描画 (renders) を実際に呼んだ回数を足す。
+  // beautifyHtml は、HTML のブロックの整形器 (js-beautify の html と同じ引数) を差し替える。
   const { exhaustive, stats } = options;
   if (stats) {
-    for (const key of ["parses", "blockParses", "lints"]) stats[key] ??= 0;
+    for (const key of ["parses", "blockParses", "lints", "renders"]) stats[key] ??= 0;
+  }
+  if (options.beautifyHtml !== undefined && typeof options.beautifyHtml !== "function") {
+    throw new TypeError("beautifyHtml は関数にしてください。");
   }
   const parseBlock = (text) => {
     if (stats) stats.blockParses++;
@@ -948,6 +1180,16 @@ export async function formatMarkdown(source, options = {}) {
     if (parsedNodes.size > 4) parsedNodes.delete(parsedNodes.keys().next().value);
     return nodes;
   };
+  const render = (text) => {
+    if (stats) stats.renders++;
+    return dependencies.markdownToHTML(text, { ...parserOptions, render: { unsafe: true } });
+  };
+  const beautify = () => options.beautifyHtml || htmlBeautifier(options.runtimeDir || scriptDirectory);
+  // markdownlint の修正が終わった文書に、HTML のブロックの整形を最後に 1 回当てる (lint は HTML の中を変えないので、
+  // 整形した HTML を崩さない。lint の修正でできた HTML のブロックも、同じ保存で整形する)。
+  const finish = (text) => (selected.html
+    ? formatHtmlBlocks(text, { parse, render, beautify, selection, exhaustive })
+    : text);
   const snapshots = new Map();
   const snapshotOf = (text) => {
     if (!snapshots.has(text)) {
@@ -980,7 +1222,7 @@ export async function formatMarkdown(source, options = {}) {
     // 選ばれる修正が無く、説明リストの印も無い文書は、解析せずにそのまま返す (印があれば、引用に見立てた lint が修正を足しうる)。
     // 印の判定は広めにし、疑わしいときは今までどおり解析する。
     if (pass === 0 && !exhaustive && !fixes.some((fix) => selected(fix)) && !/^[ \t>]*[:~][ \t]/mu.test(current)) {
-      return current;
+      return finish(current);
     }
     const projected = projection(current, parse);
     if (projected.source !== current) {
@@ -1103,7 +1345,7 @@ export async function formatMarkdown(source, options = {}) {
       if (snapshotOf(current).loose !== originalOf().loose) {
         throw new Error("説明リストの構造を保持できませんでした。");
       }
-      return current;
+      return finish(current);
     }
     if (visited.has(current)) throw new Error("整形結果が収束しないため中止しました。");
     visited.add(current);
@@ -1118,7 +1360,13 @@ export function preload(runtimeDir) {
   } catch {
     // compile cache は速さのためだけのもの。
   }
-  return runtime(runtimeDir).catch(() => {});
+  return runtime(runtimeDir).then(() => {
+    try {
+      htmlBeautifier(runtimeDir);
+    } catch {
+      // HTML の整形器が無ければ、要求で HTML のブロックを整形するときに知らせる。
+    }
+  }).catch(() => {});
 }
 
 export async function cli(argv = process.argv.slice(2), input = process.stdin) {

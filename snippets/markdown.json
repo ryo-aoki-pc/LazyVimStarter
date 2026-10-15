@@ -31,8 +31,8 @@
   },
   "GLFM: 折りたたみ": {
     "prefix": "gldetails",
-    "body": ["<details>", "<summary>${1:概要}</summary>", "", "$0", "", "</details>"],
-    "description": "GLFM: 折りたたみ (<details>)。インライン HTML なので markdownlint の MD033 に当たる"
+    "body": ["<details>", "  <summary>${1:概要}</summary>", "", "$0", "", "</details>"],
+    "description": "GLFM: 折りたたみ (<details>)。インライン HTML なので markdownlint の MD033 に当たる。<summary> の字下げは保存の整形と同じ"
   },
   "GLFM: 数式 (ブロック)": {
     "prefix": "glmath",

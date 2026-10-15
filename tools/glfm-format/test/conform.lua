@@ -107,6 +107,35 @@ local reference_result, reference_lines = format(reference)
 assert(not reference_result.err, vim.inspect(reference_result.err))
 assert(vim.deep_equal(reference_lines, { "#123 の対応", "", "本文" }), vim.inspect(reference_lines))
 
+-- 埋め込んだ HTML の表と折りたたみも、保存と同じ経路 (予備) と、予備を使わない CLI で同じに整形する。
+local html_lines =
+  { "<table><tr><td>a</td></tr></table>", "", "<details>", "<summary>概要</summary>", "", "本文", "", "</details>" }
+local html_expected = {
+  "<table>",
+  "  <tr>",
+  "    <td>a</td>",
+  "  </tr>",
+  "</table>",
+  "",
+  "<details>",
+  "  <summary>概要</summary>",
+  "",
+  "本文",
+  "",
+  "</details>",
+}
+local html_result, html_formatted, html_via_spare = format(buffer(html_lines))
+assert(html_via_spare, "HTML の整形も予備のプロセスを通る")
+assert(not html_result.err, vim.inspect(html_result.err))
+assert(vim.deep_equal(html_formatted, html_expected), vim.inspect(html_formatted))
+-- Markdown のバッファを作ると予備が起動するので、作ってから止める。
+local html_cli = buffer(html_lines)
+spare.stop()
+local html_cli_result, html_cli_formatted, html_cli_via_spare = format(html_cli, nil, true)
+assert(not html_cli_via_spare, "予備を止めると CLI で整形する")
+assert(not html_cli_result.err, vim.inspect(html_cli_result.err))
+assert(vim.deep_equal(html_cli_formatted, html_expected), vim.inspect(html_cli_formatted))
+
 -- --config をスクリプト名の後に置き、実ファイル名と空白を含むパスを argv で渡す。
 local config_file = vim.fs.joinpath(sandbox, "設定.markdownlint.jsonc")
 local args = glfm.formatter({ config_path = config_file }).args(nil, { buf = first })
