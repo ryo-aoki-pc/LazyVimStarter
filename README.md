@@ -116,7 +116,7 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   変換中の文節は反転)。バッファ自体は確定まで変わらないので、undo・LSP・補完には影響しない。
   Neovide 0.16 以上と Neovim 0.12 以上が必要。コマンドライン (`/` `?` `:` など) でも、noice が描く
   コマンドラインのカーソル位置に同じように出す (noice を無効にしている場合は出ない)。
-  端末モードでは従来どおり表示されない。
+  端末モードでは表示されない。
   端末 (Windows Terminal / WezTerm) では未確定文字列を端末が描くので、この処理は関係しない。
 - **既知の制限 — nvim を同時に 2 つ以上起動した場合**: 起動時の英数化を、もう一方の
   nvim が「gnome-shell による切り替え」と誤認し、終了時の復帰先を英数で上書きすることがある。
@@ -261,4 +261,3 @@ wl-clipboard が要る (どれも任意。無ければその機能だけが使�
 - [導入の補足資料](docs/reference/setup.md)・[Markdown の整形器のルール一覧 (md-format)](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/reference/rules.md)
 - 検証記録: [導入](docs/verification/setup.md)・[README の観測](docs/verification/readme.md)
 - 変更するとき: [設計](docs/dev/architecture.md)・[変更後の確認](docs/dev/check.md)・[AGENTS.md](AGENTS.md)
-- 旧手順書の移動先: setup-notes の[集約対応表](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/dev/consolidation-map.md)

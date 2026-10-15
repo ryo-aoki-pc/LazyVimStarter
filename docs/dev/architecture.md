@@ -1,6 +1,6 @@
 # 設定の仕組み (IME 連携・日本語の検索・Markdown / GLFM)
 
-[AGENTS.md](../../AGENTS.md) の「アーキテクチャ」から分けた節。AGENTS.md を Codex が読める大きさ (32 KiB) に収めるため、ここに置く。下のファイルを変える前に読む。
+[AGENTS.md](../../AGENTS.md) を Codex が読める大きさ (32 KiB) に収めるため、アーキテクチャはここに置く。下のファイルを変える前に読む。
 
 ## IME 連携 (この設定で最も複雑な部分)
 
@@ -83,14 +83,14 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
 
 - 整形連鎖から **prettier を除外**し、`mdfmt` にする
   (prettier は GLFM の数式 `$...$`・複数行脚注・`[[_TOC_]]` を壊すため)。
-  整形器は別のリポジトリの [md-format](https://github.com/ryo-aoki-pc/md-format) にある (`custom` の 7826bd8 までは `tools/glfm-format` にあった)。
+  整形器は別のリポジトリの [md-format](https://github.com/ryo-aoki-pc/md-format) にある。
   修正の確かめ方・loose のリストを詰めること・HTML のブロックの整形・速さの工夫・CLI と予備のプロセスの取り決めは、
   md-format の [設計の文書](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/reference/readme.md) にある。ここに残るのは Neovim の配線だけ。
   - `lua/config/md_format.lua`: md-format の導入先 (`setup.mjs` と同じ決まり。`lang-markdown.lua` の `format_dir` で変える) の
     `format.mjs` を `node` で動かす conform の formatter。PATH の `mdfmt` を使わないのは、Windows で `mdfmt.cmd` (cmd.exe) を
     通さず、予備のプロセスが確かめる `format.mjs` の実体のパスを保つため。導入先に `format.mjs` と `node_modules` が無ければ、
-    バッファを変えずに導入を促すエラーを返す Lua の formatter を返す。Neovim からは導入しない (`:GlfmFormatInstall` は無くした)
-  - markdownlint の設定は、以前の `markdownlint-cli2 --fix` と同じく Neovim の作業ディレクトリを基準に探す (ファイルが
+    バッファを変えずに導入を促すエラーを返す Lua の formatter を返す。Neovim からは導入しない
+  - markdownlint の設定は、Neovim の作業ディレクトリを基準に探す (ファイルが
     その下にあるとき。上の階層のプロジェクト設定も効く。整形器の側で決める)
   - conform の `formatters_by_ft` は `opts` 関数で明示代入して置き換え、`markdown.mdx` の連鎖も全部書いている。
     Markdown / MDX だけ `timeout_ms=10000` (他は既定の 3000)。新規 AlmaLinux VM では単独整形が 3.01 秒で既定 timeout に
@@ -130,7 +130,6 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   MDX の連鎖と nvim-lint には渡さない。ルールごとの例は md-format の [ルール一覧](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/reference/rules.md)、
   代表的な例は md-format の README の「整形の例」にあり、md-format の試験がどちらの例もすべて整形し直して確かめる。
 - render-markdown.nvim と **markdown-preview.nvim は無効** (後者は 2023-10 から更新が止まり、GLFM を描けない)。
-  `lazy-lock.json` から markdown-preview.nvim の行は手で消した (lazy.nvim は無効にしたプラグインの行を残し続ける)。
 - **プレビューは自作の GitLab プレビュー** (`<leader>cp`)。**`lua/config/gitlab_preview/`** が実体で、
   編集中の内容を curl で GitLab の Markdown API (`POST /api/v4/markdown`) に送り、返ってきた HTML を
   127.0.0.1 の HTTP サーバー (`vim.uv`) と SSE でブラウザのページに流す。分担と守ること:

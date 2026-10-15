@@ -1,8 +1,5 @@
 # LazyVimStarter README の検証記録
 
-以下は既存文書から移した記録。本文の「本書」「この文書」と手順番号は、記録元の手順書を指す。新しく検証した記録ではない。
-ただし、2026-10-08 の付録 (Windows の lazygit の e) は新しく検証した記録 (Windows では実行していない)。
-
 導入手順は [README](../../README.md) から参照する。
 
 ## 実施結果の要約
@@ -20,7 +17,7 @@
   (もう一度押せば揃う)。`<C-j>` は nvim が直接切り替えるので常に意図どおり動く。
   なお nvim を抜けた時点では上記の復帰処理で必ず整合が取れるため、OS 側の切替が
   壊れたままになることはない。
-  GNOME 49 では、[docs/setup.md の上部バーの節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gnome-の上部バーを-ime-連携に合わせる-任意)で
+  GNOME 49 では、[当時の手順書の上部バーの節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gnome-の上部バーを-ime-連携に合わせる-任意)で
   GNOME Shell の拡張 (`gnome-shell/ibus-engine-follow@ryo-aoki-pc.github.com`) を入れると、上部バーと
   Super+Space の順番が nvim の切り替えに付いてくるので、このずれは起きない。
 
@@ -35,10 +32,9 @@
   - 画面の要る確認は、tmux の中の本物の画面で nvim を開き、キーを `send-keys` で送り、画面を `capture-pane` で、外側の Neovim の状態を `--remote-expr` で読んだ。開いたのは、変更したファイル (`a.txt`) が 1 つある試験用の git リポジトリ
 - **構文と整形**: `stylua --check lua/` (`stylua.toml` のまま) は差分なしで終わった。`nvim -l` で spec のファイルだけを読むと、Linux では snacks.nvim の spec (`lazygit.config.os = { editInTerminal = false }`) を、`has("win32")` を 1 にしたときは (`lazygit.config.os = { editInTerminal = true, editPreset = "nvim" }`) を返した
 - **Linux の動き** (spec を足す前と後を比べた):
-  - headless で、lazy.nvim が合成した snacks.nvim の `opts.lazygit` は、足す前は `nil`、足した後は `config.os = { editInTerminal = false }` だった。`Snacks.config.lazygit` も同じ (足す前は `{}`)。spec の読み込みの警告 (`spec.notifs`) は前後とも無かった
-  - `Snacks.lazygit()` を試験用のリポジトリで開くと、`LG_CONFIG_FILE` は前後とも `<config.yml>,<cache>/nvim/lazygit-theme.yml` だった。snacks が書く `lazygit-theme.yml` の色以外の行は、足す前は `gui.nerdFontsVersion: "3"` と `os.editPreset: "nvim-remote"` だけで、足した後は `os` が `editPreset: "nvim-remote"` と `editInTerminal: false` になった (`config.yml` が false でも true でも同じ)
+  - headless で、lazy.nvim が合成した snacks.nvim の `opts.lazygit` は、足した後は `config.os = { editInTerminal = false }` だった。`Snacks.config.lazygit` も同じ。spec の読み込みの警告 (`spec.notifs`) は前後とも無かった
+  - `Snacks.lazygit()` を試験用のリポジトリで開くと、`LG_CONFIG_FILE` は前後とも `<config.yml>,<cache>/nvim/lazygit-theme.yml` だった。snacks が書く `lazygit-theme.yml` の色以外の行は、足した後は `os` が `editPreset: "nvim-remote"` と `editInTerminal: false` になった (`config.yml` が false でも true でも同じ)
   - 足した後は、本物の画面で `a.txt` を開いて `<leader>gg` → `e` を打つと、`config.yml` が false でも true でも lazygit の窓が閉じ、外側の Neovim に `a.txt` が出た (窓は 1 つ、ノーマルモード、lazygit の job は 0、lazygit のプロセスも 0。`e` の 1・3・8 秒後とも同じ)
-  - 足す前は、`config.yml` が false なら同じく窓が閉じた。true では、外側の Neovim に `a.txt` は開くが、lazygit の浮動ウィンドウが `a.txt` の上に残り (窓は 3 つ)、job も残って、8 秒後も変わらなかった (lazygit のプロセスも残った)
 - **Windows の分岐を Linux で真似た確認**: `--cmd` で `vim.fn.has` を包み、`lua/plugins/lazygit.lua` から呼ばれた `has("win32")` だけを 1 にした (ほかの呼び出しは本物のまま)
   - 合成した `opts.lazygit` は `config.os = { editInTerminal = true, editPreset = "nvim" }`、`lazygit-theme.yml` の `os` は `editInTerminal: true` と `editPreset: "nvim"` になった (`config.yml` が false でも true でも同じ)。`LG_CONFIG_FILE` では config.yml の後ろにある
   - 本物の画面で `<leader>gg` → `e` を打つと、lazygit の窓の中に入れ子の Neovim が開いて `a.txt` を出した (外側の Neovim は lazygit の端末のバッファのまま)。`:q` で lazygit に戻り、Command log に `/bin/bash -c "nvim -- "…/a.txt""` が残った。`q` で lazygit を閉じると、外側の `a.txt` に戻った (`config.yml` が false でも true でも同じ)

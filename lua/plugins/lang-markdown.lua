@@ -113,7 +113,6 @@ local specs = {
   -- opts_extend = { "ensure_installed" } なので、テーブルで書くと各 spec のリストが連結されるだけで
   -- 要素を消せない。opts 関数は、それまでの spec を合成した opts を受け取るので、そこから取り除く
   -- (extra は plugins より先に import されるため、この関数は extra の追加より後に走る)。
-  -- 既に入っているマシンの markdown-toc は Mason が自動では消さない (:MasonUninstall markdown-toc)。
   {
     "mason-org/mason.nvim",
     optional = true,

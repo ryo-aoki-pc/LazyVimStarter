@@ -178,8 +178,8 @@ Windows 11 では「Windows 11 で LazyVim の設定を導入する」の手順 
 - **パッケージマネージャ**: Windows は scoop を使う (管理者権限が要らず、`%USERPROFILE%\scoop` に収まる)
   - winget や手動のインストールでもよいが、その場合は各コマンドが PATH に載っていることだけ確かめる
   - この設定はコマンドの場所をハードコードせず、`executable()` で PATH を見て機能を出し入れする
-- **変数を置かない**: 以前の版は clone 先と URL を変数にしていたが、どちらも変える必要が無い
-  - Neovim は既定の場所しか読まないので、clone 先の変数を変えても読み込み先は変わらなかった
+- **変数を置かない**: clone 先と URL は、どちらも変える必要が無い
+  - Neovim は既定の場所しか読まないので、clone 先の変数を変えても読み込み先は変わらない
 - **初回は headless で入れて、`lazy-lock.json` を戻してから restore する**: 初回の導入が lock を書き換えるため ([LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 10 の補足)
   - 画面を開く前に揃えるので、初回起動からほかのマシンと同じ版で動く
 - **入力ソースは `us` と `anthy` に固定する**: IME 連携が英数を `xkb:us::eng` に固定しているため ([LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 7 の補足)

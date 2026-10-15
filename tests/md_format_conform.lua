@@ -249,7 +249,7 @@ assert(not partial_result.err, vim.inspect(partial_result.err))
 assert(vim.deep_equal(partial_lines, task_lines))
 vim.fn.delete(vim.fs.joinpath(sandbox, ".markdownlint.json"))
 
--- 以前の markdownlint-cli2 --fix と同じく、Neovim の作業ディレクトリにあるプロジェクト設定が
+-- Neovim の作業ディレクトリにあるプロジェクト設定が
 -- 下のフォルダーのバッファにも効く。末尾の余分な空行も消える。
 vim.fn.writefile(
   { vim.json.encode({ default = false, MD004 = { style = "asterisk" }, MD012 = true }) },
