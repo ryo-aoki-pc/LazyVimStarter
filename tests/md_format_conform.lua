@@ -55,6 +55,7 @@ assert(opts.formatters["markdownlint-cli2"].condition == gate)
 assert(type(opts.formatters.mdfmt) == "function")
 assert(vim.fn.exists(":GlfmFormatInstall") == 0, "Neovim から導入するコマンドは無い")
 conform.setup(opts)
+local original_install_dir = md_format.install_dir
 if vim.env.MD_FORMAT_DIR then
   md_format.install_dir = function()
     return vim.env.MD_FORMAT_DIR
@@ -585,6 +586,16 @@ assert(vim.wait(1500, function()
   return not alive(leaving_pid)
 end, 20))
 spare.setup({ enabled = false })
+
+-- format_dir (setup の dir) の相対パスは、setup のときの作業フォルダから解く。後で :cd しても導入先は変わらない。
+md_format.install_dir = original_install_dir
+local saved_cwd = uv.cwd()
+vim.cmd.cd(vim.fs.dirname(install_dir))
+md_format.setup({ spare = false, dir = vim.fs.basename(install_dir) })
+vim.cmd.cd(sandbox)
+assert(md_format.install_dir() == vim.fs.normalize(install_dir), md_format.install_dir())
+assert(md_format.installed())
+vim.cmd.cd(saved_cwd)
 
 vim.fn.delete(sandbox, "rf")
 print("md-format conform integration: PASS")

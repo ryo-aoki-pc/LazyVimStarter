@@ -10,8 +10,8 @@ local configured_dir
 ---ほかは ${XDG_DATA_HOME:-~/.local/share}/md-format)。lang-markdown.lua の format_dir で変えられる。
 ---@return string
 function M.install_dir()
-  if configured_dir and configured_dir ~= "" then
-    return vim.fs.normalize(configured_dir)
+  if configured_dir then
+    return configured_dir
   end
   local home = uv.os_homedir() or vim.fn.expand("~")
   local base
@@ -157,7 +157,10 @@ end
 ---@param opts? {spare?: boolean, dir?: string}
 function M.setup(opts)
   opts = opts or {}
-  configured_dir = opts.dir
+  -- 相対パスは、設定を読んだときの作業フォルダから絶対パスに解く (後で :cd しても、導入先が変わらないように)。
+  configured_dir = (opts.dir and opts.dir ~= "")
+      and vim.fs.normalize(vim.fn.fnamemodify(vim.fs.normalize(opts.dir), ":p"))
+    or nil
   require("config.md_format_spare").setup({ enabled = opts.spare ~= false })
 end
 
