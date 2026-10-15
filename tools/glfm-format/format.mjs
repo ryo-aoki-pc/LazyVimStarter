@@ -2,6 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import * as nodeModule from "node:module";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { text as readText } from "node:stream/consumers";
@@ -148,9 +149,31 @@ async function runtime(directory) {
   return runtimes.get(resolved);
 }
 
+// 1 回の解析の結果から何度も求める値は、ノードと解析の結果に覚えさせる (同じ結果を何度もたどらない)。
+const typeKey = Symbol("type");
+const ordinalCache = new WeakMap();
+const canonicalCache = new WeakMap();
+
 function nodeType(node) {
+  if (node[typeKey] !== undefined) return node[typeKey];
   const value = node.data.value;
-  return typeof value === "string" ? value : Object.keys(value)[0];
+  return (node[typeKey] = typeof value === "string" ? value : Object.keys(value)[0]);
+}
+
+// 各ノードの「同じ型の前の兄弟の数」。親ごとに子を左から一度だけ数える。
+function siblingOrdinals(nodes) {
+  if (ordinalCache.has(nodes)) return ordinalCache.get(nodes);
+  const ordinals = new Array(nodes.length).fill(0);
+  for (let index = 0; index < nodes.length; index++) {
+    const counts = new Map();
+    for (let child = nodes[index].first_child; child !== undefined; child = nodes[child].next_sibling) {
+      const type = nodeType(nodes[child]);
+      ordinals[child] = counts.get(type) || 0;
+      counts.set(type, ordinals[child] + 1);
+    }
+  }
+  ordinalCache.set(nodes, ordinals);
+  return ordinals;
 }
 
 function nodeValue(node) {
@@ -201,7 +224,14 @@ function childIndices(nodes, index) {
 
 // 表示に関わる構造の木。隣り合う Text と SoftBreak は 1 つの文字列にし、HTML で同じに見える
 // ASCII の空白・タブ・改行の並びだけを空白 1 つに畳む。全角空白や NBSP は畳まず、要素の端の空白も残す。
+// 部分木は説明リスト・リテラル・文書全体の比較で何度も作るので、解析の結果ごとに覚える (作った配列は変えない)。
 function canonicalNode(nodes, index) {
+  let memo = canonicalCache.get(nodes);
+  if (!memo) canonicalCache.set(nodes, (memo = new Array(nodes.length)));
+  return (memo[index] ??= buildCanonicalNode(nodes, index));
+}
+
+function buildCanonicalNode(nodes, index) {
   const children = [];
   let text = null;
   const flush = () => {
@@ -226,11 +256,7 @@ function containerPath(nodes, index) {
   for (let parent = nodes[index].parent; parent !== undefined; parent = nodes[parent].parent) {
     const type = nodeType(nodes[parent]);
     if (!containers.has(type)) continue;
-    let ordinal = 0;
-    for (let sibling = nodes[parent].previous_sibling; sibling !== undefined; sibling = nodes[sibling].previous_sibling) {
-      if (nodeType(nodes[sibling]) === type) ordinal++;
-    }
-    result.push([type, nodeValue(nodes[parent]), ordinal]);
+    result.push([type, nodeValue(nodes[parent]), siblingOrdinals(nodes)[parent]]);
   }
   return result.reverse();
 }
@@ -256,6 +282,13 @@ function frontMatter(source, lines) {
   return null;
 }
 
+// 解析に渡す文字列。front matter は行を保ったまま空白に伏せ、メタデータ中の見本を説明リストとして解析しない。
+// 閉じていない区切りは本文扱い。projection と semanticSnapshot が同じ文字列を渡し、解析の結果を共有する。
+function parsedText(source, lines) {
+  const matter = frontMatter(source, lines);
+  return { matter, text: matter ? matter.raw.replace(/[^\r\n]/gu, " ") + source.slice(matter.end) : source };
+}
+
 // Comrak の列は UTF-8 のバイト数、JavaScript と fixInfo の列は UTF-16。
 function sourceOffset(source, lines, position, inclusive) {
   const line = lines[position.line - 1];
@@ -269,11 +302,30 @@ function sourceSlice(source, lines, sourcepos) {
   return source.slice(sourceOffset(source, lines, sourcepos.start, false), sourceOffset(source, lines, sourcepos.end, true));
 }
 
-function projection(source, parseMarkdown) {
+// 整列した区間の中に、[start, end) と重なるもの (end が start と同じなら、start を内側に含むもの) があるか。
+// 始まりが limit より前の区間の終わりの最大値と比べる。
+function overlapsSpans(spans, start, end) {
+  const limit = end > start ? end : start;
+  let low = 0;
+  let high = spans.starts.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (spans.starts[middle] < limit) low = middle + 1;
+    else high = middle;
+  }
+  return low > 0 && spans.maxEnds[low - 1] > start;
+}
+
+function sortedSpans(spans) {
+  const sorted = [...spans].sort((a, b) => a[0] - b[0]);
+  const maxEnds = [];
+  for (const [, to] of sorted) maxEnds.push(Math.max(to, maxEnds.at(-1) ?? -Infinity));
+  return { starts: sorted.map(([from]) => from), maxEnds };
+}
+
+function projection(source, parse) {
   const lines = linesOf(source);
-  const matter = frontMatter(source, lines);
-  const parsed = matter ? matter.raw.replace(/[^\r\n]/gu, " ") + source.slice(matter.end) : source;
-  const { nodes } = parseMarkdown(parsed, parserOptions);
+  const nodes = parse(parsedText(source, lines).text);
   const replacements = [];
   const blankRequests = [];
   const itemLists = new Map();
@@ -288,7 +340,10 @@ function projection(source, parseMarkdown) {
     const position = node.data.sourcepos?.start;
     if (!position || !lines[position.line - 1]) continue;
     const line = lines[position.line - 1];
-    const column = Buffer.from(line.content).subarray(0, position.column - 1).toString("utf8").length;
+    // 列 (UTF-16) を使うのは説明とリストの項目だけ。ほかのノードで行を UTF-8 に変換しない。
+    const column = type === "DescriptionDetails" || type === "Item" || type === "TaskItem"
+      ? Buffer.from(line.content).subarray(0, position.column - 1).toString("utf8").length
+      : 0;
     if (literalSpanTypes.has(type) && node.data.sourcepos.end?.line) {
       protectedSpans.push([
         sourceOffset(source, lines, position, false),
@@ -344,7 +399,7 @@ function projection(source, parseMarkdown) {
     realPrefixes.set(row, { text: original.content, base: original.content.length });
   }
   return {
-    source: projected, lines, itemLists, projectedRows, realPrefixes, protectedSpans, headingRows,
+    source: projected, lines, itemLists, projectedRows, realPrefixes, protectedSpans: sortedSpans(protectedSpans), headingRows,
     syntheticBlankRows: new Set(blankPrefixes.keys()),
   };
 }
@@ -372,10 +427,16 @@ function touchesProtected(fix, projected) {
   const [row, column] = fixPosition(fix);
   const line = projected.lines[row - 1];
   if (!line) return false;
+  const [start, end] = fixSpan(fix, line);
+  return overlapsSpans(projected.protectedSpans, start, end);
+}
+
+// 修正が書き換える文字の範囲 (行の削除は改行まで)。
+function fixSpan(fix, line) {
   const count = fix.fixInfo.deleteCount || 0;
-  const start = count === -1 ? line.start : line.start + column - 1;
+  const start = count === -1 ? line.start : line.start + fixPosition(fix)[1] - 1;
   const end = count === -1 ? line.start + line.content.length + line.ending.length : start + Math.max(0, count);
-  return projected.protectedSpans.some(([from, to]) => (end > start ? start < to && end > from : from < start && start < to));
+  return [start, end];
 }
 
 function ruleId(fix) {
@@ -460,14 +521,10 @@ function convertibleHeading(fix, projected, selection) {
   return !selection || line.start + line.content.trimEnd().length <= selection.end;
 }
 
-function semanticSnapshot(source, parseMarkdown) {
+function semanticSnapshot(source, parse) {
   const lines = linesOf(source);
-  const matter = frontMatter(source, lines);
-  // メタデータ中の見本を説明リストとして解析しない。閉じていない区切りは本文扱い。
-  const parsedSource = matter
-    ? matter.raw.replace(/[^\r\n]/gu, " ") + source.slice(matter.end)
-    : source;
-  const { nodes } = parseMarkdown(parsedSource, parserOptions);
+  const { matter, text } = parsedText(source, lines);
+  const nodes = parse(text);
   if (!Array.isArray(nodes) || !nodes.length) throw new Error("Markdown を解析できません。");
   const descriptions = [];
   const literals = [];
@@ -486,8 +543,114 @@ function semanticSnapshot(source, parseMarkdown) {
   // loose (緩い検査) は最初の文書と比べ続ける。tree (構文木の全体) は、受け付けた文書ごとに取り直す。
   return {
     loose: JSON.stringify({ frontMatter: matter?.raw || null, descriptions, literals, atoms }),
+    atoms: JSON.stringify(atoms),
     tree: canonicalNode(nodes, 0),
   };
+}
+
+// 保護範囲 (コード・数式・HTML) のノードの位置と、緩い検査に入る中身。近道 G の判定に使う。
+function literalView(source, parse) {
+  const lines = linesOf(source);
+  const nodes = parse(parsedText(source, lines).text);
+  const shape = (index) => [nodeType(nodes[index]), childIndices(nodes, index).map(shape)];
+  const literals = [];
+  for (let index = 0; index < nodes.length; index++) {
+    const type = nodeType(nodes[index]);
+    const position = nodes[index].data.sourcepos;
+    if (!literalSpanTypes.has(type) || !position?.end?.line) continue;
+    literals.push({
+      start: sourceOffset(source, lines, position.start, false),
+      end: sourceOffset(source, lines, position.end, true),
+      value: JSON.stringify(canonicalNode(nodes, index)) + (type === "Math" ? sourceSlice(source, lines, position) : ""),
+      // 文書の直下のコードブロック (入れ物の接頭辞が無い) の行の範囲。中身は、この行だけを解析しても同じになる。
+      block: type === "CodeBlock" && nodeType(nodes[nodes[index].parent]) === "Document"
+        ? [position.start.line, position.end.line]
+        : null,
+    });
+  }
+  return { lines, shape: JSON.stringify(shape(0)), literals };
+}
+
+// 文書の直下のコードブロックの行だけを解析した、最初のコードブロックの中身 (無ければ null)。
+function blockLiteral(text, parseBlock) {
+  const nodes = parseBlock(text);
+  const index = nodes.findIndex((node) => nodeType(node) === "CodeBlock");
+  return index === -1 ? null : JSON.stringify(canonicalNode(nodes, index));
+}
+
+// 保護範囲に掛かる修正のまとめのうち、緩い検査で必ず落ちると分かるもの (全文を解析して確かめなくてよいもの)。
+// 1. GitLab の記法の原文と並びが最初の文書と変わるまとめ (正規表現の照合だけで分かる)
+// 2. コード・数式・HTML の中身を変えるまとめ。残りのまとめを全部いっしょに当てた文書を 1 回だけ解析し、ノードの型の木が
+//    今の文書と同じで、あるリテラルのノードに掛かるのがそのまとめだけで、そのノードの中身が変わっていれば、そのまとめを外す。
+//    構造が同じなら、リテラルの中身はそのノードの行と入れ物だけで決まり、ほかのまとめはほかのリテラルの中しか変えないので、
+//    単独で当てても同じ中身になる (緩い検査は中身を比べるので、単独でも落ちる)。受け付けた修正は緩い検査を保つので、
+//    batch の途中で今の文書が変わっても判定は変わらない
+// 3. 文書の直下のコードブロックに掛かるまとめ (同じブロックに複数のまとめが掛かるときも)。そのブロックの行だけに当てて
+//    小さく解析し、中身が変われば外す。ブロックの行だけを解析した中身が全文の中の中身と同じことを先に確かめる。行の中身が
+//    変われば、全文の中でもブロックの中身が変わる (閉じのフェンスが変わっても、中身の行の並びが変わる)
+// どれにも当たらないまとめは、今までどおり 1 つずつ全文の解析で確かめる。
+function doomedProtectedGroups(groups, current, originalAtoms, parse, parseBlock) {
+  const doomed = new Set();
+  const rest = [];
+  for (const group of groups) {
+    const candidate = applyFixes(current, [...group].sort(descendingFix));
+    if (candidate === current) continue;
+    const atoms = JSON.stringify([...candidate.matchAll(gitlabAtoms)].map((match) => match[0]));
+    if (atoms !== originalAtoms) doomed.add(group);
+    else rest.push(group);
+  }
+  if (!rest.length) return doomed;
+  const before = literalView(current, parse);
+  const touched = new Map();
+  const owners = new Map();
+  for (const group of rest) {
+    const indices = new Set();
+    for (const fix of group) {
+      const [start, end] = fixSpan(fix, before.lines[fixPosition(fix)[0] - 1]);
+      before.literals.forEach((literal, index) => {
+        if (end > start ? start < literal.end && end > literal.start : literal.start < start && start < literal.end) indices.add(index);
+      });
+    }
+    touched.set(group, indices);
+    for (const index of indices) owners.set(index, (owners.get(index) || 0) + 1);
+  }
+  // 3. 文書の直下のコードブロックの行だけで確かめる。
+  const blockValues = new Map();
+  for (const group of rest) {
+    const indices = touched.get(group);
+    if (indices.size !== 1) continue;
+    const [index] = indices;
+    const block = before.literals[index].block;
+    if (!block || !group.every((fix) => fixPosition(fix)[0] >= block[0] && fixPosition(fix)[0] <= block[1])) continue;
+    const blockText = before.lines.slice(block[0] - 1, block[1]).map((line) => line.content + line.ending).join("");
+    if (!blockValues.has(index)) blockValues.set(index, blockLiteral(blockText, parseBlock));
+    if (blockValues.get(index) !== before.literals[index].value) continue;
+    const shifted = group.map((fix) => ({
+      ...fix,
+      lineNumber: fixPosition(fix)[0] - block[0] + 1,
+      fixInfo: { ...fix.fixInfo, lineNumber: fixPosition(fix)[0] - block[0] + 1 },
+    })).sort(descendingFix);
+    let edited;
+    try {
+      edited = applyFixes(blockText, shifted);
+    } catch {
+      continue;
+    }
+    if (blockLiteral(edited, parseBlock) !== blockValues.get(index)) doomed.add(group);
+  }
+  // 2. 残りのうち、リテラルのノード 1 つだけに掛かるまとめをいっしょに当てて、1 回だけ解析する
+  //    (ほかのまとめは混ぜない。リテラルの外を変える修正が、入れ物の字下げなどを変えないように)。
+  const remaining = rest.filter((group) => !doomed.has(group) && touched.get(group).size === 1);
+  if (remaining.length < 2) return doomed;
+  const after = literalView(applyFixes(current, remaining.flat().sort(descendingFix)), parse);
+  if (before.shape !== after.shape || before.literals.length !== after.literals.length) return doomed;
+  const remainingOwners = new Map();
+  for (const group of remaining) for (const index of touched.get(group)) remainingOwners.set(index, (remainingOwners.get(index) || 0) + 1);
+  for (const group of remaining) {
+    const [index] = touched.get(group);
+    if (remainingOwners.get(index) === 1 && before.literals[index].value !== after.literals[index].value) doomed.add(group);
+  }
+  return doomed;
 }
 
 function preferredEnding(source) {
@@ -525,7 +688,53 @@ function applyFix(source, error) {
   return source.slice(0, start) + insertion + source.slice(start + count);
 }
 
-async function lint(source, { main }, { filename, cwd, config }) {
+// 位置の降順に並んだ修正を順に当てる。結果と例外は applyFix を順に当てたときと同じ。
+// 改行が 1 種類 (LF だけか CRLF だけ) の文書では、行の分け直しと改行の数え直しを 1 回にする。CR を含む文書や改行の混ざった
+// 文書は、preferredEnding の同数のときの選び方を変えないよう、applyFix を順に当てる。
+function applyFixes(source, errors) {
+  if (errors.length < 2 || /\r(?!\n)/u.test(source) || (source.includes("\r\n") && /(?<!\r)\n/u.test(source)) ||
+      errors.some((error) => /\r/u.test(error.fixInfo.insertText || ""))) {
+    return errors.reduce((text, error) => applyFix(text, error), source);
+  }
+  const ending = source.includes("\r\n") ? "\r\n" : "\n";
+  const lines = linesOf(source).map(({ content, ending: own }) => ({ content, ending: own }));
+  // 改行の数が 0 になると、preferredEnding は LF を返す。
+  let endings = lines.filter((line) => line.ending).length;
+  for (const error of errors) {
+    const fix = error.fixInfo;
+    const [lineNumber, column] = fixPosition(error);
+    const line = lines[lineNumber - 1];
+    if (!line) throw new Error("整形ツールが不正な修正位置を返しました。");
+    const count = fix.deleteCount || 0;
+    if (column < 1 || column > line.content.length + 1 || count < -1 ||
+        (count !== -1 && column - 1 + count > line.content.length)) {
+      throw new Error("整形ツールが不正な修正範囲を返しました。");
+    }
+    if (count === -1) {
+      if (!line.ending && lineNumber > 1) {
+        lines[lineNumber - 2].ending = "";
+      } else if (!line.ending) {
+        lines.push({ content: "", ending: "" });
+      }
+      if (line.ending || lineNumber > 1) endings--;
+      lines.splice(lineNumber - 1, 1);
+      continue;
+    }
+    const insertion = (fix.insertText || "").replace(/\n/gu, endings > 0 ? ending : "\n");
+    const parts = linesOf(line.content.slice(0, column - 1) + insertion + line.content.slice(column - 1 + count) + line.ending);
+    // linesOf は改行で終わる文字列の後ろに空の行を足すので、元の行の分だけに戻す。
+    if (parts.length > 1 && !parts.at(-1).content && !parts.at(-1).ending) parts.pop();
+    endings += parts.filter((part) => part.ending).length - (line.ending ? 1 : 0);
+    lines.splice(lineNumber - 1, 1, ...parts.map(({ content, ending: own }) => ({ content, ending: own })));
+  }
+  return lines.map((line) => line.content + line.ending).join("");
+}
+
+// 試験用。applyFixes が applyFix を順に当てたときと同じ結果を返すことを確かめる。
+export const internals = Object.freeze({ applyFix, applyFixes });
+
+async function lint(source, { main }, { filename, cwd, config, stats }) {
+  if (stats) stats.lints++;
   let results = [];
   const errors = [];
   const argv = [`:${filename}`];
@@ -595,9 +804,9 @@ function selectedRange(source, range) {
   return { start: boundary(range.start, false), end: boundary(range.end, true) };
 }
 
-function inRange(source, fix, selection) {
+// lines は今の文書の行 (候補ごとに文書全体を分け直さない)。
+function inRange(lines, fix, selection) {
   if (!selection) return true;
-  const lines = linesOf(source);
   const [row, column] = fixPosition(fix);
   const line = lines[row - 1];
   if (!line) return false;
@@ -669,16 +878,47 @@ export async function formatMarkdown(source, options = {}) {
   if (selection && selection.end < selection.start) throw new Error("整形範囲の開始と終了が逆です。");
   const selected = fixSelector(options.fixes);
   const dependencies = await runtime(options.runtimeDir || scriptDirectory);
-  const original = semanticSnapshot(source, dependencies.parseMarkdown);
-  const originalSnapshot = original.loose;
+  // 試験用: exhaustive は近道 (修正候補が無いときの早い終わりと、保護範囲の修正を解析せずに拒むこと) を使わない。
+  // stats には、文書全体の Comrak の解析 (parses)・コードブロックの行だけの解析 (blockParses)・lint (lints) を実際に
+  // 呼んだ回数を足す。
+  const { exhaustive, stats } = options;
+  if (stats) {
+    for (const key of ["parses", "blockParses", "lints"]) stats[key] ??= 0;
+  }
+  const parseBlock = (text) => {
+    if (stats) stats.blockParses++;
+    return dependencies.parseMarkdown(text, parserOptions).nodes;
+  };
+  // 同じ文字列の解析の結果と検査の値を、この呼び出しの中でだけ使い回す (projection・候補の検査・終わりの確かめ)。
+  const parsedNodes = new Map();
+  const parse = (text) => {
+    if (parsedNodes.has(text)) return parsedNodes.get(text);
+    const { nodes } = dependencies.parseMarkdown(text, parserOptions);
+    if (stats) stats.parses++;
+    parsedNodes.set(text, nodes);
+    if (parsedNodes.size > 4) parsedNodes.delete(parsedNodes.keys().next().value);
+    return nodes;
+  };
+  const snapshots = new Map();
+  const snapshotOf = (text) => {
+    if (!snapshots.has(text)) {
+      snapshots.set(text, semanticSnapshot(text, parse));
+      if (snapshots.size > 4) snapshots.delete(snapshots.keys().next().value);
+    }
+    return snapshots.get(text);
+  };
+  // 最初の文書の検査の値。修正候補を確かめるときに初めて作る。
+  let original;
+  const originalOf = () => (original ??= snapshotOf(source));
   // 構文木の全体は、最後に受け付けた文書と比べる (見出しなどを作る修正の後も、その先の修正を確かめられる)。
   // 変えてよい差の決まったルール (limitedRules) がまとめに入っていれば、その差だけを両方の木から消して比べる。
   // 表記の修正は見出しの句読点やリンクの文字を変えないので、同じまとめで確かめても見逃さない。
-  let currentTree = original.tree;
+  let currentTree;
   let currentKeys = new Map();
   const relaxations = (batch) => [...new Set(batch.flat().map(ruleId).filter((id) => Object.hasOwn(limitedRules, id)))].sort();
   const structureKey = (tree, rules) => JSON.stringify(rules.reduce((value, id) => mapTree(value, limitedRules[id]), tree));
   const currentKey = (rules) => {
+    currentTree ??= originalOf().tree;
     const key = rules.join(",");
     if (!currentKeys.has(key)) currentKeys.set(key, structureKey(currentTree, rules));
     return currentKeys.get(key);
@@ -687,8 +927,13 @@ export async function formatMarkdown(source, options = {}) {
   let current = source;
   let attempted = 0;
   for (let pass = 0; pass < MAX_PASSES; pass++) {
-    const projected = projection(current, dependencies.parseMarkdown);
     let fixes = await lint(current, dependencies, settings);
+    // 選ばれる修正が無く、説明リストの印も無い文書は、解析せずにそのまま返す (印があれば、引用に見立てた lint が修正を足しうる)。
+    // 印の判定は広めにし、疑わしいときは今までどおり解析する。
+    if (pass === 0 && !exhaustive && !fixes.some((fix) => selected(fix)) && !/^[ \t>]*[:~][ \t]/mu.test(current)) {
+      return current;
+    }
+    const projected = projection(current, parse);
     if (projected.source !== current) {
       // リストの表記は正しい階層を持つ引用版を基準とし、元の解析との往復を防ぐ。
       // 説明の中の行の字下げ (MD005 / MD007) も引用版だけで見る。元の解析は説明リストを知らず、
@@ -704,7 +949,7 @@ export async function formatMarkdown(source, options = {}) {
     fixes = fixes.filter((fix) => selected(fix) && convertibleHeading(fix, projected, selection));
     // 範囲で先に絞ると、通常のリストでも一部のマーカーだけが変わって分裂する。
     const groups = fixGroups(fixes, projected.itemLists)
-      .filter((group) => group.every((fix) => inRange(current, fix, selection)));
+      .filter((group) => group.every((fix) => inRange(projected.lines, fix, selection)));
     // 検証は文書全体を Comrak で解析し直すので、修正ごとに確かめると長い文書で保存の上限を超える。
     // まとめて当てて 1 回で確かめ、構造が変わるときだけ半分に分けて原因の修正を除く。
     // まとめは下の行から並んでいるので、どの部分を当てても残りの修正位置はずれない。
@@ -713,11 +958,11 @@ export async function formatMarkdown(source, options = {}) {
     const accept = (batch, mode) => {
       if (!batch.length) return;
       // リストごとのまとめは複数の行にまたがるので、まとめの順ではなく修正の位置の順 (下・右から) に当てる。
-      const candidate = batch.flat().sort(descendingFix).reduce((value, fix) => applyFix(value, fix), current);
+      const candidate = applyFixes(current, batch.flat().sort(descendingFix));
       if (candidate === current) return;
-      const snapshot = semanticSnapshot(candidate, dependencies.parseMarkdown);
+      const snapshot = snapshotOf(candidate);
       const rules = relaxations(batch);
-      if (snapshot.loose === originalSnapshot &&
+      if (snapshot.loose === originalOf().loose &&
           (mode === "creating" || structureKey(snapshot.tree, rules) === currentKey(rules))) {
         // 範囲内の改行増減に追従し、次の解析で元の選択範囲外を整形しない。
         if (selection) selection.end += candidate.length - current.length;
@@ -736,7 +981,8 @@ export async function formatMarkdown(source, options = {}) {
     while (pending.length && !changed) {
       const batch = [];
       const deferred = [];
-      const selectedRanges = [];
+      // 選んだ修正の範囲を行ごとに持つ (重なりは同じ行の範囲どうしでしか起きない)。
+      const selectedRanges = new Map();
       // 長さの変わる修正を含むリストのまとめが書き換える行。まとめは上の行にも及ぶので、
       // 同じ行のほかの修正と一緒に当てると、半分に分けて確かめたときに後から当てる側の列がずれる。
       const shiftedLines = new Set();
@@ -751,18 +997,19 @@ export async function formatMarkdown(source, options = {}) {
         // 同じ解析結果に基づく重複修正は同時に当てない。ほかが当たれば次の解析で再評価し、
         // 何も当たらなかったときは、位置がずれていないのでこのまま残りを試す。
         if (ranges.some((candidate) => shiftedLines.has(candidate.line) || (shifting && selectedLines.has(candidate.line)) ||
-            selectedRanges.some((range) => range.line === candidate.line &&
-            (candidate.deleted || range.deleted || (candidate.end > range.column && candidate.column < range.end) ||
-             candidate.column === range.column)))) {
+            (selectedRanges.get(candidate.line) || []).some((range) =>
+              candidate.deleted || range.deleted || (candidate.end > range.column && candidate.column < range.end) ||
+              candidate.column === range.column))) {
           deferred.push(group);
           continue;
         }
         attempted += group.length;
         if (attempted > MAX_FIXES) throw new Error("修正が多すぎるため整形を中止しました。");
-        selectedRanges.push(...ranges);
-        for (const { line } of ranges) {
-          selectedLines.add(line);
-          if (shifting) shiftedLines.add(line);
+        for (const range of ranges) {
+          if (!selectedRanges.has(range.line)) selectedRanges.set(range.line, []);
+          selectedRanges.get(range.line).push(range);
+          selectedLines.add(range.line);
+          if (shifting) shiftedLines.add(range.line);
         }
         batch.push(group);
       }
@@ -776,11 +1023,16 @@ export async function formatMarkdown(source, options = {}) {
         accept(run, runMode);
         run = [];
       };
+      const protectedGroups = new Set(batch.filter((group) => group.some((fix) => touchesProtected(fix, projected))));
+      // 緩い検査で必ず落ちると分かる保護範囲のまとめは、全文を解析して確かめない (近道 G)。
+      const doomed = exhaustive || !protectedGroups.size
+        ? new Set()
+        : doomedProtectedGroups([...protectedGroups], current, originalOf().atoms, parse, parseBlock);
       for (const group of batch) {
         const mode = fixMode(group[0]);
-        if (group.some((fix) => touchesProtected(fix, projected))) {
+        if (protectedGroups.has(group)) {
           flush();
-          accept([group], mode);
+          if (!doomed.has(group)) accept([group], mode);
         } else {
           if (run.length && mode !== runMode) flush();
           runMode = mode;
@@ -792,7 +1044,7 @@ export async function formatMarkdown(source, options = {}) {
       pending = deferred;
     }
     if (!changed) {
-      if (semanticSnapshot(current, dependencies.parseMarkdown).loose !== originalSnapshot) {
+      if (snapshotOf(current).loose !== originalOf().loose) {
         throw new Error("説明リストの構造を保持できませんでした。");
       }
       return current;
@@ -819,6 +1071,13 @@ async function cli() {
     options[name] = arguments_[++index];
   }
   if (!options.runtimeDir) throw new Error("--runtime-dir を指定してください。");
+  // 保存のたびの起動の大半は、依存 (markdownlint-cli2 とその依存) の読み込み。Node が対応していれば (22.8 以上)、
+  // コンパイルの結果を依存の隣に残して次の起動で使う。ファイルの中身が変われば Node が作り直す。使えなくても整形は続ける。
+  try {
+    nodeModule.enableCompileCache?.(path.join(path.resolve(options.runtimeDir), ".compile-cache"));
+  } catch {
+    // compile cache は速さのためだけのもの。
+  }
   // --enable-fixes と --disable-fixes は、カンマ区切りの分類名かルール名。同じ名前を両方に書くと、整形の API が拒む。
   for (const [name, enabled] of [["enableFixes", true], ["disableFixes", false]]) {
     if (options[name] === undefined) continue;
