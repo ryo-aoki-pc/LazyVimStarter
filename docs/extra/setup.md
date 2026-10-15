@@ -1,9 +1,14 @@
-# LazyVim 設定を戻す・問題に対処する
+# LazyVim の設定のロールバックと注意点
+
+[手順書（Neovim のセットアップ）](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md)・[検証記録](../verification/setup.md)・[参考資料](../reference/setup.md)
+
+- 「AlmaLinux 導入の手順 N」は正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)、「Windows 導入の手順 N」は[Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順を指す。「この節の手順 N」はこの文書の手順
 
 ## ロールバック
 
-- この設定とプラグインを消し、[AlmaLinux 導入の手順 3](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) / [Windows 導入の手順 2](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する) で退避したものを戻す
+- この設定とプラグインを消し、[AlmaLinux 導入の手順 3](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) / [Windows 導入の手順 3](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する) で退避したものを戻す
 - AlmaLinux 10 はこの節の手順 1〜4、Windows 11 はこの節の手順 5〜7 を、上から順に貼る
+- setup-notes の[端末とエディタを消す](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/extra/almalinux-setup.md#端末とエディタを消す) (AlmaLinux 10)・[エディタとシェルのツールを消す](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/extra/windows-setup.md#エディタとシェルのツールを消す) (Windows 11) から来たときは、そこに書いたとおり、この節の手順 4・7 は行わない (Neovim・lazygit・フォントは、そちらの項で消す)
 - dnf / Homebrew / scoop で入れた共通のコマンド (git・ripgrep・fd・node など) と Homebrew 本体は、ほかでも使うので残す
 - GitLab プレビューのトークンを設定していたら、[設定を消す手順](#gitlab-プレビューの設定を消す)を行う
 - 検証した範囲は [検証記録](../verification/setup.md)を参照する
@@ -121,20 +126,7 @@
 
    - 上部バーは、Neovim が切り替えた後もそれまでの入力ソースのまま残るようになる (この節を行う前と同じ)
 
-## 前提・確認・対処
-
-### 実施前の状態
-
-| 項目 | 状態 |
-|---|---|
-| OS | AlmaLinux 10 + GNOME (Wayland) / Windows 11 |
-| ユーザー | AlmaLinux 10 は `sudo` のできる一般ユーザーで、GNOME にログインしている。Windows 11 は一般ユーザー |
-| ネットワーク | github.com・Homebrew・npm・scoop に届く (初回のプラグイン・Mason・treesitter の取得に要る)。GitLab プレビューには、使う GitLab と cdn.jsdelivr.net も |
-| Neovim の設定 | 無い、または退避してよい (AlmaLinux 導入の手順 3 / Windows 導入の手順 2 で `.bak` にする) |
-| Homebrew / scoop | setup-notes の初期設定で導入済み |
-| 入力ソース | 何でもよい (AlmaLinux 導入の手順 7 で `us` と `anthy` の 2 つに置き換える) |
-
-### 必要なもの一覧
+## 必要なもの一覧
 
 | 依存 | 用途 | 必須? |
 | --- | --- | --- |
@@ -161,29 +153,11 @@
 
 - **不要なもの**: fzf (ピッカーは snacks.nvim の Lua 実装。`:checkhealth lazyvim` が警告を出すが機能には影響しない)、telescope とその C ビルド、make、Python、Deno、win32yank (Neovim の Windows ビルドに同梱済み)、プレビュー用の node のアプリ (GitLab プレビューは Neovim の中の HTTP サーバーと curl だけで動く)、SSH 越しのクリップボードのための X11 転送・xclip・lemonade (OSC 52 で端末に渡す)
 
-### 完了時点の状態
-
-| 場所 | 中身 |
-|---|---|
-| `~/.config/nvim` (`%LOCALAPPDATA%\nvim`) | このリポジトリの clone (`custom` ブランチ) |
-| `~/.local/share/nvim/lazy` | プラグイン 38 個 (`lazy-lock.json` の版) |
-| `~/.local/share/nvim/mason` | Mason のツール 11 個 |
-| `~/.local/share/nvim/site/parser` | treesitter のパーサー (初回起動で入る) |
-| `~/.local/share/fonts` | HackGen Console NF と HackGen35 Console NF (Linux) |
-| `~/.bashrc` | 共通 bash 設定を読む 1 行。トークンの節を行ったときは `GITLAB_TOKEN` (と `GITLAB_HOST`) の行も |
-| `org.gnome.desktop.input-sources sources` | `[('xkb', 'us'), ('ibus', 'anthy')]` (Linux) |
-| `org.freedesktop.ibus.engine.anthy.shortcut default` | `on_off` が `['Zenkaku_Hankaku']` だけ (Linux) |
-| `~/.local/share/gnome-shell/extensions/ibus-engine-follow@ryo-aoki-pc.github.com` | [上部バーの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)を行ったとき、`~/.config/nvim/gnome-shell/` の拡張へのつなぎ。`org.gnome.shell enabled-extensions` にも入る (Linux) |
-| `*.bak` | 退避した以前の設定とデータ (あった場合だけ) |
-
-- Windows のプラグインと Mason のツールは `%LOCALAPPDATA%\nvim-data` に入る
-- Windows でトークンの節を行ったときは、ユーザーの環境変数に `GITLAB_TOKEN` (と `GITLAB_HOST`) が入る
-
-### 注意点
+## 注意点
 
 - **Windows で `nvim` が起動しない (`VCRUNTIME140.dll が見つからない` / `0xC0000135`)**: Visual C++ のランタイムが入っていない
-  - scoop の `neovim` は `VCRUNTIME140.dll` を同梱しない (`nvim.exe` と `lua51.dll` が読み込む)。[Windows 導入の手順 4](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の 1 行目が、`System32\vcruntime140.dll` が無いときだけ `vcredist2022` を入れる。手順 5 の `nvim --version` で確かめる
-  - `vcruntime140.dll` があるのに手順 5 の `nvim --version` が通らないときは、`scoop install vcredist2022` を条件を付けずに貼り、今の版のランタイムを入れる (手順 4 の 1 行目はファイルの有無だけを見て、版は見ない)。`already installed` と出たら、`scoop uninstall vcredist2022` の後にもう一度貼る (uninstall で消えるのはインストーラーだけで、ランタイムは残る)
+  - scoop の `neovim` は `VCRUNTIME140.dll` を同梱しない (`nvim.exe` と `lua51.dll` が読み込む)。[Windows 導入の手順 5](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の 1 行目が、`System32\vcruntime140.dll` が無いときだけ `vcredist2022` を入れる。手順 6 の `nvim --version` で確かめる
+  - `vcruntime140.dll` があるのに手順 6 の `nvim --version` が通らないときは、`scoop install vcredist2022` を条件を付けずに貼り、今の版のランタイムを入れる (手順 5 の 1 行目はファイルの有無だけを見て、版は見ない)。`already installed` と出たら、`scoop uninstall vcredist2022` の後にもう一度貼る (uninstall で消えるのはインストーラーだけで、ランタイムは残る)
   - VC++ のランタイムが無いクリーンインストールの Windows 11 VM では、Neovim 0.12.5 が終了コード `-1073741515` (`0xC0000135`) になり、起動しなかった
 - **一部の Mason のツールだけが入らない (`stylua` など)**: `unzip` が無い
   - Mason は zip で配布されるツールの展開に `unzip` を使い、無いと**そのツールだけ**が静かに失敗する

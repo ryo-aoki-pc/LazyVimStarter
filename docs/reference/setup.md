@@ -1,33 +1,33 @@
 # LazyVim 導入の補足資料
 
-操作は [setup.md](../setup.md)、実施結果は [検証記録](../verification/setup.md) を参照する。
+手順は setup-notes の[Neovim のセットアップ](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md)にある。各節の「正本の…の手順 N の補足」は、その項の手順を指す。実施結果は[検証記録](../verification/setup.md)、ロールバックと注意点は [extra](../extra/setup.md)。
 
 ## 補足
 
 ### EPEL が要る理由
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 2 に対応する。
+正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の前提 (EPEL) と手順 1 の補足。
 
-- `wl-clipboard` は AlmaLinux の BaseOS / AppStream に無く、EPEL にある。EPEL を入れずにこの節の手順 3 を貼ると `Unable to find a match: wl-clipboard` で止まる
-- `ripgrep` と `fd-find` も EPEL にあるが、この設定では Homebrew の `ripgrep` と `fd` を入れる (この節の手順 10。[Homebrew を使う理由と導入先](#homebrew-を使う理由と導入先))
+- `wl-clipboard` は AlmaLinux の BaseOS / AppStream に無く、EPEL にある。EPEL を入れずにこの項の手順 1 を貼ると `Unable to find a match: wl-clipboard` で止まる
+- `ripgrep` と `fd-find` も EPEL にあるが、この設定では Homebrew の `ripgrep` と `fd` を入れる (この項の手順 5。[Homebrew を使う理由と導入先](#homebrew-を使う理由と導入先))
 - `epel-release` は AlmaLinux の `extras` リポジトリにあり、追加のリポジトリ設定は要らない。弱い依存として `dnf-plugins-core` も入る
 
 ### dnf で入れるもの
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 3 に対応する。
+正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 1・2 の補足。
 
 - **`unzip` は必須**: Mason は zip で配布されるツール (`stylua` など) の展開に使う。無いと**そのツールだけ**が静かに入らず、ほかは入るので気付きにくい
 - **`gcc`**: nvim-treesitter は各言語のパーサーを手元で C としてコンパイルする。C コンパイラが無いとハイライトが効かない
 - **`nodejs` / `nodejs-npm`**: Mason が `markdownlint-cli2` / `bash-language-server` / `json-lsp` / `yaml-language-server` を npm パッケージとして入れる。**node を消すと Markdown の lint と整形が丸ごと止まる**
-- `npm` と書いても `nodejs-npm` に解決されて入るが、この節の手順 4 の `rpm -q` はパッケージ名でしか引けないので、両方の手順で `nodejs-npm` と書いている
-- **`file` / `procps-ng`**: Homebrew の前提 (この節の手順 8)。GNOME の PC には入っていることが多い
+- `npm` と書いても `nodejs-npm` に解決されて入るが、この項の手順 2 の `rpm -q` はパッケージ名でしか引けないので、両方の手順で `nodejs-npm` と書いている
+- **`file` / `procps-ng`**: Homebrew の前提 (setup-notes の almalinux-setup.md の「Homebrew」)。GNOME の PC には入っていることが多い
 - **`ibus-anthy`**: AlmaLinux 10 の Workstation には最初から入っている。入っていれば dnf は `already installed` と出して飛ばす。依存として `ibus-anthy-python` と `anthy-unicode` が入る
 - **Deno は要らない**: 日本語のローマ字検索 (Migemo) は純 Lua の luamigemo が辞書ごと同梱している
 - **`wl-clipboard`**: `<leader>ci` (img-clip.nvim) がクリップボードの画像を `wl-paste` で取り出す。EPEL にある。無くても `<leader>ci` が使えないだけ
 
 ### 退避するもの
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 5 に対応する。
+正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 3 の補足。
 
 - `~/.config/nvim` は設定、`~/.local/share/nvim` はプラグインと Mason のツール、`~/.local/state/nvim` は undo・shada・ログ、`~/.cache/nvim` はキャッシュ
 - Neovim を入れる前
@@ -35,7 +35,7 @@
 
 ### clone 先
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 6 に対応する。
+正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 4 の補足。
 
 - **このリポジトリが Neovim の設定ディレクトリそのもの**なので、clone 先は `~/.config/nvim` にする。Neovim は `$XDG_CONFIG_HOME/nvim` (未設定なら `~/.config/nvim`) しか読まない
 - 別の場所に置くなら `NVIM_APPNAME` か `XDG_CONFIG_HOME` を設定する (本書では扱わない)
@@ -44,23 +44,23 @@
 
 ### Homebrew を使う理由と導入先
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 8 に対応する。
+正本の[Neovim](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#neovim)の手順 1 と、[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 5 の補足。Homebrew 自体は setup-notes の almalinux-setup.md の「Homebrew」で入れる。
 
 - Neovim を Homebrew で入れるため (EPEL の Neovim は古い。[選択した方針](#選択した方針))
 - ripgrep と fd も Homebrew で入れる。yazi などのほかのツールも Homebrew の `fd` / `ripgrep` を入れるので、EPEL の `fd-find` / `ripgrep` と二重にしない (実行ファイルの名前が同じで、PATH の先頭の Homebrew 版が使われ、`dnf upgrade` で上がる方は使われない)
 - `/home/linuxbrew/.linuxbrew` に入れた場合だけ、ビルド済みのボトルが使える。ほかの場所ではソースからのビルドになる
 - root では動かない。`sudo -i` のシェルで実行すると、インストーラが止まる
-- **Homebrew の依存に `python@3.x` が入ると、OS 全体で日本語が打てなくなることがある**。症状と対処は[注意点](../setup.md#注意点)
+- **Homebrew の依存に `python@3.x` が入ると、OS 全体で日本語が打てなくなることがある**。症状と対処は[注意点](../extra/setup.md#注意点)
 
 ### brew の確認
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 10 に対応する。
+正本の[Neovim](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#neovim)の手順 2 の補足。
 
 - Neovim の依存は `libuv` / `lpeg` / `luajit` / `luv` / `tree-sitter` / `unibilium` / `utf8proc`。どれもボトルで降りる。`tree-sitter` はライブラリで、treesitter が使う CLI (`tree-sitter`) は Mason が入れる
 
 ### Neovim の版
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 11 に対応する。
+正本の[Neovim](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#neovim)の手順 2 と、[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 6 の補足。
 
 - LazyVim 自身の下限は 0.11.2 (`:checkhealth lazyvim` の `Using Neovim >= 0.11.2`)
 - Neovide で IME の未確定文字列を表示する機能 (`lua/config/ime_preedit.lua`) も 0.12 以上が要る
@@ -68,16 +68,16 @@
 
 ### フォントと端末
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 12 に対応する。
+正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の前提 (setup-notes の shell-terminal.md の「HackGen Console NF」) の補足。
 
 - `lua/config/options.lua` の `guifont` (`HackGen Console NF:h12`) が効くのは Neovide などの GUI クライアントだけ。端末では端末側のフォント設定で決まる
 - 別の Nerd Font を使うなら、端末の設定と `guifont` の両方を書き換える
 - Neovim 側の `ambiwidth` は既定 (single) のままにしてある。**端末側だけを wide にすると、`○` `±` `①` などを含む行の桁が丸ごとずれる** (理由は `lua/config/options.lua` のコメント)
-- cask の展開には `unzip` が要る (この節の手順 3 で入れた)
+- cask の展開には `unzip` が要る (この項の手順 1 で入れる)
 
 ### 入力ソースを 2 つとも登録する理由
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 13 に対応する。
+正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 7 の補足。
 
 - IME 連携 (`lua/config/ime.lua`) は、ibus の global engine を `anthy` (日本語) と `xkb:us::eng` (英数) の間で切り替える。どちらも GNOME の入力ソースに登録しておかないと、gnome-shell が管理外のエンジンを巻き戻す
 - 先頭の `export` は tmux の中で貼るときのため。tmux の中では `DBUS_SESSION_BUS_ADDRESS` が無いことがあり、そのとき `gsettings` は既定値しか読めず、書き込みも黙って効かない
@@ -88,7 +88,7 @@
 
 ### Anthy のキーの書き換え方
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 14 に対応する。
+正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 8・9 の補足。
 
 - `on_off` は Anthy の中のひらがなと英字 (直接入力) を切り替えるキー。既定は `['Zenkaku_Hankaku', 'Ctrl+space', 'Ctrl+J']`
 - 残したままだと `Ctrl+J` が Anthy に食われて Neovim の `<C-j>` が届かない。Anthy の中の切り替えは D-Bus から見えないので、lualine の表示も実際とずれる
@@ -96,19 +96,19 @@
 
 ### <code>lazy-lock.json</code> を戻してから restore する理由
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 16 に対応する。
+正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 10 の補足。
 
 - lazy.nvim は起動時に、足りないプラグインを `lazy-lock.json` の版で入れる。ただし初回は導入が何回かに分かれて走る
 - 1 回目は LazyVim などの分だけを入れ、その時点で導入済みのものだけで `lazy-lock.json` を書き直す。そのため、2 回目以降に入るプラグインは記録の版ではなく最新になる
 - `restore` の `!` は、終わるまで待ってから `+qa` に進ませるため。付けないと、取得の途中で `+qa` が終了させる
 - 記録にある 39 個のうち render-markdown.nvim は無効にしてあるので、入るのは 38 個
-- headless では画面が無いので `VeryLazy` が発火しない。treesitter のパーサー・Mason のツールの導入と、`lua/config/autocmds.lua` (IME 連携・CJK スペル・Markdown の conceal) は、この節の手順 17 の起動で動く
+- headless では画面が無いので `VeryLazy` が発火しない。treesitter のパーサー・Mason のツールの導入と、`lua/config/autocmds.lua` (IME 連携・CJK スペル・Markdown の conceal) は、この項の手順 11 の起動で動く
 - `nvim --headless "+Lazy! sync" +qa` は update を含むので、`lazy-lock.json` より新しい版に上げてしまう。揃えるときは使わない
 - 運用の方針は [README の lazy-lock.json の運用](../../README.md#lazy-lockjson-の運用)
 
 ### 初回起動で入るもの
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 17 に対応する。
+正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 11 の補足。
 
 - ファイルを開くのは、LSP のサーバーがファイルを開いたとき (`LazyFile`) に初めて入るため
 - Mason が入れるのは 11 個: `bash-language-server` / `json-lsp` / `lua-language-server` / `markdownlint-cli2` / `marksman` / `shellcheck` / `shfmt` / `stylua` / `taplo` / `tree-sitter-cli` / `yaml-language-server`
@@ -120,7 +120,7 @@
 
 ### <code>checkhealth</code> の読み方
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 18 に対応する。
+正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 12 の補足。
 
 - `fzf` の WARNING は無視してよい。ピッカーは snacks.nvim の Lua 実装で、fzf を呼ばない
 - `mason.nvim` を先に読み込むのは、Mason の `bin` が PATH に入るのが Mason を読み込んだときだけだから。読み込まないと `` ERROR `tree-sitter (CLI)` is not installed `` が出る
@@ -130,7 +130,7 @@
 
 ### 機能の確かめ方
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 19 に対応する。
+正本の[LazyVim の日本語検索・整形・IME 連携を確かめる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の日本語検索整形ime-連携を確かめる)の手順 1 の補足。
 
 - 日本語検索は Migemo (luamigemo) で、ローマ字のまま日本語にマッチする。辞書は同梱なのでネットワークは要らない
 - 英単語や空白・記号を含む入力はそのまま検索する (ローマ字として読めるときだけ変換する)
@@ -141,11 +141,11 @@
 
 ### Windows の外部コマンド
 
-元の説明は [Windows 11 に導入する (1 度だけ)](../setup.md#windows-11-に導入する-1-度だけ)の手順 6 に対応する。
+正本の[Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 5 の補足。
 
 - `zenhan` / `neovim` / `ripgrep` / `fd` / `gcc` / `nodejs` は scoop の `main` バケット、`vcredist2022` / `lazygit` は `extras` にある (バケットの定義で確認)
 - `curl` と `tar` は Windows 11 が `C:\Windows\System32` に同梱している
-- scoop の `neovim` は VC++ のランタイム (`VCRUNTIME140.dll`) を同梱しない。`extras/vcredist2022` の提案だけでは自動導入されないため、この手順で先に入れて揃える ([注意点](../setup.md#注意点))
+- scoop の `neovim` は VC++ のランタイム (`VCRUNTIME140.dll`) を同梱しない。`extras/vcredist2022` の提案だけでは自動導入されないため、この手順で先に入れて揃える ([注意点](../extra/setup.md#注意点))
 - ランタイムは `System32\vcruntime140.dll` が無いときだけ入れる。ほかのアプリや winget (`Microsoft.VCRedist.2015+.x64`) で入れてある PC で `vcredist2022` を入れると、x64・x86 の 2 つのインストーラーの UAC が余計に出るため
   - 見るのはファイルの有無だけで、版は見ない
   - `nvim.exe` は x64 なので、64 ビットの PowerShell (既定) で `System32` を見る。32 ビットの PowerShell では `System32` が `SysWOW64` に読み替えられ、x86 のランタイムを見てしまう
@@ -161,7 +161,7 @@
 
 ### 拡張がしていること
 
-元の説明は [GNOME の上部バーを IME 連携に合わせる (任意)](../setup.md#gnome-の上部バーを-ime-連携に合わせる-任意)の手順 4 に対応する。
+正本の[LazyVim の IME 連携に GNOME の上部バーを合わせる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)の補足。
 
 - GNOME Shell 49.4 の `ui/status/keyboard.js` は、自分で入力ソースを切り替えたとき (`activateInputSource()`) だけ「今の入力ソース」を書き換える。`misc/ibusManager.js` は、ibus の `GlobalEngineChanged` を受けても engine の名前を控えるだけ
 - 拡張は同じシグナルを受け、今の入力ソースが engine と違えば、`InputSourceManager` の `_currentInputSourceChanged()` (内部の関数) で今の入力ソース・上部バーの表示・Super+Space の順番 (MRU) を更新する
@@ -172,22 +172,22 @@
 
 ### トークンの置き場所
 
-元の説明は [GitLab プレビューのトークンを設定する (任意)](../setup.md#gitlab-プレビューのトークンを設定する-任意)の手順 3 に対応する。
-
-元の説明は [GitLab プレビューのトークンを設定する (任意)](../setup.md#gitlab-プレビューのトークンを設定する-任意)の手順 1 に対応する。
+正本の[LazyVim の GitLab プレビューを設定する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを設定する)の手順 1 の補足。
 
 - `~/.bashrc` は平文。ホームディレクトリは自分だけが読める (0700) ので、ほかのユーザーからは読めない
 - GNOME から起動する GUI のアプリ (Neovide など) は `~/.bashrc` を読まない。そちらでも使うなら、`~/.config/environment.d/gitlab.conf` に `GITLAB_TOKEN=…` の形で書き、ログインし直す
 - 名前は GitLab の CLI (glab) と同じにしてある
 
-### トークンの置き場所
+### Windows 11 のトークンの置き場所
+
+正本の[Windows 11 で LazyVim の GitLab プレビューを設定する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の-gitlab-プレビューを設定する)の手順 2 の補足。
 
 - ユーザーの環境変数は、レジストリ (`HKCU\Environment`) に平文で入る。ほかのユーザーからは読めない
 - 設定した後に起動したアプリ (端末・スタートメニューから開く Neovide) にだけ渡る。開いたままの端末には渡らない
 
 ### 仕組みと、手元から Neovim への向き
 
-元の説明は [SSH 越しのヤンクを手元のクリップボードに送る (任意)](../setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 2 に対応する。
+正本の[LazyVim のヤンクを SSH 越しに手元へ送る](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のヤンクを-ssh-越しに手元へ送る)の手順 2 の補足。
 
 - ヤンクや削除のたびに、Neovim が OSC 52 (中身を base64 にしたエスケープシーケンス) を画面に書き、WezTerm がそれを手元のクリップボードに入れる。SSH は画面の出力として運ぶだけ
 - LazyVim は SSH のシェルでは `clipboard` を空にするので、そのままでは `yy` が手元に入らない (WezTerm の nightly なら、`"+yy` は入る)
@@ -198,7 +198,6 @@
 
 ### 選択した方針
 
-
 **Neovim の入手経路** (Linux):
 
 | 経路 | 状況 | 採否 |
@@ -207,20 +206,21 @@
 | EPEL の `neovim` | 0.10.1。0.12 に届かない | 不採用 |
 | 公式リリースの tar.gz | `nvim-linux-x86_64.tar.gz` / `nvim-linux-arm64.tar.gz` を展開して PATH を通す | 不採用 (更新が手作業) |
 | AppImage | **FUSE が要る**。FUSE の無い環境では `fuse: device not found` で起動しない | 不採用 |
+
 - **パッケージマネージャ**: Windows は scoop を使う (管理者権限が要らず、`%USERPROFILE%\scoop` に収まる)
   - winget や手動のインストールでもよいが、その場合は各コマンドが PATH に載っていることだけ確かめる
   - この設定はコマンドの場所をハードコードせず、`executable()` で PATH を見て機能を出し入れする
 - **変数を置かない**: 以前の版は clone 先と URL を変数にしていたが、どちらも変える必要が無い
   - Neovim は既定の場所しか読まないので、clone 先の変数を変えても読み込み先は変わらなかった
-- **初回は headless で入れて、`lazy-lock.json` を戻してから restore する**: 初回の導入が lock を書き換えるため ([AlmaLinux 導入の手順 16](../setup.md#almalinux-10-に導入する-1-度だけ) の補足)
+- **初回は headless で入れて、`lazy-lock.json` を戻してから restore する**: 初回の導入が lock を書き換えるため ([LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 10 の補足)
   - 画面を開く前に揃えるので、初回起動からほかのマシンと同じ版で動く
-- **入力ソースは `us` と `anthy` に固定する**: IME 連携が英数を `xkb:us::eng` に固定しているため ([AlmaLinux 導入の手順 13](../setup.md#almalinux-10-に導入する-1-度だけ) の補足)
+- **入力ソースは `us` と `anthy` に固定する**: IME 連携が英数を `xkb:us::eng` に固定しているため ([LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 7 の補足)
 - **フォントは Linux では Homebrew の cask にする**: zip を落として `~/.local/share/fonts` に置く手作業が 1 行になり、`brew upgrade --cask` で上がる。Windows には同じ手段が無いので手で入れる
 - **動作確認は試験用のファイルで行う**: `/tmp` の Markdown 1 つで、LSP の導入の引き金・日本語検索・整形の 3 つを確かめられる
 - **GitLab プレビューの設定は環境変数にする**: 名前は GitLab の CLI (glab) と同じ `GITLAB_TOKEN` / `GITLAB_HOST`
   - この設定のファイル (git で追跡し、ほかのマシンにも配る) にトークンを書かないため
-  - トークンと URL は文書に書かず、貼った後に入力させる ([トークンの節](../setup.md#gitlab-プレビューのトークンを設定する-任意))
-- **SSH 越しのクリップボードは OSC 52 にし、向きは Neovim → 手元だけにする** ([SSH の節](../setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)): 端末が運ぶので、手元にも AlmaLinux 10 にもソフトを足さずに済む
+  - トークンと URL は文書に書かず、貼った後に入力させる ([LazyVim の GitLab プレビューを設定する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを設定する))
+- **SSH 越しのクリップボードは OSC 52 にし、向きは Neovim → 手元だけにする** ([LazyVim のヤンクを SSH 越しに手元へ送る](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のヤンクを-ssh-越しに手元へ送る)): 端末が運ぶので、手元にも AlmaLinux 10 にもソフトを足さずに済む
   - X11 転送 (`ssh -X` と xclip) は、手元に X サーバーが要る。lemonade などの中継は、転送したポートを同じサーバーのほかのユーザーも使える
   - 手元 → Neovim の向きには OSC 52 の読み出しが要るが、WezTerm (nightly を含む) と Windows Terminal は応えない。端末の貼り付けで足りるので扱わない
   - Neovim が OSC 52 を自動で選ぶのは `clipboard` が空のときだけで、`"+y` のように明示したときしか入らない。`y` でも入れるため、`lua/config/options.lua` で明示して `unnamedplus` にする
