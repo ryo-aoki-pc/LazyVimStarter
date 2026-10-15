@@ -1,6 +1,6 @@
 -- GitLab プレビューの GitLab 側: 送り先の決定、git remote の解析、Markdown API の呼び出し。
 --
--- トークンの扱い (変えるときは README と docs/setup.md も直す):
+-- トークンの扱い (変えるときは README と setup-notes の neovim.md の GitLab プレビューの項も直す):
 --  - 本文を送るのは GITLAB_TOKEN があるときだけ。無ければ呼ぶ側 (init.lua) が何も送らない
 --  - 送り先は GITLAB_HOST (glab と同じ名前)、無ければ gitlab.com だけ。git の remote のホスト名からは
 --    推測しない (名前に gitlab を含む無関係なホストへ、トークンと本文を送ってしまわないように)

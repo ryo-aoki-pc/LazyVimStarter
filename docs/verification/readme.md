@@ -20,7 +20,7 @@
   (もう一度押せば揃う)。`<C-j>` は nvim が直接切り替えるので常に意図どおり動く。
   なお nvim を抜けた時点では上記の復帰処理で必ず整合が取れるため、OS 側の切替が
   壊れたままになることはない。
-  GNOME 49 では、[docs/setup.md の上部バーの節](../setup.md#gnome-の上部バーを-ime-連携に合わせる-任意)で
+  GNOME 49 では、[docs/setup.md の上部バーの節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gnome-の上部バーを-ime-連携に合わせる-任意)で
   GNOME Shell の拡張 (`gnome-shell/ibus-engine-follow@ryo-aoki-pc.github.com`) を入れると、上部バーと
   Super+Space の順番が nvim の切り替えに付いてくるので、このずれは起きない。
 
