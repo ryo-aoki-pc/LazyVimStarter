@@ -147,6 +147,9 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
     内部リストの所属・本文が変わる修正は除外する。構文木の構造が変わる修正と GitLab の参照を変える修正は当てない。
     `#123` はどの設定でも見出しにしない。整形する対象は `lua/plugins/lang-markdown.lua` の
     `format_fixes` で選ぶ (診断はそのまま)。ルールごとの例は [GLFM 整形器のルール一覧](docs/reference/glfm-format.md) にある。
+    埋め込んだ HTML のブロック (`<table>`・`<details>` など) も、js-beautify でタグの入れ子に合わせて字下げする
+    (`format_fixes` の `html`。既定で有効)。HTML の中の Markdown (`<details>` の本文など) と空行は変えず、
+    整形の前後で Comrak の描画が変わらないブロックだけを直す。
     保存時と `<leader>cf` で動き、診断を待たずに整形できる。
     Markdown を開くと、依存を読み込んだ整形用の node を 1 つ先に起動しておき (約 85 MB)、保存の待ち時間を縮める
     (結果は同じ。使わないときは `lang-markdown.lua` の `format_spare = false`)。
@@ -191,7 +194,7 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   `gltoc` (`[[_TOC_]]`)・`glnote` / `gltip` / `glimportant` / `glwarning` / `glcaution` (アラート)・`gldetails` (折りたたみ)・
   `glmath` / `glimath` (数式)・`glmermaid`・`glplantuml`・`glquote` (`>>>`)・`gladd` / `gldel` (`{+ +}` / `{- -}`)・
   `glna` (`- [~]`)・`glfn` / `glfndef` (脚注)・`glfront` (front matter)・`glinclude`・`glcolor` (色見本)・`gldl` (定義リスト)。
-  `gldetails` はインライン HTML なので、markdownlint の MD033 に当たる
+  `gldetails` はインライン HTML なので、markdownlint の MD033 に当たる (`<summary>` は保存の整形と同じく 2 つ字下げする)
 - **記法の記号を隠さない** — LazyVim 既定の `conceallevel=2` では、コードフェンスの行・
   インラインコードの `` ` ``・強調の `*` `_`・リンクの URL などがカーソル行以外で隠れる。
   記法をそのまま見て書けるよう、markdown バッファでは常に表示する (`lua/config/autocmds.lua`)。

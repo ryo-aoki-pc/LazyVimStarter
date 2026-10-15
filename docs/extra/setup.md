@@ -196,6 +196,7 @@
 - **ファイルピッカーが空のまま**: `fd` も `rg` も無い。Linux には `find` へのフォールバックがあるが、Windows には無い
 - **保存しても Markdown が整形されない / lint が出ない**: Node.js 22 以上と npm が必要
   - 整形用の依存は `:GlfmFormatInstall` で導入する。設定を取り込んで lock ファイルが変わったときも入力する
+  - `HTML の整形器 (js-beautify) を読み込めません` と出たら、HTML の整形を足した設定を取り込んだ後に `:GlfmFormatInstall` を入力していない。入力すると直る (HTML のブロックの無い文書は、入力する前も整形される)
   - lint の診断用は `:Mason` で状態を見て、`:MasonInstall markdownlint-cli2` で入れ直す
   - `:ConformInfo` を開く。`Formatter 'glfm_markdownlint' timeout` は整形の時間切れで、ツールの未導入とは区別する
   - Markdown / MDX の整形上限は 10 秒。ほかのファイルは既定の 3 秒
