@@ -552,7 +552,24 @@ function semanticSnapshot(source, parse) {
 function literalView(source, parse) {
   const lines = linesOf(source);
   const nodes = parse(parsedText(source, lines).text);
-  const shape = (index) => [nodeType(nodes[index]), childIndices(nodes, index).map(shape)];
+  // ノードの型と行の範囲の木。修正の前後で同じなら、ブロックの構造 (どの行がどのブロックに入るか) も同じ。
+  const shape = (index) => {
+    const position = nodes[index].data.sourcepos;
+    return [nodeType(nodes[index]), position?.start?.line ?? 0, position?.end?.line ?? 0, childIndices(nodes, index).map(shape)];
+  };
+  // リテラルを含む葉のブロック (段落・見出し・表・コードブロック・HTML のブロック) の行の範囲。
+  // 表のセルは同じ行を分け合うので、表の全体を 1 つとみなす。葉のブロックより先に入れ物に着けば null。
+  const unitOf = (index) => {
+    for (let node = index; node !== undefined; node = nodes[node].parent) {
+      const type = nodeType(nodes[node]);
+      if (type === "Paragraph" || type === "Heading" || type === "Table" || type === "CodeBlock" || type === "HtmlBlock") {
+        const position = nodes[node].data.sourcepos;
+        return [position.start.line, position.end.line];
+      }
+      if (type !== "TableCell" && type !== "TableRow" && (containers.has(type) || type === "Document")) return null;
+    }
+    return null;
+  };
   const literals = [];
   for (let index = 0; index < nodes.length; index++) {
     const type = nodeType(nodes[index]);
@@ -562,6 +579,7 @@ function literalView(source, parse) {
       start: sourceOffset(source, lines, position.start, false),
       end: sourceOffset(source, lines, position.end, true),
       value: JSON.stringify(canonicalNode(nodes, index)) + (type === "Math" ? sourceSlice(source, lines, position) : ""),
+      unit: unitOf(index),
       // 文書の直下のフェンスのコードブロック (入れ物の接頭辞が無い) の行の範囲と、中身の行の範囲 (フェンスの行を除く)。
       // 中身は、この行だけを解析しても同じになる。
       block: type === "CodeBlock" && nodes[index].data.value.CodeBlock.fenced &&
@@ -585,10 +603,13 @@ function blockLiteral(text, parseBlock) {
 
 // 保護範囲に掛かる修正のまとめのうち、緩い検査で必ず落ちると分かるもの (全文を解析して確かめなくてよいもの)。
 // 1. GitLab の記法の原文と並びが最初の文書と変わるまとめ (正規表現の照合だけで分かる)
-// 2. コード・数式・HTML の中身を変えるまとめ。残りのまとめを全部いっしょに当てた文書を 1 回だけ解析し、ノードの型の木が
-//    今の文書と同じで、あるリテラルのノードに掛かるのがそのまとめだけで、そのノードの中身が変わっていれば、そのまとめを外す。
-//    構造が同じなら、リテラルの中身はそのノードの行と入れ物だけで決まり、ほかのまとめはほかのリテラルの中しか変えないので、
-//    単独で当てても同じ中身になる (緩い検査は中身を比べるので、単独でも落ちる)
+// 2. コード・数式・HTML の中身を変えるまとめ。修正がすべて 1 つのリテラルの範囲の中にあって、行を増やしも減らしもしない
+//    まとめのうち、リテラルを含む葉のブロック (段落・見出し・表・コードブロック・HTML のブロック) の行がほかのどのまとめとも
+//    重ならないものを、いっしょに当てて 1 回だけ解析する。ノードの型と行の範囲の木が今の文書と同じで、そのリテラルの中身が
+//    変わっていれば、そのまとめを外す。ブロックの構造が同じなら、リテラルの中身はその葉のブロックの行だけで決まり、
+//    ほかのまとめはほかの葉のブロックの中しか変えないので、単独で当てても同じ中身になる (緩い検査は中身を比べるので、
+//    単独でも落ちる)。同じ段落の 2 つのコードスパンなどは、片方の修正がもう片方の範囲を変えうる (バッククォートの
+//    対応が変わる) ので、いっしょに当てない
 // 3. 文書の直下のフェンスのコードブロックの、中身の行だけを書き換えるまとめ (行を増やしも減らしもしない。同じブロックに
 //    複数のまとめが掛かるときも)。そのブロックの行だけに当てて小さく解析し、中身が変われば外す。ブロックの行だけを解析した
 //    中身が全文の中の中身と同じことを先に確かめる。フェンスの行はそのままなので、中身の行が変われば全文の中でもブロックの
@@ -608,7 +629,6 @@ function doomedProtectedGroups(groups, current, originalAtoms, parse, parseBlock
   if (!rest.length) return doomed;
   const before = literalView(current, parse);
   const touched = new Map();
-  const owners = new Map();
   for (const group of rest) {
     const indices = new Set();
     for (const fix of group) {
@@ -618,7 +638,6 @@ function doomedProtectedGroups(groups, current, originalAtoms, parse, parseBlock
       });
     }
     touched.set(group, indices);
-    for (const index of indices) owners.set(index, (owners.get(index) || 0) + 1);
   }
   // 3. 文書の直下のコードブロックの行だけで確かめる。
   const blockValues = new Map();
@@ -646,9 +665,30 @@ function doomedProtectedGroups(groups, current, originalAtoms, parse, parseBlock
     }
     if (blockLiteral(edited, parseBlock) !== blockValues.get(index)) doomed.add(group);
   }
-  // 2. 残りのうち、リテラルのノード 1 つだけに掛かるまとめをいっしょに当てて、1 回だけ解析する
-  //    (ほかのまとめは混ぜない。リテラルの外を変える修正が、入れ物の字下げなどを変えないように)。
-  const remaining = rest.filter((group) => !doomed.has(group) && touched.get(group).size === 1);
+  // 2. 残りのうち、修正がすべて 1 つのリテラルの範囲の中にあるまとめを選ぶ (リテラルの外を変える修正は、
+  //    リストの印の後の空白などで入れ物の字下げを変え、ほかのブロックの中身を変えうるので混ぜない)。
+  const units = new Map();
+  for (const group of rest) {
+    if (doomed.has(group) || touched.get(group).size !== 1) continue;
+    const [index] = touched.get(group);
+    const literal = before.literals[index];
+    if (!literal.unit || !group.every((fix) => {
+      const [start, end] = fixSpan(fix, before.lines[fixPosition(fix)[0] - 1]);
+      return (end > start ? literal.start <= start && end <= literal.end : literal.start < start && start < literal.end) &&
+        fix.fixInfo.deleteCount !== -1 && !/[\r\n]/u.test(fix.fixInfo.insertText || "");
+    })) continue;
+    units.set(group, literal.unit);
+  }
+  // 葉のブロックの行が重なるまとめ (同じ段落の 2 つのリテラルに掛かるものなど) は、どちらもいっしょに当てない。
+  const ordered = [...units].sort((a, b) => a[1][0] - b[1][0]);
+  const overlapping = new Set();
+  for (let i = 0; i < ordered.length; i++) {
+    for (let j = i + 1; j < ordered.length && ordered[j][1][0] <= ordered[i][1][1]; j++) {
+      overlapping.add(ordered[i][0]);
+      overlapping.add(ordered[j][0]);
+    }
+  }
+  const remaining = rest.filter((group) => units.has(group) && !overlapping.has(group));
   if (remaining.length < 2) return doomed;
   const after = literalView(applyFixes(current, remaining.flat().sort(descendingFix)), parse);
   if (before.shape !== after.shape || before.literals.length !== after.literals.length) return doomed;

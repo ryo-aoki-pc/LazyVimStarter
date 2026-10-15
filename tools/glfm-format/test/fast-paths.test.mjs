@@ -245,10 +245,11 @@ function assertStats(stats) {
 test("コードの中の MD038・MD010 が多数残っても既定の解析は 3 回以下", async (t) => {
   const rules = { MD010: { code_blocks: true }, MD038: true };
   await inProject(t, rules, async (project) => {
+    // コードスパンは 1 つの段落に 1 つずつ置く (同じ段落のリテラルに掛かるまとめは、1 つずつ全文の解析で確かめる)。
     const input = [
       "# コードの保護", "",
-      ...Array.from({ length: 6 }, (_, index) => `行${index}: \` a${index}\` と \`a${index} \``),
-      "", "```text", ...Array.from({ length: 6 }, (_, index) => `\tコード${index}`), "```", "",
+      ...Array.from({ length: 6 }, (_, index) => [`行${index}: \` a${index}\``, "", `行${index}: \`a${index} \``, ""]).flat(),
+      "```text", ...Array.from({ length: 6 }, (_, index) => `\tコード${index}`), "```", "",
     ].join("\n");
     const candidates = (await lintResults(input, rules)).filter((entry) => entry.fixInfo);
     for (const rule of ["MD038", "MD010"]) {
@@ -332,6 +333,17 @@ test("コードブロックのフェンスの行を変える修正は、ブロ�
     if (params.lines[0] === "\`\`\`" && params.lines[1] === "x") edit(1, 1, -1, "");`));
   const input = "```\nx\n```\nx\n";
   const expected = await formatMarkdown(input, { ...project, exhaustive: true });
+  assert.equal(await formatMarkdown(input, project), expected);
+});
+
+// レビューで見つかった反例 (Grok Build)。同じ段落の 2 つのコードスパンを別々のまとめが変えると、いっしょに当てたときだけ
+// バッククォートの対応が変わる。右のまとめ (中身は同じ x のまま) は単独なら当たる。
+test("同じ段落の 2 つのリテラルに掛かるまとめは、いっしょに当てた結果で判定しない", async (t) => {
+  const project = await customProject(t, customRule(`
+    if (params.lines[0] === "\`\`y\`\` \` x \` \` z") { edit(1, 7, 5, "\`x\`"); edit(1, 1, 1, ""); }`));
+  const input = "``y`` ` x ` ` z\n";
+  const expected = await formatMarkdown(input, { ...project, exhaustive: true });
+  assert.equal(expected, "``y`` `x` ` z\n", "近道なしでは、右のまとめだけが当たる");
   assert.equal(await formatMarkdown(input, project), expected);
 });
 
