@@ -137,7 +137,7 @@
 | [fd](https://github.com/sharkdp/fd) | ファイルピッカーと explorer | Windows で必須 / Linux では推奨 |
 | C コンパイラ (gcc または MSVC の cl) | treesitter のパーサーのビルド | 必須 |
 | tree-sitter CLI | treesitter のパーサーのビルド。PATH に無ければ LazyVim が Mason で入れる | 必須 (自動で入る) |
-| curl / tar / gzip / unzip | treesitter と Mason の取得・展開。curl は GitLab プレビューが GitLab の API を呼ぶのにも使う (8.3 以上) | 必須 (Windows 11 は同梱の curl と tar だけでよい。[Windows の外部コマンドの説明](../reference/setup.md#windows-の外部コマンド)) |
+| curl / tar / gzip / unzip | treesitter と Mason の取得・展開。curl は GitLab プレビューが GitLab の API を呼ぶのにも使う (8.3 以上) | 必須 (Windows 11 は同梱の curl と tar だけでよい。[Windows の外部コマンドの説明](../reference/setup.md#windows-11-で-lazyvim-の設定を導入する--手順-5-補足-windows-の外部コマンド)) |
 | [Node.js](https://nodejs.org/) 22 以上 (node + npm) | Mason の LSP・lint と、安全な Markdown 整形用依存 | 必須 |
 | Nerd Font ([HackGen Console NF](https://github.com/yuru7/HackGen)) | アイコン表示と `guifont` | 実質必須 (無いと記号が豆腐になる) |
 | ibus + ibus-anthy、`busctl` か `gdbus` | 日本語入力 (Linux)。global engine を切り替える | Linux で必須 |
@@ -198,7 +198,7 @@
 - **全角記号を含む行の桁がずれる**: Neovim の `ambiwidth` と、端末の East Asian Ambiguous の幅の設定が食い違っている
   - この設定は両方を narrow 側 (`single` / `treat_east_asian_ambiguous_width_as_wide=false`) に揃えてある。端末側だけを wide にしない
 - **`lazy-lock.json` が勝手に変わる**: `:Lazy sync` / `:Lazy update` は最新に上げる。揃えるだけなら `:Lazy restore`
-  - 初めてのマシンの初回起動でも変わる ([lock 復元の説明](../reference/setup.md#lazy-lockjson-を戻してから-restore-する理由))
+  - 初めてのマシンの初回起動でも変わる ([lock 復元の説明](../reference/setup.md#lazyvim-の設定を導入する--手順-10-補足-lazy-lockjson-を戻してから-restore-する理由))
 - **日本語のときに `<C-j>` で英数に戻らない (Linux)**: Anthy の `on_off` に `Ctrl+J` が残っていて、Neovim に届く前に Anthy の中のひらがなと英字が切り替わっている
   - 打った英字が、そのまま出たり「あ」になったりと、日本語の中で入力が揺れるのが特徴
   - AlmaLinux 導入の手順 7〜9 を Homebrew の `gsettings` で実行すると、dconf ではなく `~/.config/glib-2.0/settings/keyfile` に書かれて効かない

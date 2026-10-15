@@ -61,7 +61,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
   `:Lazy restore` で揃える)。`:Lazy sync` は update を含むので、揃えるだけのときは使わない。
 - **初回導入は `lazy-lock.json` を書き換える**。lazy.nvim の起動時の導入は何回かに分かれ、1 回目の後に
   導入済みの分だけで lock を書き直す (`lazy/manage/lock.lua` の `update()`) ため、後から入るプラグインが最新になる。
-  git で lock を戻してから `:Lazy restore` し直すと揃う (正本の「LazyVim の設定を導入する」の手順 10)。
+  git で lock を戻してから `:Lazy restore` し直すと揃う (正本の「LazyVim の設定を導入する」の手順 10、Windows 11 は「Windows 11 で LazyVim の設定を導入する」の手順 7)。
 - `checkhealth lazyvim` を headless で見るときは、先に `mason.nvim` を読み込む (Mason の `bin` が PATH に
   入るのは Mason を読み込んだときだけで、読み込まないと `tree-sitter (CLI)` が ERROR になる)。
 
@@ -167,7 +167,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
 ## 文書の置き場所
 
 - 導入・利用・更新の手順は正本に置き、README の「導入」の表から正本の項へ直接リンクする (手順書の先頭やカテゴリの見出しへはリンクしない)。執筆規則は setup-notes の `docs/dev/writing-rules.md`
-- `docs/extra/setup.md` はロールバック・必要なもの一覧・注意点、`docs/reference/setup.md` は正本の各手順の背景 (各節の冒頭に正本の項と手順番号を書く)、`docs/verification/` は検証記録 (環境・日付・対象コミット・実出力・未確認事項)
+- `docs/extra/setup.md` はロールバック・必要なもの一覧・注意点、`docs/reference/setup.md` は正本の各手順の背景 (見出しは `### <項> / 手順 N: 補足: <題>`)、`docs/verification/` は検証記録 (環境・日付・対象コミット・実出力・未確認事項)
 - `docs/dev/architecture.md` は設計、`docs/dev/check.md` は変更後の確認 (整形器の回帰テスト)、`docs/reference/glfm-format.md` は整形器のルール一覧 (`tools/glfm-format/test/reference.test.mjs` がこの文書の例を検査する)。`docs/verification/claude.md` は旧 CLAUDE.md から移した記録
 - 正本の手順番号が変わったら、参考資料と extra の手順番号を付け替える。setup-notes から張られている見出し (extra の「ロールバック」「必要なもの一覧」「注意点」など) は名前を変えない
 - 案内だけになった文書・節は消し、旧パスと移動先を setup-notes の集約対応表に足す。消すときは参照元のリンクを付け替える (検証記録は、削除前の固定コミットの URL にする)

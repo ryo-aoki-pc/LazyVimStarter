@@ -11,13 +11,13 @@ Markdown (GLFM) 執筆を強化した Neovim 設定。
 
 | | AlmaLinux 10 | Windows 11 |
 | --- | --- | --- |
-| 本体 | [Neovim](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#neovim) | [Windows 11 で Neovim を入れる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-neovim-を入れる) |
-| この設定 | [LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する) |
+| 本体とこの設定 | [Neovim](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#neovim) (手順 3 で「LazyVim の設定を導入する」も通す) | [Windows 11 で Neovim を入れる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-neovim-を入れる) (手順 4 で「Windows 11 で LazyVim の設定を導入する」も通す) |
+| この設定だけ (本体が入っているとき) | [LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する) |
 | 安全な Markdown 整形 | [LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する) | [Windows 11 で LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の安全な-markdown-整形を導入する) |
-| 動作の確認 | [LazyVim の日本語検索・整形・IME 連携を確かめる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の日本語検索整形ime-連携を確かめる) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 10 |
+| 動作の確認 | [LazyVim の日本語検索・整形・IME 連携を確かめる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の日本語検索整形ime-連携を確かめる) (この設定と安全な整形の後、再起動してから) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 10 (その項を最後まで通したなら済んでいる) |
 | ほかのマシンの変更を取り込む | [LazyVim の設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定とプラグインの版を揃える) | [Windows 11 で LazyVim の設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定とプラグインの版を揃える) |
 | 更新 | [LazyVim の本体・外部コマンド・プラグインを更新する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の本体外部コマンドプラグインを更新する) | [Windows 11 で LazyVim の本体・外部コマンド・プラグインを更新する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の本体外部コマンドプラグインを更新する) |
-| 戻す | [LazyVim の設定のロールバック](docs/extra/setup.md#ロールバック)の手順 1〜4 | 同じ節の手順 5〜7 |
+| 戻す | [ロールバック](docs/extra/setup.md#ロールバック)の手順 1〜4 | 同じ節の手順 5〜7 |
 
 - 任意: [GitLab プレビューを設定する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを設定する) (Windows 11 は[同じ名前の項](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の-gitlab-プレビューを設定する))・
   [カーソル色を tmux で使う](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のカーソル色を-tmux-で使う)・
@@ -392,7 +392,7 @@ wl-clipboard が要る (どれも任意。無ければその機能だけが使�
 (別マシンでは `:Lazy restore` で同じバージョンに揃う)。
 `:Lazy sync` は update を含むので、揃えるだけのときは使わない。
 初めてのマシンでは初回の導入が lock ファイルを書き換えるので、
-[正本の LazyVim 導入の手順 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) の形で揃える。
+正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 10 (Windows 11 は[Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 7) の形で揃える。
 
 ## 文書
 
