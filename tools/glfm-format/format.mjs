@@ -562,9 +562,14 @@ function literalView(source, parse) {
       start: sourceOffset(source, lines, position.start, false),
       end: sourceOffset(source, lines, position.end, true),
       value: JSON.stringify(canonicalNode(nodes, index)) + (type === "Math" ? sourceSlice(source, lines, position) : ""),
-      // 文書の直下のコードブロック (入れ物の接頭辞が無い) の行の範囲。中身は、この行だけを解析しても同じになる。
-      block: type === "CodeBlock" && nodeType(nodes[nodes[index].parent]) === "Document"
-        ? [position.start.line, position.end.line]
+      // 文書の直下のフェンスのコードブロック (入れ物の接頭辞が無い) の行の範囲と、中身の行の範囲 (フェンスの行を除く)。
+      // 中身は、この行だけを解析しても同じになる。
+      block: type === "CodeBlock" && nodes[index].data.value.CodeBlock.fenced &&
+        nodeType(nodes[nodes[index].parent]) === "Document"
+        ? {
+          lines: [position.start.line, position.end.line],
+          content: [position.start.line + 1, nodes[index].data.value.CodeBlock.closed ? position.end.line - 1 : position.end.line],
+        }
         : null,
     });
   }
@@ -583,12 +588,13 @@ function blockLiteral(text, parseBlock) {
 // 2. コード・数式・HTML の中身を変えるまとめ。残りのまとめを全部いっしょに当てた文書を 1 回だけ解析し、ノードの型の木が
 //    今の文書と同じで、あるリテラルのノードに掛かるのがそのまとめだけで、そのノードの中身が変わっていれば、そのまとめを外す。
 //    構造が同じなら、リテラルの中身はそのノードの行と入れ物だけで決まり、ほかのまとめはほかのリテラルの中しか変えないので、
-//    単独で当てても同じ中身になる (緩い検査は中身を比べるので、単独でも落ちる)。受け付けた修正は緩い検査を保つので、
-//    batch の途中で今の文書が変わっても判定は変わらない
-// 3. 文書の直下のコードブロックに掛かるまとめ (同じブロックに複数のまとめが掛かるときも)。そのブロックの行だけに当てて
-//    小さく解析し、中身が変われば外す。ブロックの行だけを解析した中身が全文の中の中身と同じことを先に確かめる。行の中身が
-//    変われば、全文の中でもブロックの中身が変わる (閉じのフェンスが変わっても、中身の行の並びが変わる)
+//    単独で当てても同じ中身になる (緩い検査は中身を比べるので、単独でも落ちる)
+// 3. 文書の直下のフェンスのコードブロックの、中身の行だけを書き換えるまとめ (行を増やしも減らしもしない。同じブロックに
+//    複数のまとめが掛かるときも)。そのブロックの行だけに当てて小さく解析し、中身が変われば外す。ブロックの行だけを解析した
+//    中身が全文の中の中身と同じことを先に確かめる。フェンスの行はそのままなので、中身の行が変われば全文の中でもブロックの
+//    中身が変わる (中身の行が閉じのフェンスになっても、全文の中のブロックの中身は短くなる)
 // どれにも当たらないまとめは、今までどおり 1 つずつ全文の解析で確かめる。
+// 判定は今の文書 (current) に対するもの。使う前に今の文書が変われば、判定し直す (近くの文字が変わると結果が変わりうる)。
 function doomedProtectedGroups(groups, current, originalAtoms, parse, parseBlock) {
   const doomed = new Set();
   const rest = [];
@@ -621,14 +627,16 @@ function doomedProtectedGroups(groups, current, originalAtoms, parse, parseBlock
     if (indices.size !== 1) continue;
     const [index] = indices;
     const block = before.literals[index].block;
-    if (!block || !group.every((fix) => fixPosition(fix)[0] >= block[0] && fixPosition(fix)[0] <= block[1])) continue;
-    const blockText = before.lines.slice(block[0] - 1, block[1]).map((line) => line.content + line.ending).join("");
+    if (!block || !group.every((fix) => fixPosition(fix)[0] >= block.content[0] && fixPosition(fix)[0] <= block.content[1] &&
+        fix.fixInfo.deleteCount !== -1 && !/[\r\n]/u.test(fix.fixInfo.insertText || ""))) continue;
+    const [first, last] = block.lines;
+    const blockText = before.lines.slice(first - 1, last).map((line) => line.content + line.ending).join("");
     if (!blockValues.has(index)) blockValues.set(index, blockLiteral(blockText, parseBlock));
     if (blockValues.get(index) !== before.literals[index].value) continue;
     const shifted = group.map((fix) => ({
       ...fix,
-      lineNumber: fixPosition(fix)[0] - block[0] + 1,
-      fixInfo: { ...fix.fixInfo, lineNumber: fixPosition(fix)[0] - block[0] + 1 },
+      lineNumber: fixPosition(fix)[0] - first + 1,
+      fixInfo: { ...fix.fixInfo, lineNumber: fixPosition(fix)[0] - first + 1 },
     })).sort(descendingFix);
     let edited;
     try {
@@ -696,9 +704,9 @@ function applyFixes(source, errors) {
       errors.some((error) => /\r/u.test(error.fixInfo.insertText || ""))) {
     return errors.reduce((text, error) => applyFix(text, error), source);
   }
-  const ending = source.includes("\r\n") ? "\r\n" : "\n";
+  let ending = source.includes("\r\n") ? "\r\n" : "\n";
   const lines = linesOf(source).map(({ content, ending: own }) => ({ content, ending: own }));
-  // 改行の数が 0 になると、preferredEnding は LF を返す。
+  // 改行の数が 0 になると、preferredEnding は LF を返す。その後に足す改行は LF になり、文書は LF だけになる。
   let endings = lines.filter((line) => line.ending).length;
   for (const error of errors) {
     const fix = error.fixInfo;
@@ -720,7 +728,8 @@ function applyFixes(source, errors) {
       lines.splice(lineNumber - 1, 1);
       continue;
     }
-    const insertion = (fix.insertText || "").replace(/\n/gu, endings > 0 ? ending : "\n");
+    if (!endings) ending = "\n";
+    const insertion = (fix.insertText || "").replace(/\n/gu, ending);
     const parts = linesOf(line.content.slice(0, column - 1) + insertion + line.content.slice(column - 1 + count) + line.ending);
     // linesOf は改行で終わる文字列の後ろに空の行を足すので、元の行の分だけに戻す。
     if (parts.length > 1 && !parts.at(-1).content && !parts.at(-1).ending) parts.pop();
@@ -1023,15 +1032,22 @@ export async function formatMarkdown(source, options = {}) {
         accept(run, runMode);
         run = [];
       };
-      const protectedGroups = new Set(batch.filter((group) => group.some((fix) => touchesProtected(fix, projected))));
-      // 緩い検査で必ず落ちると分かる保護範囲のまとめは、全文を解析して確かめない (近道 G)。
-      const doomed = exhaustive || !protectedGroups.size
-        ? new Set()
-        : doomedProtectedGroups([...protectedGroups], current, originalOf().atoms, parse, parseBlock);
+      const protectedList = batch.filter((group) => group.some((fix) => touchesProtected(fix, projected)));
+      const protectedGroups = new Set(protectedList);
+      // 緩い検査で必ず落ちると分かる保護範囲のまとめは、全文を解析して確かめない (近道 G)。判定は今の文書に対するものなので、
+      // 先の修正が当たって今の文書が変わったら、残りのまとめを判定し直す。
+      let doomed = new Set();
+      let judged;
+      let protectedIndex = 0;
       for (const group of batch) {
         const mode = fixMode(group[0]);
         if (protectedGroups.has(group)) {
           flush();
+          if (!exhaustive && judged !== current) {
+            doomed = doomedProtectedGroups(protectedList.slice(protectedIndex), current, originalOf().atoms, parse, parseBlock);
+            judged = current;
+          }
+          protectedIndex++;
           if (!doomed.has(group)) accept([group], mode);
         } else {
           if (run.length && mode !== runMode) flush();

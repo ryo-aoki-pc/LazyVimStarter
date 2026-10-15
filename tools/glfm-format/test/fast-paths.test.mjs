@@ -295,3 +295,50 @@ test("修正候補も説明リストの印もない文書は解析が 0 回か 1
     assert.ok(exhaustive.parses >= 1, "exhaustive は修正候補がなくても解析する");
   });
 });
+
+// レビューで見つかった反例 (Codex)。カスタムルールで修正候補を出し、近道の有無で出力が同じことを確かめる。
+async function customProject(t, source) {
+  const cwd = await mkdtemp(path.join(tmpdir(), "glfm-fast-path-custom-"));
+  t.after(() => rm(cwd, { recursive: true, force: true }));
+  await writeFile(path.join(cwd, "custom-rule.cjs"), source);
+  await writeFile(path.join(cwd, ".markdownlint-cli2.jsonc"), JSON.stringify({
+    config: { default: false, "test-fast-path": true }, customRules: ["./custom-rule.cjs"],
+  }));
+  return { filename: path.join(cwd, "example.md"), cwd, runtimeDir };
+}
+
+const customRule = (body) => `module.exports = {
+  names: ["test-fast-path"],
+  description: "Fast path counterexample",
+  tags: ["test"],
+  parser: "none",
+  function(params, onError) {
+    const edit = (lineNumber, editColumn, deleteCount, insertText) => onError({ lineNumber, fixInfo: { lineNumber, editColumn, deleteCount, insertText } });
+    ${body}
+  }
+};\n`;
+
+test("先に当たった修正が GitLab の記法を動かしても、記法の判定は今の文書で行う", async (t) => {
+  const project = await customProject(t, customRule(`
+    if (params.lines[0] === "@user") { edit(1, 2, 4, " @user"); edit(1, 1, 1, "x"); }`));
+  const input = "@user\n";
+  const expected = await formatMarkdown(input, { ...project, exhaustive: true });
+  assert.equal(expected, "x @user\n", "近道なしでは、右の修正の後に左の修正も当たる");
+  assert.equal(await formatMarkdown(input, project), expected);
+});
+
+test("コードブロックのフェンスの行を変える修正は、ブロックの行だけで判定しない", async (t) => {
+  const project = await customProject(t, customRule(`
+    if (params.lines[0] === "\`\`\`" && params.lines[1] === "x") edit(1, 1, -1, "");`));
+  const input = "```\nx\n```\nx\n";
+  const expected = await formatMarkdown(input, { ...project, exhaustive: true });
+  assert.equal(await formatMarkdown(input, project), expected);
+});
+
+test("改行が全部消えた後の挿入は、逐次に当てたときと同じ LF になる", () => {
+  compareFixes("abc\r\n ", [
+    result(2, { editColumn: 1, deleteCount: -1, insertText: "" }),
+    result(1, { editColumn: 4, insertText: "\n" }),
+    result(1, { editColumn: 1, insertText: "\n" }),
+  ], "CRLF の改行が 0 になった後の 2 つの挿入");
+});
