@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { builtinRuleNames, defaultDisabledCategories, fixCategories, formatMarkdown } from "../format.mjs";
+import { builtinRuleNames, defaultDisabledCategories, fixCategories, formatMarkdown, htmlCategory } from "../format.mjs";
 
 // docs/reference/glfm-format.md の例を、書いてあるとおりに整形できるかを確かめる (文書と動作をずらさない)。
 const packageDir = fileURLToPath(new URL("../", import.meta.url));
@@ -28,19 +28,23 @@ function textOf(index) {
 const visible = (text) => text.replaceAll("␣", " ").replaceAll("⇥", "\t");
 
 // ### MDxxx の節ごとに、例 (整形前と整形後・変わらない) と markdownlint の設定を集める。
+// ## HTML のブロック の下の ### の節は、html:<見出し> の名前で集める。
 const sections = new Map();
 let table;
 let withoutFixes;
 {
   let section;
   let pending;
+  let html = false;
   for (const index of walk()) {
     const node = nodes[index];
     const type = typeOf(node);
-    if (type === "Table") table = index;
+    if (type === "Table" && table === undefined) table = index;
     if (type === "Paragraph" && textOf(index).startsWith("自動修正の無いルール:")) withoutFixes = textOf(index).match(/MD\d{3}/gu);
+    if (type === "Heading" && node.data.value.Heading.level === 2) html = textOf(index) === "HTML のブロック";
     if (type === "Heading" && node.data.value.Heading.level === 3) {
-      const id = textOf(index).match(/^MD\d{3}/u)?.[0];
+      const id = textOf(index).match(/^MD\d{3}/u)?.[0] ?? (html ? `html:${textOf(index)}` : undefined);
+      assert.ok(id && !sections.has(id), `見出し ${textOf(index)} はルールか HTML の節で、重ならない`);
       section = { id, config: {}, examples: [] };
       sections.set(id, section);
     }
@@ -84,6 +88,16 @@ test("every fixable rule has a section with at least one example", () => {
   for (const id of Object.values(fixCategories).flat()) {
     assert.ok(sections.get(id)?.examples.length, `${id} has an example in docs/reference/glfm-format.md`);
   }
+});
+
+test("the HTML block section shows the category and examples for tables, nested HTML, and Markdown inside HTML", () => {
+  const html = [...sections].filter(([id]) => id.startsWith("html:"));
+  assert.deepEqual(html.map(([id]) => id),
+    ["html:表", "html:入れ子の表", "html:セルの中の Markdown", "html:折りたたみ", "html:入れ物の中", "html:変えないもの"]);
+  for (const [id, section] of html) assert.ok(section.examples.length, `${id} has an example`);
+  assert.ok(html.flatMap(([, section]) => section.examples).some(({ input, expected }) => input !== expected),
+    "HTML の節に、整形で変わる例がある");
+  assert.equal(htmlCategory, "html");
 });
 
 test("every example in the reference formats exactly as documented with all markdownlint rules enabled", async (t) => {

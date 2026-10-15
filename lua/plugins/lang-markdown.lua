@@ -26,6 +26,7 @@ local disabled_rules = {
 --   emphasis_style: MD049 MD050 / code: MD014 MD038
 --   link_style: MD034 MD054 / link_text: MD039 / link_fragments: MD051
 --   tables: MD060 / proper_names: MD044 (名前を設定したときだけ働く)
+--   html: HTML のブロック (<table>・<details> など) をタグの入れ子に合わせて字下げする (js-beautify。markdownlint のルールではない)
 -- 分類とルール (既定で無効):
 --   heading_conversion: MD018 MD020 (# の後に空白を足す。有効でも #数字 は見出しにしない)
 --   emphasis_spaces: MD037 / reversed_links: MD011 / unused_definitions: MD053
