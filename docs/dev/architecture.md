@@ -133,15 +133,17 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
     CLI と結果が変わるため (状態を持つカスタムルールで実際に変わった)。設定・カスタムルールは要求のときに読むので、
     予備を起動した後の変更も次の保存で効く
   - conform の formatter は、バッファごとに設定を返す関数 (`glfm_format.conform_formatter`)。予備が使えるときは Lua の
-    formatter、使えないとき (予備が無い・起動の後に `format.mjs`・`spare.mjs`・依存の lock・node の実体・環境変数・
-    依存の場所が変わった) は、今までの CLI の設定をそのまま返す。Lua の formatter の結果とエラーの文言は、conform の job と
-    同じ規則で作る (行の分け方・末尾の改行・`Formatter '…' error: …`)
-  - 予備が要求を受け付けなかったとき (終了コード 86) は、残りの時間で CLI を走らせる。整形器そのものの失敗では
-    やり直さない (今と同じく原文のまま保存する)
+    formatter、使えないとき (予備が無い・待つ間に終わった・起動の後に `format.mjs`・`spare.mjs`・依存の lock と主な包みの
+    `package.json`・`exepath("node")` とリンクの先の実体・環境変数・依存の場所が変わった) は、今までの CLI の設定をそのまま
+    返し、次の保存のために予備を起動し直す。lock を変えない `node_modules` の中の書き換えは見ない。Lua の formatter の結果と
+    エラーの文言は、conform の job と同じ規則で作る (行の分け方・末尾の改行・`Formatter '…' error: …`)。cwd も job と同じく
+    Neovim のプロセスの cwd (`vim.uv.cwd()`) を渡す
+  - 予備が要求を受け付けなかったとき (終了コード 86) と、外からシグナルで止められたときは、残りの時間で CLI を走らせる。
+    整形器そのものの失敗ではやり直さない (今と同じく原文のまま保存する)
   - conform は Lua の formatter の子を止めないので、整形の上限 (`lang-markdown.lua` の `format_timeout_ms`) で予備を止め、
-    遅れた結果は当てない
-  - Markdown のバッファをすべて閉じたとき・`VimLeavePre`・`:GlfmFormatInstall` の間は予備を止める。予備を使わないときは
-    `lang-markdown.lua` の `format_spare = false`
+    conform と同じ `Formatter '…' timeout` を返す (非同期の整形が終わらないままにならないように)。遅れた結果は当てない
+  - Markdown のバッファをすべて閉じたとき・filetype を変えて Markdown のバッファが無くなったとき・`VimLeavePre`・
+    `:GlfmFormatInstall` の間は予備を止める。予備を使わないときは `lang-markdown.lua` の `format_spare = false`
   - 見送った案: 常駐 (上の理由)、V8 の起動スナップショット (Node 26.10 は自前のモジュールを読むと作る段階で止まり、
     依存を 1 つにまとめる道具が要る)、markdownlint を直接呼ぶ (減るのは約 40 ms で、設定の探し方の再実装が出力の差になる)、
     保存の後に整形する `format_after_save` (未整形の内容がいったんディスクに書かれ、`:wq` で待たされる)

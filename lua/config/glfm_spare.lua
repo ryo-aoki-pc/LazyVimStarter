@@ -39,22 +39,32 @@ local function has_markdown_buffer(except)
 end
 
 -- 予備を起動したときと、保存するときに比べる値。どれかが違えば、今の CLI と同じ結果にならないかもしれないので使わない。
--- 先に読み込む整形器と依存の中身、node の実体、環境変数 (PATH・NODE_OPTIONS など)、依存の場所。
-local function identity(node)
+-- 先に読み込む整形器と依存の中身、conform が起動するはずの node (exepath) とリンクの先の実体、環境変数 (PATH・
+-- NODE_OPTIONS など)、依存の場所。依存は lock と主な包みの package.json を比べる (それ以外の node_modules の中の
+-- 書き換えは見ない)。
+local function identity()
   local glfm = require("config.glfm_format")
   local source_dir, runtime_dir = glfm.source_dir(), glfm.runtime_dir()
-  local stat = node ~= "" and uv.fs_stat(node) or nil
+  local node = vim.fn.exepath("node")
+  local real = node ~= "" and uv.fs_realpath(node) or nil
+  local stat = real and uv.fs_stat(real) or nil
+  local files = {
+    read_file(vim.fs.joinpath(source_dir, "format.mjs")),
+    read_file(vim.fs.joinpath(source_dir, "spare.mjs")),
+    read_file(vim.fs.joinpath(runtime_dir, "package.json")),
+    read_file(vim.fs.joinpath(runtime_dir, "package-lock.json")),
+    read_file(vim.fs.joinpath(runtime_dir, "node_modules", ".package-lock.json")),
+  }
+  for _, package in ipairs({ "markdownlint-cli2", "markdownlint", "comrak" }) do
+    table.insert(files, read_file(vim.fs.joinpath(runtime_dir, "node_modules", package, "package.json")))
+  end
   return {
     node = node,
+    node_real = real or false,
     node_stat = stat and { stat.size, stat.mtime.sec, stat.mtime.nsec } or false,
     runtime_dir = runtime_dir,
     env = vim.fn.environ(),
-    files = {
-      read_file(vim.fs.joinpath(source_dir, "format.mjs")),
-      read_file(vim.fs.joinpath(source_dir, "spare.mjs")),
-      read_file(vim.fs.joinpath(runtime_dir, "package-lock.json")),
-      read_file(vim.fs.joinpath(runtime_dir, "node_modules", ".package-lock.json")),
-    },
+    files = files,
   }
 end
 
@@ -69,13 +79,13 @@ function M.start()
     return
   end
   local glfm = require("config.glfm_format")
-  local node = vim.fn.exepath("node")
+  local spare = { identity = identity() }
+  local node = spare.identity.node
   local spare_path = vim.fs.joinpath(glfm.source_dir(), "spare.mjs")
   local runtime_dir = glfm.runtime_dir()
   if node == "" or not uv.fs_stat(spare_path) or not uv.fs_stat(vim.fs.joinpath(runtime_dir, "node_modules")) then
     return
   end
-  local spare = { identity = identity(node) }
   -- shell を介さず argv で起動する。環境は Neovim のものを継ぐ。cwd は要求のときに移るので、待つ間は依存の場所に置く
   -- (Windows では、プロセスの cwd になっているフォルダーを消せない。依存が cwd を読むのは要求のときだけ)。
   local ok, proc = pcall(
@@ -110,13 +120,15 @@ function M.stop()
 end
 
 ---今の予備が、保存のときの CLI と同じ結果を返せるか。違えば止めて、次の予備を起動し直す。
+---予備が無いとき (待つ間に終わったときも) も、次の保存のために起動し直す。
 ---@return boolean
 function M.usable()
   local spare = state.spare
   if not spare or spare.exited then
+    vim.defer_fn(M.start, RESTART_DELAY_MS)
     return false
   end
-  if vim.deep_equal(identity(spare.identity.node), spare.identity) then
+  if vim.deep_equal(identity(), spare.identity) then
     return true
   end
   M.stop()
@@ -214,7 +226,8 @@ function M.format(job, name, timeout_ms, ctx, lines, callback)
       finish(string.format("Formatter '%s' error in vim.system: %s", name, proc))
     end
   end
-  -- 上限で子を止め、遅れた結果は当てない (conform は上限で既に原文のまま返している)。
+  -- 上限で子を止め、遅れた結果は当てない。同期の整形では conform が上限で既に原文のまま返しているので、この知らせは
+  -- job が止められた後に返すエラーと同じく後から届くだけ。非同期の整形では、これで conform の整形が終わる。
   timer:start(
     timeout_ms,
     0,
@@ -222,12 +235,10 @@ function M.format(job, name, timeout_ms, ctx, lines, callback)
       if finished then
         return
       end
-      finished = true
-      close_timer()
       if active then
         pcall(active.kill, active, "sigterm")
       end
-      vim.defer_fn(M.start, RESTART_DELAY_MS)
+      finish(string.format("Formatter '%s' timeout", name))
     end)
   )
   local spare = state.spare
@@ -240,7 +251,9 @@ function M.format(job, name, timeout_ms, ctx, lines, callback)
     if finished then
       return
     end
-    if result.code == TRANSPORT_FAILURE and (result.stdout or "") == "" and (result.stderr or "") == "" then
+    -- 予備が要求を受け付けなかった (86) か、外からシグナルで止められたときは、整形器の失敗ではないので CLI でやり直す。
+    local refused = result.code == TRANSPORT_FAILURE and (result.stdout or "") == "" and (result.stderr or "") == ""
+    if refused or (result.signal or 0) ~= 0 then
       return run_cli()
     end
     finish(convert(result, eol, name))
@@ -263,11 +276,15 @@ function M.setup(opts)
     M.stop()
     return
   end
+  -- Markdown になったら起動し、ほかの filetype に変えて Markdown のバッファが無くなったら止める。
   vim.api.nvim_create_autocmd("FileType", {
     group = group,
-    pattern = "markdown",
-    callback = function()
-      M.start()
+    callback = function(args)
+      if args.match == "markdown" then
+        M.start()
+      elseif not has_markdown_buffer() then
+        M.stop()
+      end
     end,
   })
   vim.api.nvim_create_autocmd("BufUnload", {

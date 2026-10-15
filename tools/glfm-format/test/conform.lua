@@ -71,11 +71,13 @@ local function buffer(lines)
   return buf
 end
 
--- 保存と同じ経路で整形する。予備のプロセスを先に用意し、使えたかを 3 つ目の値で返す
+-- 保存と同じ経路で整形する。予備のプロセスを先に用意し (as_is のときは今の状態のまま)、使えたかを 3 つ目の値で返す
 -- (この節の試験は、保存のときと同じく予備を通る)。
-local function format(buf, extra)
+local function format(buf, extra, as_is)
   local result = {}
-  spare.start()
+  if not as_is then
+    spare.start()
+  end
   local via_spare = spare.usable()
   conform.format(
     vim.tbl_extend("force", { bufnr = buf, async = false, quiet = true }, extra or {}),
@@ -417,8 +419,89 @@ end, 20))
 local stale_buf = buffer({ "#  変えた後" })
 local stale_result, stale_lines = format(stale_buf, { formatters = { "glfm_spare_test" } })
 assert(not stale_result.err and stale_lines[1] == "# 変えた後", vim.inspect(stale_result))
+-- 予備が要求を受け付けなかったら (終了コード 86・出力なし)、CLI でやり直す。
+spare.stop()
+vim.fn.writefile({
+  "process.stdin.resume();",
+  "process.stdin.on('end', () => { process.exitCode = 86; });",
+}, vim.fs.joinpath(copied_source, "spare.mjs"))
+spare.start()
+local refused_buf = buffer({ "#  受け付けない" })
+local refused_result, refused_lines, refused_via_spare =
+  format(refused_buf, { formatters = { "glfm_spare_test" } }, true)
+assert(refused_via_spare and not refused_result.err, vim.inspect(refused_result))
+assert(vim.deep_equal(refused_lines, { "# 受け付けない" }))
 spare.stop()
 glfm.source_dir = source_dir_function
+
+-- 待っている間に外から止められた予備は使わずに CLI で整形し、次の保存のために起動し直す。
+-- 前の整形が予約した起動 (100 ms 後) が済んでから止める (その予約で起動し直したのでは確かめにならない)。
+spare.start()
+vim.wait(300)
+local killed_pid = spare.pid()
+assert(killed_pid)
+uv.kill(killed_pid, "sigterm")
+assert(
+  vim.wait(1500, function()
+    return spare.pid() == nil
+  end, 20),
+  "止められた予備を捨てる"
+)
+local killed_buf = buffer({ "#  止められた後" })
+local killed_result, killed_lines, killed_via_spare = format(killed_buf, { formatters = { "glfm_spare_test" } }, true)
+assert(not killed_via_spare and not killed_result.err, vim.inspect(killed_result))
+assert(vim.deep_equal(killed_lines, { "# 止められた後" }))
+assert(
+  vim.wait(1500, function()
+    return spare.pid() ~= nil
+  end, 20),
+  "次の保存のために起動し直す"
+)
+
+-- node の実体・環境変数が変わったら、その予備は使わない。
+assert(spare.usable())
+local exepath = vim.fn.exepath
+vim.fn.exepath = function(name)
+  return name == "node" and vim.fs.joinpath(sandbox, "別の node.exe") or exepath(name)
+end
+assert(not spare.usable(), "node が変わった予備は使わない")
+vim.fn.exepath = exepath
+spare.start()
+assert(spare.usable())
+vim.env.GLFM_SPARE_TEST = "変えた"
+assert(not spare.usable(), "環境変数が変わった予備は使わない")
+vim.env.GLFM_SPARE_TEST = nil
+
+-- 非同期の整形も予備を通って終わり、上限を過ぎたときも conform に時間切れを返す (止まったままにならない)。
+spare.start()
+local async_buf = buffer({ "#  非同期" })
+local async_done
+conform.format(
+  { bufnr = async_buf, async = true, quiet = true, formatters = { "glfm_spare_test" } },
+  function(err, edited)
+    async_done = { err = err, edited = edited }
+  end
+)
+assert(vim.wait(5000, function()
+  return async_done ~= nil
+end, 20))
+assert(not async_done.err and async_done.edited, vim.inspect(async_done))
+assert(vim.deep_equal(vim.api.nvim_buf_get_lines(async_buf, 0, -1, false), { "# 非同期" }))
+spare.start()
+local async_slow_buf = buffer({ "#  遅い非同期" })
+vim.api.nvim_buf_set_name(async_slow_buf, vim.fs.joinpath(slow, "非同期.md"))
+local async_slow
+conform.format({ bufnr = async_slow_buf, async = true, quiet = true, formatters = { "glfm_spare_slow" } }, function(err)
+  async_slow = { err = err }
+end)
+assert(
+  vim.wait(3000, function()
+    return async_slow ~= nil
+  end, 20),
+  "非同期でも上限で終わる"
+)
+assert(async_slow.err and async_slow.err:lower():find("timeout", 1, true), vim.inspect(async_slow))
+assert(vim.deep_equal(vim.api.nvim_buf_get_lines(async_slow_buf, 0, -1, false), { "#  遅い非同期" }))
 
 -- :GlfmFormatInstall の間は予備を止めて起動せず、終わったら起動し直す。
 spare.start()
@@ -445,8 +528,17 @@ assert(spare.pid() == nil)
 assert(vim.wait(1500, function()
   return not alive(closing_pid)
 end, 20))
-buffer({ "# また開く" })
+local reopened = buffer({ "# また開く" })
 assert(spare.pid(), "Markdown を開くと起動する")
+-- filetype を Markdown からほかに変えて Markdown のバッファが無くなったら止め、戻すと起動する。
+local text_pid = spare.pid()
+vim.bo[reopened].filetype = "text"
+assert(spare.pid() == nil)
+assert(vim.wait(1500, function()
+  return not alive(text_pid)
+end, 20))
+vim.bo[reopened].filetype = "markdown"
+assert(spare.pid(), "Markdown に戻すと起動する")
 
 -- Neovim の終了で予備を止める。この後の導入の試験は vim.system を置き換えるので、予備を使わない。
 local leaving_pid = spare.pid()
