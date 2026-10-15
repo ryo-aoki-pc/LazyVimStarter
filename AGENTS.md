@@ -33,7 +33,8 @@ LazyVim をベースにした Neovim 設定。リポジトリのルートが **N
 
 Markdown の整形器は別のリポジトリの md-format (`ryo-aoki-pc/md-format`) にあり、その試験もそちらにある。ここには Neovim の配線の
 試験 (`tests/md_format_conform.lua`) だけがある。CI・ビルドは無い。
-整形器の導入は setup-notes の `docs/neovim.md`、配線の試験の手順は `docs/dev/check.md` にまとめる。ほかに使うのは以下。
+整形器の導入は setup-notes の `docs/almalinux-setup.md`・`docs/windows-setup.md` の「md-format を導入・更新する」、Neovim での
+確かめは `docs/neovim.md`、配線の試験の手順は `docs/dev/check.md` にまとめる。ほかに使うのは以下。
 
 ```sh
 # 整形 (stylua.toml = 2 スペース / 120 桁)。PATH には無く Mason 導入版を使う

@@ -16,7 +16,9 @@ function M.install_dir()
   local home = uv.os_homedir() or vim.fn.expand("~")
   local base
   if vim.fn.has("win32") == 1 then
-    base = vim.env.LOCALAPPDATA or vim.fs.joinpath(home, "AppData", "Local")
+    -- setup.mjs と同じく、空の LOCALAPPDATA は無いものと同じに扱う。
+    local local_app_data = vim.env.LOCALAPPDATA
+    base = (local_app_data and local_app_data ~= "") and local_app_data or vim.fs.joinpath(home, "AppData", "Local")
   elseif vim.fn.has("mac") == 1 then
     base = vim.fs.joinpath(home, "Library", "Application Support")
   else

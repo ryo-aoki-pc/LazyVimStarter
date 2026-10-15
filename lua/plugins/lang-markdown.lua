@@ -47,7 +47,7 @@ local format_spare = true
 -- Markdown の整形の上限。予備のプロセスも、この時間で止める。
 local format_timeout_ms = 10000
 -- 整形器 md-format の導入先。nil なら md-format の導入スクリプトの既定 (Windows は %LOCALAPPDATA%\md-format、
--- ほかは ~/.local/share/md-format)。導入スクリプトに --install-dir を渡したときだけ、同じフォルダを絶対パスで書く
+-- macOS は ~/Library/Application Support/md-format、ほかは ${XDG_DATA_HOME:-~/.local/share}/md-format)。導入スクリプトに --install-dir を渡したときだけ、同じフォルダを絶対パスで書く
 -- (相対パスは、設定を読んだときの作業フォルダから解く)。
 local format_dir = nil
 local config_path

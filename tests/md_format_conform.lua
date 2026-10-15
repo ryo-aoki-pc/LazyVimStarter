@@ -481,6 +481,18 @@ local refused_result, refused_lines, refused_via_spare =
 assert(refused_via_spare and not refused_result.err, vim.inspect(refused_result))
 assert(vim.deep_equal(refused_lines, { "# 受け付けない" }))
 spare.stop()
+-- 起動のときの警告などが標準エラーに出ていても、86 なら CLI でやり直す。
+vim.fn.writefile({
+  "process.stderr.write('warning\\n');",
+  "process.stdin.resume();",
+  "process.stdin.on('end', () => { process.exitCode = 86; });",
+}, vim.fs.joinpath(copied_source, "spare.mjs"))
+spare.start()
+local warned_buf = buffer({ "#  警告の後" })
+local warned_result, warned_lines, warned_via_spare = format(warned_buf, { formatters = { "mdfmt_spare_test" } }, true)
+assert(warned_via_spare and not warned_result.err, vim.inspect(warned_result))
+assert(vim.deep_equal(warned_lines, { "# 警告の後" }))
+spare.stop()
 md_format.install_dir = install_dir_function
 
 -- 待っている間に外から止められた予備は使わずに CLI で整形し、次の保存のために起動し直す。
@@ -596,6 +608,30 @@ vim.cmd.cd(sandbox)
 assert(md_format.install_dir() == vim.fs.normalize(install_dir), md_format.install_dir())
 assert(md_format.installed())
 vim.cmd.cd(saved_cwd)
+
+-- format_dir の無いときの既定は、md-format の setup.mjs と同じ決まり (空や相対の環境変数は使わない)。今の OS の分だけ確かめる。
+md_format.setup({ spare = false })
+local home = uv.os_homedir()
+local function with_env(name, value, check)
+  local saved = vim.env[name]
+  vim.env[name] = value
+  local ok, err = pcall(check)
+  vim.env[name] = saved
+  assert(ok, err)
+end
+if vim.fn.has("win32") == 1 then
+  with_env("LOCALAPPDATA", "", function()
+    local expected = vim.fs.normalize(vim.fs.joinpath(home, "AppData", "Local", "md-format"))
+    assert(vim.fs.normalize(md_format.install_dir()) == expected, md_format.install_dir())
+  end)
+elseif vim.fn.has("mac") == 0 then
+  with_env("XDG_DATA_HOME", "relative/data", function()
+    assert(md_format.install_dir() == vim.fs.joinpath(home, ".local", "share", "md-format"), md_format.install_dir())
+  end)
+  with_env("XDG_DATA_HOME", "/opt/data", function()
+    assert(md_format.install_dir() == "/opt/data/md-format", md_format.install_dir())
+  end)
+end
 
 vim.fn.delete(sandbox, "rf")
 print("md-format conform integration: PASS")

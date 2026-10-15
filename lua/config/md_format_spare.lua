@@ -248,7 +248,8 @@ function M.format(job, name, timeout_ms, ctx, lines, callback)
       return
     end
     -- 予備が要求を受け付けなかった (86) か、外からシグナルで止められたときは、整形器の失敗ではないので CLI でやり直す。
-    local refused = result.code == TRANSPORT_FAILURE and (result.stdout or "") == "" and (result.stderr or "") == ""
+    -- 86 は、出力の有無によらない (起動のときの警告などが標準エラーに残っていても、整形はしていない)。
+    local refused = result.code == TRANSPORT_FAILURE
     if refused or (result.signal or 0) ~= 0 then
       return run_cli()
     end
