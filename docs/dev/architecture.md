@@ -190,7 +190,6 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   MDX の連鎖と nvim-lint には渡さない。ルールごとの例は [GLFM 整形器のルール一覧](../reference/glfm-format.md)、
   代表的な例は README の「整形の例」にあり、`tools/glfm-format/test/reference.test.mjs` がどちらの例もすべて整形し直して確かめる。
 - render-markdown.nvim と **markdown-preview.nvim は無効** (後者は 2023-10 から更新が止まり、GLFM を描けない)。
-  `lazy-lock.json` から markdown-preview.nvim の行は手で消した (lazy.nvim は無効にしたプラグインの行を残し続ける)。
 - **プレビューは自作の GitLab プレビュー** (`<leader>cp`)。**`lua/config/gitlab_preview/`** が実体で、
   編集中の内容を curl で GitLab の Markdown API (`POST /api/v4/markdown`) に送り、返ってきた HTML を
   127.0.0.1 の HTTP サーバー (`vim.uv`) と SSE でブラウザのページに流す。分担と守ること:
