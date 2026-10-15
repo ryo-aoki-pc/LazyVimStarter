@@ -5,10 +5,10 @@ markdownlint の各ルールで Markdown をどう変えるかの一覧。
 
 - 整形する対象は、[lua/plugins/lang-markdown.lua](../../lua/plugins/lang-markdown.lua) の `format_fixes` の表で選ぶ。
   下の分類名かルール名 (`MD026`・`no-trailing-punctuation`) を `true`・`false` にする。書かない分類は既定のまま。
-  ルール名の指定は分類の指定より優先する
+  ルール名の指定は分類の指定より優先する。名前の大文字小文字は区別しない。プロジェクトのカスタムルールも、その名前で選べる (既定で有効)
 - `format_fixes` は整形だけを選ぶ。markdownlint の診断 (nvim-lint) は変わらない。診断ごと止めるときは、同じファイルの `disabled_rules` に書く
 - どの設定でも、Comrak で読んだ構造 (見出し・段落・リストの所属と開始番号・強調・リンク・強制改行など) が変わる修正と、
-  GitLab の記法 (`#123` などの参照・`[[_TOC_]]`・`::include`・画像の `{width=…}` など) を変える修正は当てない。
+  GitLab の記法 (`#123`・`~label`・`@user` などの参照・`[[_TOC_]]` と wiki のリンク・`::include`・画像の `{width=…}` など) を変える修正は当てない。
   ただし、見出し・強調・リンクを作る修正 (`heading_conversion`・`emphasis_spaces`・`reversed_links`) は、有効にすると構造を変えて当てる
 - 知らない名前や、同じルールを有効と無効の両方に書いたときは、整形せずにエラーにする (バッファは変わらない)
 - 例は markdownlint の既定の設定 (全ルール有効) で整形した結果。`␣` は空白、`⇥` はタブを表す (見えない文字を見えるようにするため)。
@@ -81,7 +81,7 @@ markdownlint を上げてルールが増えたときは、[format.mjs](../../too
 # 見出し
 ```
 
-`#` の直後が数字の行は、GitLab の課題の参照 (`#123`) なので、有効にしても見出しにしない。段落の続きの行も同じ。
+`#` の直後が数字の行は、GitLab の課題の参照 (`#123`) なので、有効にしても見出しにしない。段落の続きの行も、`##1` のように `#` が続く行も同じ。
 
 変わらない (`heading_conversion = true` でも):
 
@@ -132,6 +132,20 @@ markdownlint を上げてルールが増えたときは、[format.mjs](../../too
 # C#
 
 #123 と #
+```
+
+見出しでない行の末尾の `#` は、閉じの `#` とみなす。`#C#` は、見出しの文字が `C` になる (`C#` という見出しにするなら、`# C#` と書く)。
+
+`heading_conversion = true` のとき、整形前:
+
+```markdown 整形前 fixes=heading_conversion
+#C#
+```
+
+整形後:
+
+```markdown 整形後
+# C #
 ```
 
 ### MD021 no-multiple-space-closed-atx

@@ -778,7 +778,8 @@ test("format_fixes selects categories and rules, and invalid selections fail bef
     assert.equal(await format(undefined), "# 見出し\n\n本文\n\n- 一\n- 二\n\n1. 一\n2. 二\n");
     assert.equal(await format({ whitespace: false }), "# 見出し\n\n本文 \n\n- 一\n- 二\n\n1. 一\n2. 二\n");
     assert.equal(await format({ lists: false, MD030: true }), "# 見出し\n\n本文\n\n- 一\n- 二\n\n1. 一\n3. 二\n");
-    assert.equal(await format({ "no-trailing-spaces": false, md022: false }), "# 見出し\n本文 \n\n- 一\n- 二\n\n1. 一\n2. 二\n");
+    assert.equal(await format({ "No-Trailing-Spaces": false, md022: false }), "# 見出し\n本文 \n\n- 一\n- 二\n\n1. 一\n2. 二\n");
+    assert.equal(await format({ Whitespace: false }), await format({ whitespace: false }), "category names ignore case like markdownlint");
     assert.equal(await format({ whitespace: false }, { range: { start: [1, 0], end: [3, 0] } }),
       "# 見出し\n\n本文 \n\n-   一\n-   二\n\n1. 一\n3. 二\n");
     for (const [fixes, message] of [
@@ -811,5 +812,78 @@ test("many rejected structure-changing candidates still finish with the safe fix
     assert.equal(output, input.replace(/ +$/gmu, ""));
     assert.equal(rendered(output), rendered(input));
     assert.equal(await formatMarkdown(output, options), output);
+  });
+});
+
+test("list-wide number fixes and other fixes on the same line are applied without stale columns", async (t) => {
+  await inProject(t, { default: true }, async (options) => {
+    for (const [input, expected] of [
+      // 番号の短縮 (20 → 2) と行末の空白の修正が同じ行にある。
+      ["1. a\n20. b \n30. c\n", "1. a\n2. b\n3. c\n"],
+      // 右揃えの番号は、1 から始まるときだけ振り直す。
+      [" 1. a\n 2. b \n30. c\n", " 1. a\n 2. b\n 3. c\n"],
+      [" 3. a\n 4. b\n10. c\n", " 3. a\n 4. b\n10. c\n"],
+    ]) {
+      const output = await formatMarkdown(input, options);
+      assert.equal(output, expected, JSON.stringify(input));
+      assert.equal(rendered(output), rendered(input));
+      assert.equal(await formatMarkdown(output, options), output);
+    }
+  });
+});
+
+test("a period after a user reference is still heading punctuation", async (t) => {
+  await inProject(t, { default: true }, async (options) => {
+    assert.equal(await formatMarkdown("## @user.\n\n本文\n", options), "## @user\n\n本文\n");
+  });
+});
+
+test("misspelled built-in names and conflicting custom rule aliases are rejected", async (t) => {
+  await inProject(t, { default: true }, async (options) => {
+    for (const fixes of [{ "no-trailing-punctuatoin": false }, { heading_conversoin: true }, { myrule: false }]) {
+      await assert.rejects(formatMarkdown("本文\n", { ...options, fixes }), /分類名にもルール名にも/);
+    }
+    assert.equal(await formatMarkdown("本文 \n", { ...options, fixes: { LISTS: false, "my-rule": false } }), "本文\n");
+  });
+});
+
+test("many alternating fixes with different structure checks finish quickly", async (t) => {
+  await inProject(t, { default: true }, async (options) => {
+    // 見出しの句読点 (MD026) と行末の空白 (MD009) が交互に並ぶ。
+    const input = Array.from({ length: 300 }, (_, index) => `## 見出し${index}:\n\n本文${index} \n`).join("\n");
+    const started = performance.now();
+    const output = await formatMarkdown(input, options);
+    assert.equal(output, input.replace(/:\n/gu, "\n").replace(/ +$/gmu, ""));
+    assert.ok(performance.now() - started < 8000, `finished in ${Math.round(performance.now() - started)} ms`);
+  });
+});
+
+test("wiki links, scoped labels, and references with trailing punctuation keep GitLab semantics", async (t) => {
+  await inProject(t, { default: true, MD044: { names: ["Plan"] } }, async (options) => {
+    for (const [input, expected] of [
+      // wiki のリンクの中の _ を * にすると別のページ名になる。外の強調だけ揃える。
+      ["*a*\n\n[[_手順_]] と _b_\n", "*a*\n\n[[_手順_]] と *b*\n"],
+      // スコープ付きのラベルの名前は、固有名詞の修正で変えない。
+      ["~devops::plan を使う\n", "~devops::plan を使う\n"],
+      // 文末の句点は参照の名前ではないので、見出しの句読点として消せる。
+      ["## 対応 ~bug.\n\n本文\n", "## 対応 ~bug\n\n本文\n"],
+      ["## 期日 %v1.\n\n本文\n", "## 期日 %v1\n\n本文\n"],
+      // 引用の中の include は、> の後の空白だけ直せる。
+      [">  ::include{file=a.md}\n", "> ::include{file=a.md}\n"],
+      ["#123+s の要約 \n\ngroup/sub/project#123 \n", "#123+s の要約\n\ngroup/sub/project#123\n"],
+      ["本文 #123 と `#1F75CB` \n", "本文 #123 と `#1F75CB`\n"],
+    ]) {
+      assert.equal(await formatMarkdown(input, options), expected, JSON.stringify(input));
+    }
+  });
+});
+
+test("a rule name inside an enabled category can still be disabled, and close misspellings are rejected", async (t) => {
+  await inProject(t, { default: true }, async (options) => {
+    assert.equal(await formatMarkdown("1. 一\n3. 二 \n", { ...options, fixes: { lists: true, MD029: false } }), "1. 一\n3. 二\n");
+    assert.equal(await formatMarkdown("#見出し\n", { ...options, fixes: { Heading_Conversion: true } }), "# 見出し\n");
+    for (const fixes of [{ "heading-spacing": false }, { "no-trailing-space": false }]) {
+      await assert.rejects(formatMarkdown("本文\n", { ...options, fixes }), /分類名にもルール名にも/);
+    }
   });
 });

@@ -109,18 +109,24 @@ const limitedRules = {
 // GitLab は [[_toc_]] のような小文字の目次も目次として描くので、大文字小文字を区別しない。
 // 広めに当たっても検査が厳しくなるだけなので、参照は GitLab の規則より緩く拾う。
 const gitlabAtoms = new RegExp([
-  String.raw`\[\[_TOC_\]\]`, String.raw`\[TOC\]`, String.raw`\[~\]`, String.raw`\[\^[^\]\r\n]+\](?::)?`,
-  // include は行頭から書いたときだけ働くので、その行の接頭辞ごと守る。
-  String.raw`^[ \t>]*::include\{[^\r\n]*?\}`, String.raw`::include\{[^\r\n]*?\}`,
+  // 目次 [[_TOC_]] と、wiki のページへのリンク [[ページ]] (中の _ を * にすると別のページ名になる)。
+  String.raw`\[\[[^\]\r\n]+\]\]`, String.raw`\[TOC\]`, String.raw`\[~\]`, String.raw`\[\^[^\]\r\n]+\](?::)?`,
+  // include は行頭から書いたときだけ働くので、行頭の字下げごと守る。
+  String.raw`^[ \t]*::include\{[^\r\n]*?\}`, String.raw`::include\{[^\r\n]*?\}`,
   String.raw`\{[+-][^\r\n]*?[+-]\}`, String.raw`\[[+-][^\r\n]*?[+-]\]`,
-  // 画像と、直後の幅や高さの指定。
-  String.raw`!\[[^\]\r\n]*\]\([^)\r\n]*\)\{[^}\r\n]*\}`,
-  // 課題 #123・マージリクエスト !123・エピック &123・スニペット $123 (group/project#123 の形も)。
-  String.raw`(?<![\w&])(?:[\w.-]+(?:\/[\w.-]+)+)?[#!&$]\d+(?:\+s?)?`,
-  // ラベル ~label・~"label"、マイルストーン %milestone・%"milestone"、ユーザー @user。
-  String.raw`(?<![\w~])~(?:"[^"\r\n]+"|[\p{L}\p{N}_][\p{L}\p{N}_.?&-]*)`,
-  String.raw`(?<![\w%])%(?:"[^"\r\n]+"|[\p{L}\p{N}_][\p{L}\p{N}_.-]*)`,
-  String.raw`(?<![\w.+@-])@[\p{L}\p{N}_][\p{L}\p{N}_.-]*`,
+  // 画像やリンクの直後の幅や高さの指定 (URL に括弧があっても、閉じ括弧と属性の境目で守る)。
+  String.raw`[)\]]\{[^}\r\n]*\}`,
+  // 課題 #123・マージリクエスト !123・エピック &123・スニペット $123。前に group/project や project が付く形も含める。
+  // \ で打ち消した記号は参照にならないので、守らない。
+  String.raw`(?<![\w&\\/.-])(?:[\w.-]+(?:\/[\w.-]+)*)?[#!&$]\d+(?:\+s?)?`,
+  // ラベル ~label・~"label"・~scope::label、マイルストーン %milestone・%"milestone" (前に project が付く形も)、ユーザー @user。
+  // 文末の句点や疑問符は名前に含めない (見出しの末尾の句読点を消す修正を拒まないため)。
+  String.raw`(?<![\w~\\/.-])(?:[\w.-]+(?:\/[\w.-]+)*)?~(?:"[^"\r\n]+"|[\p{L}\p{N}_](?:[\p{L}\p{N}_.?&:-]*[\p{L}\p{N}_&-])?)`,
+  String.raw`(?<![\w%\\/.-])(?:[\w.-]+(?:\/[\w.-]+)*)?%(?:"[^"\r\n]+"|[\p{L}\p{N}_](?:[\p{L}\p{N}_.-]*[\p{L}\p{N}_-])?)`,
+  // GitLab のユーザー名は末尾にピリオドを置けないので、文末の句点を参照に含めない。
+  String.raw`(?<![\w.+@\\-])@[\p{L}\p{N}_](?:[\p{L}\p{N}_.-]*[\p{L}\p{N}_-])?`,
+  // [issue:123] のような、種類を書いた参照 ([https://…] のような URL は除く)。
+  String.raw`\[[a-z_]+:(?!\/)[^\]\r\n]+\]`,
 ].join("|"), "gimu");
 
 async function runtime(directory) {
@@ -376,25 +382,40 @@ function ruleId(fix) {
   return fix.ruleNames[0].toUpperCase();
 }
 
-// 修正の確かめ方。layout は構文木の全体を、ルール名は変えてよい差を消してから比べる。creating は緩い検査だけ。
-// カスタムルールは本文を変えることもあるので、今までどおり緩い検査だけで当てる。
+// 修正の確かめ方。structure は構文木の全体を比べる (変えてよい差の決まったルールは、その差だけを消してから)。
+// creating は緩い検査だけ。カスタムルールは本文を変えることもあるので、今までどおり緩い検査だけで当てる。
 function fixMode(fix) {
   const id = ruleId(fix);
-  if (!Object.hasOwn(ruleAliases, id) || creatingRules.has(id)) return "creating";
-  return Object.hasOwn(limitedRules, id) ? id : "layout";
+  return !Object.hasOwn(ruleAliases, id) || creatingRules.has(id) ? "creating" : "structure";
+}
+
+function editDistance(a, b) {
+  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) {
+      row[j] = Math.min(previous[j] + 1, row[j - 1] + 1, previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    previous = row;
+  }
+  return previous[b.length];
 }
 
 // 名前を分類・組み込みルール・カスタムルールのどれかに決める。
+// markdownlint と同じく、名前の大文字小文字は区別しない。
 function fixTarget(name) {
-  if (Object.hasOwn(fixCategories, name)) return `category:${name}`;
+  const lower = name.toLowerCase();
+  if (Object.hasOwn(fixCategories, lower)) return `category:${lower}`;
   const id = name.toUpperCase();
   if (Object.hasOwn(ruleAliases, id)) return `rule:${id}`;
-  if (ruleIdsByAlias.has(name.toLowerCase())) return `rule:${ruleIdsByAlias.get(name.toLowerCase())}`;
+  if (ruleIdsByAlias.has(lower)) return `rule:${ruleIdsByAlias.get(lower)}`;
   // 分類名やルール名の綴り違いを、カスタムルールの名前として黙って受け取らない。
-  if (/^MD\d+$/iu.test(name) || /^[a-z_]+$/u.test(name)) {
+  // 分類名の形 (英字と _ だけ) と MD の番号の形は、カスタムルールの名前にしない。
+  const known = [...Object.keys(fixCategories), ...ruleIdsByAlias.keys()];
+  if (/^MD\d+$/iu.test(name) || /^[a-z_]+$/iu.test(name) || known.some((candidate) => editDistance(lower, candidate) <= 2)) {
     throw new Error(`整形する対象 ${name} は、分類名にもルール名にもありません。`);
   }
-  return `custom:${name.toLowerCase()}`;
+  return `custom:${lower}`;
 }
 
 function fixSelector(fixes) {
@@ -421,8 +442,10 @@ function fixSelector(fixes) {
     }
     // 表に無い組み込みルールの修正は、確かめるまで当てない。
     if (/^MD\d+$/u.test(id)) return false;
-    const custom = fix.ruleNames.find((name) => chosen.has(`custom:${name.toLowerCase()}`));
-    return custom === undefined ? true : chosen.get(`custom:${custom.toLowerCase()}`);
+    // カスタムルールは、どの名前 (別名) で指定してもよい。別名どうしで食い違えば整形しない。
+    const values = new Set(fix.ruleNames.map((name) => chosen.get(`custom:${name.toLowerCase()}`)).filter((value) => value !== undefined));
+    if (values.size > 1) throw new Error(`整形する対象 ${fix.ruleNames.join("・")} を、有効と無効の両方に指定しています。`);
+    return values.size ? [...values][0] : true;
   };
 }
 
@@ -602,7 +625,8 @@ function fixGroups(fixes, itemLists) {
     // 記号 (MD004) と番号 (MD029) は、リストごとにまとめて当てるか見送る。1 項目めの番号だけ見送ると、
     // 開始番号は保てても `3. 2. 3.` のような番号が残る。
     const marker = (ruleId(fix) === "MD004" && /^[*+-]$/u.test(fix.fixInfo.insertText || "")) ||
-      (ruleId(fix) === "MD029" && /^\d+$/u.test(fix.fixInfo.insertText || ""));
+      // 右揃えの番号 (` 3.` と `10.`) では、修正の文字に空白が入る。
+      (ruleId(fix) === "MD029" && /^ *\d+$/u.test(fix.fixInfo.insertText || ""));
     if (marker && list !== undefined && fix.fixInfo.deleteCount >= 1) {
       const key = `${ruleId(fix)}:${list}`;
       if (!markerGroups.has(key)) {
@@ -615,13 +639,15 @@ function fixGroups(fixes, itemLists) {
       groups.push([fix]);
     }
   }
-  const descending = (a, b) => {
-    const [aLine, aColumn] = fixPosition(a);
-    const [bLine, bColumn] = fixPosition(b);
-    return bLine - aLine || bColumn - aColumn || Number(a.fixInfo.deleteCount === -1) - Number(b.fixInfo.deleteCount === -1);
-  };
-  groups.forEach((group) => group.sort(descending));
-  return groups.sort((a, b) => descending(a[0], b[0]));
+  groups.forEach((group) => group.sort(descendingFix));
+  return groups.sort((a, b) => descendingFix(a[0], b[0]));
+}
+
+// 下の行・右の列の修正を先にする (先に当てても、残りの修正の位置がずれない)。
+function descendingFix(a, b) {
+  const [aLine, aColumn] = fixPosition(a);
+  const [bLine, bColumn] = fixPosition(b);
+  return bLine - aLine || bColumn - aColumn || Number(a.fixInfo.deleteCount === -1) - Number(b.fixInfo.deleteCount === -1);
 }
 
 export async function formatMarkdown(source, options = {}) {
@@ -646,12 +672,16 @@ export async function formatMarkdown(source, options = {}) {
   const original = semanticSnapshot(source, dependencies.parseMarkdown);
   const originalSnapshot = original.loose;
   // 構文木の全体は、最後に受け付けた文書と比べる (見出しなどを作る修正の後も、その先の修正を確かめられる)。
+  // 変えてよい差の決まったルール (limitedRules) がまとめに入っていれば、その差だけを両方の木から消して比べる。
+  // 表記の修正は見出しの句読点やリンクの文字を変えないので、同じまとめで確かめても見逃さない。
   let currentTree = original.tree;
   let currentKeys = new Map();
-  const structureKey = (tree, mode) => JSON.stringify(Object.hasOwn(limitedRules, mode) ? mapTree(tree, limitedRules[mode]) : tree);
-  const currentKey = (mode) => {
-    if (!currentKeys.has(mode)) currentKeys.set(mode, structureKey(currentTree, mode));
-    return currentKeys.get(mode);
+  const relaxations = (batch) => [...new Set(batch.flat().map(ruleId).filter((id) => Object.hasOwn(limitedRules, id)))].sort();
+  const structureKey = (tree, rules) => JSON.stringify(rules.reduce((value, id) => mapTree(value, limitedRules[id]), tree));
+  const currentKey = (rules) => {
+    const key = rules.join(",");
+    if (!currentKeys.has(key)) currentKeys.set(key, structureKey(currentTree, rules));
+    return currentKeys.get(key);
   };
   const visited = new Set([source]);
   let current = source;
@@ -682,11 +712,13 @@ export async function formatMarkdown(source, options = {}) {
     // 緩い検査 (説明リスト・リテラル・GitLab の記法) は常に最初の文書と、構文木の全体は今の文書と比べる。
     const accept = (batch, mode) => {
       if (!batch.length) return;
-      const candidate = batch.flat().reduce((value, fix) => applyFix(value, fix), current);
+      // リストごとのまとめは複数の行にまたがるので、まとめの順ではなく修正の位置の順 (下・右から) に当てる。
+      const candidate = batch.flat().sort(descendingFix).reduce((value, fix) => applyFix(value, fix), current);
       if (candidate === current) return;
       const snapshot = semanticSnapshot(candidate, dependencies.parseMarkdown);
+      const rules = relaxations(batch);
       if (snapshot.loose === originalSnapshot &&
-          (mode === "creating" || structureKey(snapshot.tree, mode) === currentKey(mode))) {
+          (mode === "creating" || structureKey(snapshot.tree, rules) === currentKey(rules))) {
         // 範囲内の改行増減に追従し、次の解析で元の選択範囲外を整形しない。
         if (selection) selection.end += candidate.length - current.length;
         current = candidate;
@@ -705,14 +737,21 @@ export async function formatMarkdown(source, options = {}) {
       const batch = [];
       const deferred = [];
       const selectedRanges = [];
+      // 長さの変わる修正を含むリストのまとめが書き換える行。まとめは上の行にも及ぶので、
+      // 同じ行のほかの修正と一緒に当てると、半分に分けて確かめたときに後から当てる側の列がずれる。
+      const shiftedLines = new Set();
+      const selectedLines = new Set();
       for (const group of pending) {
         const ranges = group.map((fix) => {
           const [line, column] = fixPosition(fix);
           return { line, column, end: column + Math.max(0, fix.fixInfo.deleteCount || 0), deleted: fix.fixInfo.deleteCount === -1 };
         });
+        const shifting = group.length > 1 && group.some((fix) => fix.fixInfo.deleteCount === -1 ||
+          (fix.fixInfo.insertText || "").length !== Math.max(0, fix.fixInfo.deleteCount || 0));
         // 同じ解析結果に基づく重複修正は同時に当てない。ほかが当たれば次の解析で再評価し、
         // 何も当たらなかったときは、位置がずれていないのでこのまま残りを試す。
-        if (ranges.some((candidate) => selectedRanges.some((range) => range.line === candidate.line &&
+        if (ranges.some((candidate) => shiftedLines.has(candidate.line) || (shifting && selectedLines.has(candidate.line)) ||
+            selectedRanges.some((range) => range.line === candidate.line &&
             (candidate.deleted || range.deleted || (candidate.end > range.column && candidate.column < range.end) ||
              candidate.column === range.column)))) {
           deferred.push(group);
@@ -721,6 +760,10 @@ export async function formatMarkdown(source, options = {}) {
         attempted += group.length;
         if (attempted > MAX_FIXES) throw new Error("修正が多すぎるため整形を中止しました。");
         selectedRanges.push(...ranges);
+        for (const { line } of ranges) {
+          selectedLines.add(line);
+          if (shifting) shiftedLines.add(line);
+        }
         batch.push(group);
       }
       const before = current;

@@ -73,7 +73,7 @@ async function customRuleProject(t, name, source) {
 }
 
 test("custom fixes cannot change GitLab references, the start of an include line, or image attributes", async (t) => {
-  // 参照の番号を変える・include の行頭に空白を足す・画像と属性の間に空白を足す修正を、カスタムルールで出す。
+  // 参照の番号や名前を変える・include の行頭に空白を足す・画像の幅を変える修正を、カスタムルールで出す。
   const options = await customRuleProject(t, "test-gitlab-atoms", `module.exports = {
     names: ["test-gitlab-atoms"],
     description: "Rewrite GitLab syntax",
@@ -83,14 +83,19 @@ test("custom fixes cannot change GitLab references, the start of an include line
       params.lines.forEach((line, index) => {
         const edit = (column, deleteCount, insertText) => onError({ lineNumber: index + 1, fixInfo: { editColumn: column, deleteCount, insertText } });
         if (line.includes("#12")) edit(line.indexOf("#12") + 3, 1, "3");
+        if (line.includes("project#7")) edit(line.indexOf("project#7") + 1, 0, "x");
+        if (line.includes("project~bug")) edit(line.indexOf("~bug") + 1, 1, "B");
         if (line.startsWith("::include")) edit(1, 0, " ");
-        if (line.includes("){width")) edit(line.indexOf("){width") + 2, 0, " ");
+        if (line.includes("){width")) edit(line.indexOf("width=10") + 8, 1, "2");
       });
     }
   };\n`);
-  const input = "Fix #12 \n\n::include{file=a.md}\n\n![x](a.png){width=10}\n";
+  const input = "Fix #12 and project#7 and group/project~bug \n\n::include{file=a.md}\n\n![x](a(b).png){width=10}\n";
+  const rule = runtimeRequire(path.join(options.cwd, "custom-rule.cjs"));
+  const results = await lint({ strings: { fixture: input }, config: { default: false, "test-gitlab-atoms": true }, customRules: [rule] });
+  assert.deepEqual(results.fixture.map((result) => result.lineNumber), [1, 1, 1, 3, 5], "the custom rule requests every protected change");
   const output = await formatMarkdown(input, options);
-  assert.equal(output, input.replace("#12 \n", "#12\n"));
+  assert.equal(output, input.replace("~bug \n", "~bug\n"));
   assert.equal(await formatMarkdown(output, options), output);
 });
 
@@ -107,6 +112,9 @@ test("a fix from a built-in rule missing from the classification table is not ap
       });
     }
   };\n`);
+  const rule = runtimeRequire(path.join(options.cwd, "custom-rule.cjs"));
+  const results = await lint({ strings: { fixture: "old text \n" }, config: { default: false, MD099: true }, customRules: [rule] });
+  assert.ok(results.fixture.some((result) => result.fixInfo?.insertText === "new"), "the unreviewed rule requests a fix");
   assert.equal(await formatMarkdown("old text \n", options), "old text\n");
 });
 
@@ -123,4 +131,21 @@ test("every markdownlint rule is classified so an upgrade cannot apply unreviewe
       assert.ok(categorized.has(rule.names[0]), `${rule.names[0]} has fixes but no category`);
     }
   }
+});
+
+test("custom rule aliases that are enabled and disabled at once are rejected", async (t) => {
+  const options = await customRuleProject(t, "test-alias-rule", `module.exports = {
+    names: ["test-alias-rule", "test-alias-other"],
+    description: "Rule with an alias",
+    tags: ["test"],
+    parser: "none",
+    function(params, onError) {
+      params.lines.forEach((line, index) => {
+        if (line.includes("old")) onError({ lineNumber: index + 1, fixInfo: { editColumn: line.indexOf("old") + 1, deleteCount: 3, insertText: "new" } });
+      });
+    }
+  };\n`);
+  assert.equal(await formatMarkdown("old\n", options), "new\n", "the custom rule is applied by default");
+  assert.equal(await formatMarkdown("old\n", { ...options, fixes: { "test-alias-other": false } }), "old\n");
+  await assert.rejects(formatMarkdown("old\n", { ...options, fixes: { "test-alias-rule": true, "test-alias-other": false } }), /両方/);
 });
