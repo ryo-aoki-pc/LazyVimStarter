@@ -1404,8 +1404,8 @@ export async function cli(argv = process.argv.slice(2), input = process.stdin) {
       options.fixes[fix] = enabled;
     }
   }
-  // conform は Neovim の作業ディレクトリでこのスクリプトを起動する。以前の markdownlint-cli2 --fix と
-  // 同じく、ファイルがその下にあればそこを CLI2 の基準にし、上の階層のプロジェクト設定も読ませる。
+  // conform は Neovim の作業ディレクトリでこのスクリプトを起動する。
+  // ファイルがその下にあればそこを CLI2 の基準にし、上の階層のプロジェクト設定も読ませる。
   if (options.filename && path.isAbsolute(options.filename) && isInside(process.cwd(), options.filename)) {
     options.cwd = process.cwd();
   }

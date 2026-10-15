@@ -1,73 +1,72 @@
 # LazyVim 導入の検証記録
 
-以下は既存文書から移した記録。本文の「本書」「この文書」と手順番号は、記録元の手順書を指す。新しく検証した記録ではない。
-ただし、「付録: Windows 導入の手順 6 の VC++ ランタイムを条件付きにした記録 (2026-10-08)」は新しく検証した記録 (Windows では実行していない)。
+「付録: Windows 導入の手順 6 の VC++ ランタイムを条件付きにした記録 (2026-10-08)」は、Windows では実行していない。
 
-手順は [setup.md](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md)、背景説明は [補足資料](../reference/setup.md) を参照する。日付・対象の版・実施範囲は各記録に記載する。
+今の手順は setup-notes の[Neovim のセットアップ](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md)、記録の手順は [当時の手順書](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md)、背景説明は [補足資料](../reference/setup.md) を参照する。日付・対象の版・実施範囲は各記録に記載する。
 
-### EPEL が要る理由の検証記録
+### EPEL が要る理由
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 2 に対応する。
+記録の手順 2 は [当時の手順書の「AlmaLinux 10 に導入する (1 度だけ)」](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ) の番号。
 
 - 最後の `Many EPEL packages require the CodeReady Builder (CRB) repository.` は、この節で入れるものには当てはまらない (CRB を有効にせずに通した)
 
-### dnf で入れるものの検証記録
+### dnf で入れるもの
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 3 に対応する。
+記録の手順 3 は [当時の手順書の「AlmaLinux 10 に導入する (1 度だけ)」](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ) の番号。
 
 - コンテナ (最小構成の `almalinux:10`) での実測は、101 個を入れて 4 個を更新した (git の依存の perl など。`wl-clipboard` を足す前の数)。GNOME の PC ではもっと少ない
 
-### Homebrew を使う理由と導入先の検証記録
+### Homebrew を使う理由と導入先
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 8 に対応する。
+記録の手順 8 は [当時の手順書の「AlmaLinux 10 に導入する (1 度だけ)」](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ) の番号。
 
 - `Next steps` の `sudo dnf group install development-tools` は、この設定には要らない (入れずに通した)
 
-### brew の確認の検証記録
+### brew の確認
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 10 に対応する。
+記録の手順 10 は [当時の手順書の「AlmaLinux 10 に導入する (1 度だけ)」](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ) の番号。
 
 - 検証した Homebrew 7.0.7 は、依存のある formula を入れる前に確認を求めた (`==> Would install 2 formulae:` → `==> Would install 7 dependencies for neovim:` → `[y/n]`)
 
-### Neovim の版の検証記録
+### Neovim の版
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 11 に対応する。
+記録の手順 11 は [当時の手順書の「AlmaLinux 10 に導入する (1 度だけ)」](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ) の番号。
 
 - ただし `lazy-lock.json` に記録した nvim-treesitter (main ブランチ) は Neovim 0.12 以上を要求する。0.11 系では試していない
 
-### 入力ソースを 2 つとも登録する理由の検証記録
+### 入力ソースを 2 つとも登録する理由
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 13 に対応する。
+記録の手順 13 は [当時の手順書の「AlmaLinux 10 に導入する (1 度だけ)」](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ) の番号。
 
 - 英数のエンジン名は `ime.lua` の中で `xkb:us::eng` に固定してある。入力ソースを `('xkb', 'jp')` にすると、Neovim が英数に戻すたびに US 配列のエンジンになる (コードから読んだもので、JIS 配列では試していない)
 
-### 初回起動で入るものの検証記録
+### 初回起動で入るもの
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 17 に対応する。
+記録の手順 17 は [当時の手順書の「AlmaLinux 10 に導入する (1 度だけ)」](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ) の番号。
 
 - コンテナではパーサーの取得がプロキシに拒まれた ([付録](#付録-コンテナでの検証記録-2026-09-28))。AlmaLinux 10 の実機では、開いてから 13 秒で 30 個が入り、ハイライトが効いた ([付録](#付録-almalinux-10-の実機での導入と取り込みの検証記録-2026-09-29))
 
-### 機能の確かめ方の検証記録
+### 機能の確かめ方
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 19 に対応する。
+記録の手順 19 は [当時の手順書の「AlmaLinux 10 に導入する (1 度だけ)」](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ) の番号。
 
 - コンテナでは ibus-daemon を `--panel disable` で起動して、`<C-j>` で `ibus engine` が `anthy` に、`<Esc>` で `xkb:us::eng` に変わるのを確かめた。アイコンの見た目は確かめていない
 
-### トークンの置き場所の検証記録
+### トークンの置き場所
 
-元の説明は [GitLab プレビューのトークンを設定する (任意)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gitlab-プレビューのトークンを設定する-任意)の手順 3 に対応する。
+記録の手順 3 は [当時の手順書の「GitLab プレビューのトークンを設定する (任意)」](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gitlab-プレビューのトークンを設定する-任意) の番号。
 
-元の説明は [GitLab プレビューのトークンを設定する (任意)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gitlab-プレビューのトークンを設定する-任意)の手順 1 に対応する。
+記録の手順 1 は [当時の手順書の「GitLab プレビューのトークンを設定する (任意)」](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gitlab-プレビューのトークンを設定する-任意) の番号。
 
 - 時間がかかるのは、変えたことを開いている全てのウィンドウに知らせ終わるまで戻らないため (検証した PC では 1 回 2 秒ほど)
 
-### 仕組みと、手元から Neovim への向きの検証記録
+### 仕組みと、手元から Neovim への向き
 
-元の説明は [SSH 越しのヤンクを手元のクリップボードに送る (任意)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 2 に対応する。
+記録の手順 2 は [当時の手順書の「SSH 越しのヤンクを手元のクリップボードに送る (任意)」](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意) の番号。
 
 - 手元が Windows のときは、WezTerm の nightly と Windows Terminal で確かめた。ssh は Windows の OpenSSH (`ssh.exe`) でも Git for Windows の `ssh` でもよい ([付録](#付録-windows-11-の実機での未確認項目の検証記録-2026-09-30))
 
-## 手順冒頭の検証範囲
+## 検証範囲
 
 > [!WARNING]
 > **2026-10-08 に、Windows 導入の手順 6 の VC++ ランタイムの導入を、`System32\vcruntime140.dll` が無いときだけにした。この変更は Windows では流していない** (Linux の PowerShell 7.6.6 で、ブロックの構文と分岐だけを確かめた。[記録](#付録-windows-導入の手順-6-の-vc-ランタイムを条件付きにした記録-2026-10-08))。
@@ -76,7 +75,7 @@
 >
 > **AlmaLinux 10 の手順は x86_64 のコンテナで通した。GNOME の実機では、導入済みの PC で AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 だけを通した** (手順 1〜15 は、システムを変えずに到達点を確かめただけ)。aarch64 では通していない。**上部バーの節は、画面の無い gnome-shell でだけ確かめた** (本物のログインでは通していない)。**Windows 11 の手順は実機とクリーンインストールした VM で通した** (scoop も Git for Windows も PATH に無い状態からの通しと、本物の IME を含む)。VM では VC++ ランタイム不足の起動失敗を再現し、手順 6 に導入を追加して起動できることを確かめた。**GitLab プレビューは、本物の GitLab では表示できることだけを確かめた** (記法ごとの見え方は模擬の API で確かめた)。**SSH 越しのクリップボードは、GNOME の画面では確かめていない** (AlmaLinux 10 の実機で、WezTerm の nightly を画面の無い mutter の上で動かし、ssh して確かめた。Windows からは、WezTerm の nightly と Windows Terminal で WSL の AlmaLinux 10 に ssh して確かめた)。範囲は[対象と検証環境](#対象と検証環境)。
 
-### 手順内の記述
+### Homebrew の不要な依存
 
 - `brew autoremove` は、それでも残った不要な依存を消す (検証では何も残っていなかった)
 
@@ -202,7 +201,6 @@
     - 更新・ロールバック・任意の節・Neovide は今回の VM では確認していない
   - **2026-10-08 に、Windows 導入の手順 6 の VC++ ランタイムを、`System32\vcruntime140.dll` が無いときだけ入れる形にした。Windows では流していない** ([付録](#付録-windows-導入の手順-6-の-vc-ランタイムを条件付きにした記録-2026-10-08))
     - Linux の PowerShell 7.6.6 で、ブロックの構文と、`scoop` をモックにした分岐 (ファイルが無ければ `vcredist2022` も入れ、あれば飛ばす) だけを確かめた
-  - 以前の版の状態行は「AlmaLinux 10 の使い捨てコンテナで手順を頭から流して検証済み」だった。本書はシナリオに分けてコマンドも変えたので、上の記録で置き換える
 
 | 項目 | AlmaLinux 10 | Windows 11 |
 |---|---|---|
@@ -218,19 +216,19 @@
 > - 途中で作る値は `ANTHY_SHORTCUT` だけ ([AlmaLinux 導入の手順 14](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ) で作り、手順 15 で使う)
 > - 出力例の中のユーザーのホームは `…` で省いてある。パスワードと鍵は扱わない。トークンは [GitLab プレビューのトークンの節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gitlab-プレビューのトークンを設定する-任意)でだけ扱い、貼った後に入力させる (文書には書かない)
 
-### 完了時点の状態の測定・実施記録
+### プラグインの使用容量
 
 | `~/.local/share/nvim/lazy` | プラグイン 38 個 (`lazy-lock.json` の版)。コンテナで 189 MB (markdown-preview.nvim を img-clip.nvim に替える前の計測) |
 
-### 完了時点の状態の測定・実施記録
+### Mason の使用容量
 
 | `~/.local/share/nvim/mason` | Mason のツール 11 個。コンテナで 279 MB (markdown-toc を外す前の 12 個での計測) |
 
-### 注意点の測定・実施記録
+### npm の証明書エラー
 
   - `~/.local/state/nvim/mason.log` に npm のエラーが残る。検証環境では、プロキシの CA を node に渡すまで `SELF_SIGNED_CERT_IN_CHAIN` で失敗した
 
-### 注意点の測定・実施記録
+### Markdown 整形の待ち時間
 
   - AlmaLinux 10 の 1 CPU の新規 VM で、正常な単独整形にも約 3 秒掛かった。Markdown / MDX だけ上限を 10 秒へ広げて保存整形を再確認した。ほかのファイルは既定の 3 秒のまま
 
@@ -241,7 +239,7 @@
   - 一般ユーザー (uid 1000) を作り、sudo をパスワード無しにした
   - GNOME の代わりに `sudo`・`tmux`・`dbus-daemon`・`dconf`・`gsettings-desktop-schemas`・`fontconfig`・`ibus` を入れ、`dbus-daemon --session --address=unix:path=/run/user/1000/bus` を起動した
   - ホストの tmux 3.4 から `docker exec -it … bash -i` を開き、各ブロックをブラケットペーストで貼った (`enable-bracketed-paste` は on)。コンテナの中の tmux 3.3a は `capture-pane -p` で落ちたので、操作には使わなかった
-- **探索の実行**: 最初に手順の候補を 1 つのコンテナで流し、出力を見てから文書を書いた。そこで分かったことは本文に入れた
+- **探索の実行**: 最初に手順の候補を 1 つのコンテナで流して出力を確かめた
   - `rpm -q npm` は `package npm is not installed` になる (パッケージ名は `nodejs-npm`)
   - `brew install neovim lazygit` が `[y/n]` を聞く
   - `nvim --version` だけで `~/.local/state/nvim` ができる
@@ -378,7 +376,7 @@
   - トークンの節の Windows の手順 3・4・8: headless の nvim の `:terminal` (ConPTY) で Windows PowerShell 5.1 を開き、文書のブロックをそのまま打ち込んだ。トークンは模擬の値で、始める前に `GITLAB_*` のユーザーの環境変数が無いことを確かめた
     - 手順 3 は `GitLab のトークン: ` を出して入力を `*` で隠し、`HKCU\Environment` に `GITLAB_TOKEN` が入った。値は画面に出なかった
     - 手順 4 は URL を入れると `GITLAB_HOST` が入り、空のまま Enter で消えた。手順 8 で 2 つとも消えた
-    - `SetEnvironmentVariable(…, 'User')` は 1 回 2 秒ほどかかった (変えたことを全てのウィンドウに知らせ終わるまで戻らない)。プロンプトが戻る前に次を打つと待たされるので、手順の箇条書きに書いた
+    - `SetEnvironmentVariable(…, 'User')` は 1 回 2 秒ほどかかった (変えたことを全てのウィンドウに知らせ終わるまで戻らない)。プロンプトが戻る前に次を打つと待たされる
   - gitlab.com: 模擬のトークンで Markdown API を呼ぶと、`401` と `{"message":"401 Unauthorized"}` が返った (Cloudflare の 403 ではない)。プレビューは `トークンが拒否された (HTTP 401)` の近似表示になり、その後の編集では curl を呼ばなかった
 - **本物の GitLab** (マージの後): 利用者が自分のトークンを設定して `<leader>cp` を押し、GitLab が描いた表示でプレビューが出ることを確かめた。どの記法を見たかは記録していない
 
@@ -406,7 +404,7 @@
   - `SSH_CONNECTION` を外すと、`g:clipboard` は無く、`yy` でペーストバッファはできなかった (これまでどおり)
   - `nvim --headless` は、`SSH_CONNECTION` の有無のどちらでもエラーを出さなかった
 - **手順書のブロック**: 手順 1・2 のブロックを `bash -n` に通し、手順 1 は `SSH_CONNECTION` の有無で `OSC 52 (copy only)` / `(無い)` を出した。手順 2 は tmux の中で打ち、`yy`・`p`・`:set clipboard?` が書いたとおりになった
-- **調べて分かったこと** (本文と方針に入れた):
+- **調べて分かったこと**:
   - LazyVim は `SSH_CONNECTION` があると `clipboard` を空にする。Neovim 0.12.5 の `provider/clipboard.vim` は、`clipboard` が空で `g:termfeatures.osc52` が立っているときだけ OSC 52 を自動で選ぶ
   - 検出 (`runtime/plugin/osc52.lua`) は DA1 に `52` が無ければ XTGETTCAP の `Ms` を問い合わせる。noice が messages / cmdline を扱っている間はその応答が届かない (folke/noice.nvim#1229)
   - Neovim の OSC 52 の読み出しは、応答が無いと 1 秒待ってから、さらに 9 秒待つ。WezTerm (読み出しは未マージの PR だけ) と Windows Terminal は応えない
@@ -441,7 +439,7 @@
   - `yy` では、クリップボードは変わらなかった (`clipboard` は空)
   - noice は読み込まれていたが、`g:termfeatures` は `{ osc52 = true }` で、`"+yy` はクリップボードに入った
   - `"+p` は 10.3 秒待ってから `Timed out waiting for a clipboard response from the terminal` を出した (WezTerm は OSC 52 の読み出しに応えない)
-- **調べて分かったこと** (本文・方針・README・`lua/config/options.lua` のコメントを直した):
+- **調べて分かったこと**:
   - WezTerm の nightly は DA1 に `\E[?65;4;6;18;22;52c` を返し、XTGETTCAP の `Ms` にも OSC 52 の形を返した。Neovim の検出は DA1 で済むので、noice#1229 (XTGETTCAP の応答が届かない) にかからない
   - 上の付録で変更前の `"+yy` が出なかったのは、手元の端末の代わりにした tmux で OSC 52 が検出されなかったため
   - この変更が要る理由は、`clipboard` が空で `y` が入らないことと、`"+p` の 10 秒の待ち。検出の失敗は、DA1 に `52` を出さない端末でだけ起きる
@@ -809,7 +807,6 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
 | 24.21.0 | 11.19.0 | `tests 43`・`pass 43`・`fail 0`・`skipped 0` | 3.23 秒 | `GLFM conform / installer integration: PASS`、終了コード 0 |
 
 - **実行方法**: PowerShell で `*.test.mjs` の実ファイルを列挙し、`node --test --test-reporter=tap` に 3 ファイルすべてを渡した。Neovim は `nvim.exe --headless -u NONE -i NONE -l tools/glfm-format/test/conform.lua` で起動した。GitHub API から取得した実行ログで、版情報・件数・終了コードを確認した
-- **手順の修正**: `docs/setup.md` の Windows 用コマンドも全 `*.test.mjs` を列挙する形にした。追加した引数検証とカスタムルールのテストも実行対象になる
 - **検証範囲**: Windows の Node と headless Neovim で、GLFM 記法・CRLF・UTF-8 の範囲・日本語と空白のあるパス・異常系からの再試行を含む回帰テストを実行した。Windows 11 の実キーと GUI の実測は、前の 2026-10-08 の記録にある
 
 ### 付録: AlmaLinux 導入の ripgrep と fd を Homebrew に移した記録 (2026-10-10)
@@ -985,7 +982,7 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
 - GitLab での描画 (GitLab の Markdown API は使っていない。代わりに Comrak と GitHub で比べた)
 - Node.js 22〜23 での実行
 
-## 補足資料に記載していた観測
+## 導入での観測
 
 ### dnf で入れるものの観測
 
@@ -1011,29 +1008,29 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
 
 - コンテナの ibus-anthy 1.5.17 では、既定値は 46 個のキーを持つ dict で、この sed で `on_off` だけが変わり、46 個のまま残った
 
-### <code>lazy-lock.json</code> を戻してから restore する理由の観測
+### 初回導入による <code>lazy-lock.json</code> の書き換え
 
 - コンテナでは、1 行目の後に `lazy-lock.json` の 6 個 (nvim-treesitter・nvim-lspconfig・gitsigns.nvim など) が最新の版に書き換わった
 
-### <code>lazy-lock.json</code> を戻してから restore する理由の観測
+### restore 後の作業ツリー
 
 - 2 行目で記録を git から戻し、3 行目の `restore` でその版にチェックアウトし直す。これで `git status --short` が空になった
 
-### <code>lazy-lock.json</code> を戻してから restore する理由の観測
+### sync によるプラグインの更新
 
 - `nvim --headless "+Lazy! sync" +qa` は update を含むので、`lazy-lock.json` より新しい版に上げてしまう (コンテナで 6 個が変わった)。揃えるときは使わない
 
-### 初回起動で入るものの観測
+### Mason の導入時間
 
 - コンテナでは、開いてから 15 秒ほどで揃い、`:Mason` に `Installed (12)` と出た (markdown-toc を外す前の記録。今は 11 個)
 
-### 初回起動で入るものの観測
+### 導入途中で閉じた後の再開
 
 - 途中で閉じても、次に起動したときに足りないものが入る (コンテナで確認)
 
 ## 実施前と完了時点の状態
 
-2026-10-15 に extra (ロールバックと注意点) から移した、導入の前提と完了時点の想定。「AlmaLinux 導入の手順 N」「Windows 導入の手順 N」は、移した時点の正本の「LazyVim の設定を導入する」「Windows 11 で LazyVim の設定を導入する」の手順。
+導入の前提と完了時点の想定。この節の「AlmaLinux 導入の手順 N」「Windows 導入の手順 N」は、正本の「LazyVim の設定を導入する」「Windows 11 で LazyVim の設定を導入する」の手順。
 
 ### 実施前の状態
 

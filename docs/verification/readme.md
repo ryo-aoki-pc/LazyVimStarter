@@ -1,8 +1,5 @@
 # LazyVimStarter README の検証記録
 
-以下は既存文書から移した記録。本文の「本書」「この文書」と手順番号は、記録元の手順書を指す。新しく検証した記録ではない。
-ただし、2026-10-08 の付録 (Windows の lazygit の e) は新しく検証した記録 (Windows では実行していない)。
-
 導入手順は [README](../../README.md) から参照する。
 
 ## 実施結果の要約
@@ -20,7 +17,7 @@
   (もう一度押せば揃う)。`<C-j>` は nvim が直接切り替えるので常に意図どおり動く。
   なお nvim を抜けた時点では上記の復帰処理で必ず整合が取れるため、OS 側の切替が
   壊れたままになることはない。
-  GNOME 49 では、[docs/setup.md の上部バーの節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gnome-の上部バーを-ime-連携に合わせる-任意)で
+  GNOME 49 では、[当時の手順書の上部バーの節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gnome-の上部バーを-ime-連携に合わせる-任意)で
   GNOME Shell の拡張 (`gnome-shell/ibus-engine-follow@ryo-aoki-pc.github.com`) を入れると、上部バーと
   Super+Space の順番が nvim の切り替えに付いてくるので、このずれは起きない。
 
