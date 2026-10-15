@@ -18,12 +18,21 @@ local opts = {
   formatters = { ["markdownlint-cli2"] = { condition = gate } },
   default_format_opts = { async = false, timeout_ms = 10000, lsp_format = "fallback" },
 }
+-- spec が既定の空の format_fixes を整形器に渡すことも確かめる。
+local original_formatter = glfm.formatter
+local formatter_options
+glfm.formatter = function(options)
+  formatter_options = options
+  return original_formatter(options)
+end
 for _, spec in ipairs(dofile(vim.fs.joinpath(root, "lua", "plugins", "lang-markdown.lua"))) do
   if spec[1] == "stevearc/conform.nvim" and type(spec.opts) == "function" then
     assert(vim.tbl_contains(spec.cmd, "GlfmFormatInstall"))
     spec.opts(nil, opts)
   end
 end
+glfm.formatter = original_formatter
+assert(formatter_options and vim.deep_equal(formatter_options.fixes, {}))
 assert(vim.deep_equal(opts.formatters_by_ft.markdown, {
   "glfm_markdownlint",
   timeout_ms = 10000,
@@ -66,7 +75,7 @@ local function format(buf, extra)
 end
 
 -- 診断が一度も出ていない状態でも、通常の見出しと説明内部の違反が直る。
-local first = buffer({ "#Heading", "", "Term", ": Description.   ", "", "    -  One", "    -  Two" })
+local first = buffer({ "#  Heading", "", "Term", ": Description.   ", "", "    -  One", "    -  Two" })
 assert(#vim.diagnostic.get(first) == 0)
 local first_result, first_lines = format(first)
 assert(not first_result.err, vim.inspect(first_result.err))
@@ -75,6 +84,12 @@ assert(first_lines[1] == "# Heading")
 assert(vim.tbl_contains(first_lines, ": Description."))
 assert(vim.tbl_contains(first_lines, "  - One"))
 assert(vim.tbl_contains(first_lines, "  - Two"))
+
+-- 保存と同じ経路でも、GitLab の課題の参照 (#123) は見出しにせず、同じ行の末尾の空白だけを直す。
+local reference = buffer({ "#123 の対応 ", "", "本文" })
+local reference_result, reference_lines = format(reference)
+assert(not reference_result.err, vim.inspect(reference_result.err))
+assert(vim.deep_equal(reference_lines, { "#123 の対応", "", "本文" }), vim.inspect(reference_lines))
 
 -- --config をスクリプト名の後に置き、実ファイル名と空白を含むパスを argv で渡す。
 local config_file = vim.fs.joinpath(sandbox, "設定.markdownlint.jsonc")
@@ -95,10 +110,62 @@ assert(vim.deep_equal(vim.list_slice(range_args, 6), {
   "7",
 }))
 
-local selected = buffer({ "#Outside", "", "#Selected", "", "Term", ": Description.   " })
-local selected_result, selected_lines = format(selected, { range = { start = { 3, 0 }, ["end"] = { 3, 9 } } })
+-- 整形対象の true / false を名前順に分け、通常整形と範囲整形で同じ順序にする。
+local fixes_formatter = glfm.formatter({
+  config_path = config_file,
+  fixes = { lists = false, MD026 = true, heading_conversion = true },
+})
+local fixes_args = fixes_formatter.args(nil, { buf = first })
+assert(vim.deep_equal(vim.list_slice(fixes_args, 1, 7), args))
+assert(vim.deep_equal(vim.list_slice(fixes_args, 8), {
+  "--enable-fixes",
+  "heading_conversion,MD026",
+  "--disable-fixes",
+  "lists",
+}))
+local fixes_range_args = fixes_formatter.range_args(nil, {
+  buf = first,
+  range = { start = { 4, 2 }, ["end"] = { 5, 7 } },
+})
+assert(vim.deep_equal(vim.list_slice(fixes_range_args, 1, #fixes_args), fixes_args))
+assert(vim.deep_equal(vim.list_slice(fixes_range_args, #fixes_args + 1), vim.list_slice(range_args, 6)))
+
+-- 片方だけの指定では、空になる側のオプションを渡さない。
+local enabled_only = glfm.formatter({ fixes = { MD026 = true, heading_conversion = true } })
+assert(vim.deep_equal(vim.list_slice(enabled_only.args(nil, { buf = first }), 6), {
+  "--enable-fixes",
+  "heading_conversion,MD026",
+}))
+local disabled_only = glfm.formatter({ fixes = { whitespace = false, lists = false } })
+assert(vim.deep_equal(vim.list_slice(disabled_only.args(nil, { buf = first }), 6), {
+  "--disable-fixes",
+  "lists,whitespace",
+}))
+
+-- nil と空の表では引数を増やさず、spec が作った整形器も同じ引数になる。
+local default_args = glfm.formatter().args(nil, { buf = first })
+assert(vim.deep_equal(glfm.formatter({ fixes = nil }).args(nil, { buf = first }), default_args))
+assert(vim.deep_equal(glfm.formatter({ fixes = {} }).args(nil, { buf = first }), default_args))
+assert(vim.deep_equal(opts.formatters.glfm_markdownlint.args(nil, { buf = first }), default_args))
+local default_range = { buf = first, range = { start = { 4, 2 }, ["end"] = { 5, 7 } } }
+assert(vim.deep_equal(glfm.formatter({ fixes = nil }).range_args(nil, default_range), range_args))
+assert(vim.deep_equal(glfm.formatter({ fixes = {} }).range_args(nil, default_range), range_args))
+assert(vim.deep_equal(opts.formatters.glfm_markdownlint.range_args(nil, default_range), range_args))
+
+-- 値とキーの型が不正なら、日本語のエラーで設定の誤りを知らせる。
+for _, value in ipairs({ "false", 0, {} }) do
+  local ok, err = pcall(glfm.formatter, { fixes = { lists = value } })
+  assert(not ok and tostring(err):find("fixes[lists] は true または false", 1, true))
+end
+local invalid_key_ok, invalid_key_err = pcall(glfm.formatter, { fixes = { [1] = true } })
+assert(not invalid_key_ok and tostring(invalid_key_err):find("キーは文字列", 1, true))
+local invalid_table_ok, invalid_table_err = pcall(glfm.formatter, { fixes = false })
+assert(not invalid_table_ok and tostring(invalid_table_err):find("表で指定", 1, true))
+
+local selected = buffer({ "#  Outside", "", "#  Selected", "", "Term", ": Description.   " })
+local selected_result, selected_lines = format(selected, { range = { start = { 3, 0 }, ["end"] = { 3, 11 } } })
 assert(not selected_result.err, vim.inspect(selected_result.err))
-assert(selected_lines[1] == "#Outside")
+assert(selected_lines[1] == "#  Outside")
 assert(selected_lines[3] == "# Selected")
 assert(selected_lines[#selected_lines] == ": Description.   ")
 
@@ -140,7 +207,7 @@ local runtime_dir = glfm.runtime_dir
 glfm.runtime_dir = function()
   return vim.fs.joinpath(sandbox, "missing-runtime")
 end
-local missing_input = { "#Heading", "", "Term", ": Description.   " }
+local missing_input = { "#  Heading", "", "Term", ": Description.   " }
 local missing = buffer(missing_input)
 local missing_result, missing_lines = format(missing)
 assert(missing_result.err)
@@ -159,13 +226,13 @@ assert(vim.deep_equal(recovered_again_lines, recovered_lines))
 -- 壊れた設定を直すと、失敗時に保持した同じバッファを再整形できる。
 vim.fn.writefile({ "{ broken JSON" }, config_file)
 conform.formatters.glfm_config_test = glfm.formatter({ config_path = config_file })
-local config_input = { "#Heading", "", "Term", ": Description.   " }
+local config_input = { "#  Heading", "", "Term", ": Description.   " }
 local config_buf = buffer(config_input)
 local config_result, config_lines = format(config_buf, { formatters = { "glfm_config_test" }, lsp_format = "never" })
 assert(config_result.err)
 assert(not config_result.edited)
 assert(vim.deep_equal(config_lines, config_input))
-vim.fn.writefile({ vim.json.encode({ default = false, MD018 = true, MD009 = true }) }, config_file)
+vim.fn.writefile({ vim.json.encode({ default = false, MD019 = true, MD009 = true }) }, config_file)
 local fixed_config_result, fixed_config_lines =
   format(config_buf, { formatters = { "glfm_config_test" }, lsp_format = "never" })
 assert(not fixed_config_result.err, vim.inspect(fixed_config_result.err))
@@ -173,14 +240,14 @@ assert(fixed_config_result.edited)
 assert(vim.deep_equal(fixed_config_lines, { "# Heading", "", "Term", ": Description." }))
 
 -- 不正な範囲指定を CLI が拒否しても原文を保持し、正しい範囲で再試行できる。
-local invalid_range_buf = buffer({ "#Heading" })
+local invalid_range_buf = buffer({ "#  Heading" })
 local invalid_range_result, invalid_range_lines =
   format(invalid_range_buf, { range = { start = { 0, 0 }, ["end"] = { 1, 0 } } })
 assert(invalid_range_result.err)
 assert(not invalid_range_result.edited)
-assert(vim.deep_equal(invalid_range_lines, { "#Heading" }))
+assert(vim.deep_equal(invalid_range_lines, { "#  Heading" }))
 local valid_range_result, valid_range_lines =
-  format(invalid_range_buf, { range = { start = { 1, 0 }, ["end"] = { 1, 7 } } })
+  format(invalid_range_buf, { range = { start = { 1, 0 }, ["end"] = { 1, 9 } } })
 assert(not valid_range_result.err, vim.inspect(valid_range_result.err))
 assert(valid_range_result.edited)
 assert(vim.deep_equal(valid_range_lines, { "# Heading" }))
@@ -192,7 +259,7 @@ conform.formatters.glfm_timeout_test = {
   args = { "-e", "setTimeout(() => {}, 5000)" },
   stdin = true,
 }
-local timeout_buf = buffer({ "#Heading" })
+local timeout_buf = buffer({ "#  Heading" })
 local began = uv.hrtime()
 local timeout_result, timeout_lines = format(timeout_buf, {
   formatters = { "glfm_timeout_test" },
@@ -202,7 +269,7 @@ local timeout_result, timeout_lines = format(timeout_buf, {
 assert(timeout_result.err and timeout_result.err:lower():find("timeout", 1, true))
 assert(not timeout_result.edited)
 assert((uv.hrtime() - began) / 1e6 < 1000)
-assert(vim.deep_equal(timeout_lines, { "#Heading" }))
+assert(vim.deep_equal(timeout_lines, { "#  Heading" }))
 local timeout_retry_result, timeout_retry_lines = format(timeout_buf)
 assert(not timeout_retry_result.err, vim.inspect(timeout_retry_result.err))
 assert(timeout_retry_result.edited)

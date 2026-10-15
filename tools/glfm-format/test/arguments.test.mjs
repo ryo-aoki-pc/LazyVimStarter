@@ -19,7 +19,8 @@ async function project(t) {
   const filename = path.join(cwd, "文書 with spaces.md");
   await writeFile(filename, diskContents);
   await writeFile(path.join(cwd, ".markdownlint.json"), JSON.stringify({ default: false, MD018: true }));
-  return { filename, cwd, runtimeDir };
+  // MD018 の見出し化を例にするので、既定で無効の heading_conversion を有効にする。
+  return { filename, cwd, runtimeDir, fixes: { heading_conversion: true } };
 }
 
 function cli(options, args) {
@@ -100,10 +101,40 @@ test("CLI rejects invalid range endpoints and recovers on the next invocation", 
     assert.equal(child.stdout, "");
     assert.match(child.stderr, /範囲/);
   }
-  const recovered = cli(options, [...base, "--range-start", "1", "--range-end", "1"]);
+  const recovered = cli(options, [...base, "--range-start", "1", "--range-end", "1", "--enable-fixes", "heading_conversion"]);
   assert.equal(recovered.status, 0, recovered.stderr);
   assert.equal(recovered.stderr, "");
   assert.equal(recovered.stdout, input.replace("#Unsaved", "# Unsaved"));
+  assert.equal(await readFile(options.filename, "utf8"), diskContents);
+});
+
+test("CLI selects fixes by category and rule name and rejects invalid selections without emitting buffer text", async (t) => {
+  const options = await project(t);
+  const base = ["--runtime-dir", runtimeDir, "--filename", options.filename];
+  // プロジェクトの設定は MD018 だけを有効にしている。見出し化は既定で無効なので、指定しなければ変わらない。
+  for (const [args, expected] of [
+    [[], input],
+    [["--enable-fixes", "heading_conversion"], input.replace("#Unsaved", "# Unsaved")],
+    [["--enable-fixes", "heading_conversion", "--disable-fixes", "MD018"], input],
+    [["--enable-fixes", "no-missing-space-atx"], input.replace("#Unsaved", "# Unsaved")],
+  ]) {
+    const child = cli(options, [...base, ...args]);
+    assert.equal(child.status, 0, child.stderr);
+    assert.equal(child.stdout, expected, args.join(" "));
+  }
+  for (const [args, message] of [
+    [["--enable-fixes", "heading_conversoin"], /分類名にもルール名にも/],
+    [["--enable-fixes", "heading_conversion,"], /空/],
+    [["--enable-fixes", "MD026", "--disable-fixes", "MD026"], /両方/],
+    [["--enable-fixes", "MD026", "--disable-fixes", "no-trailing-punctuation"], /両方/],
+    [["--enable-fixes", "lists", "--enable-fixes", "code"], /複数回/],
+    [["--disable-fixes"], /引数/],
+  ]) {
+    const child = cli(options, [...base, ...args]);
+    assert.equal(child.status, 1, args.join(" "));
+    assert.equal(child.stdout, "");
+    assert.match(child.stderr, message);
+  }
   assert.equal(await readFile(options.filename, "utf8"), diskContents);
 });
 

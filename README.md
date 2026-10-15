@@ -144,7 +144,10 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   - 整形連鎖から **prettier を除外** (GLFM の数式・脚注・`[[_TOC_]]` を壊すため)。
     Markdown は `glfm_markdownlint` が markdownlint-cli2 の修正候補を Comrak で検査して適用する。
     説明リスト内の安全な空白修正や箇条書きの記号統一も行い、用語と説明の対応・継続行・
-    内部リストの所属・本文が変わる修正は除外する。保存時と `<leader>cf` で動き、診断を待たずに整形できる。
+    内部リストの所属・本文が変わる修正は除外する。構文木の構造が変わる修正と GitLab の参照を変える修正は当てない。
+    `#123` はどの設定でも見出しにしない。整形する対象は `lua/plugins/lang-markdown.lua` の
+    `format_fixes` で選ぶ (診断はそのまま)。ルールごとの例は [GLFM 整形器のルール一覧](docs/reference/glfm-format.md) にある。
+    保存時と `<leader>cf` で動き、診断を待たずに整形できる。
     初回と依存の変更後は [安全な整形の導入](docs/setup.md#gitlab-markdown-の安全な整形を導入する-初回と依存の変更後) が必要。
     MDX は prettier と markdownlint-cli2。Markdown / MDX の待ち時間の上限は 10 秒
     (速い環境では処理が終わった時点で戻る)。ほかのファイルは LazyVim 既定の 3 秒。
@@ -154,7 +157,7 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   - **markdown-preview.nvim を外した** (2023-10 から更新が止まっており、GLFM 固有の記法を描けない。
     Windows では build も通らなかった)。代わりに下の GitLab プレビューを使う。
   - render-markdown.nvim は無効化 (記法をそのまま見て書き、見た目はプレビューで確かめる)。
-  - 除外したい markdownlint ルールは `lua/plugins/lang-markdown.lua` の `disabled_rules` に列挙。
+  - 診断と整形の両方から外す markdownlint ルールは `lua/plugins/lang-markdown.lua` の `disabled_rules` に列挙。
 - **GitLab プレビュー** (`<leader>cp` で切り替え、`:GitLabPreview` / `:GitLabPreviewStop`) — 編集中の内容を
   GitLab の Markdown API に描かせて、ブラウザに出す。GitLab が描いた HTML をそのまま使うので、
   `[[_TOC_]]`・`` $`…`$ ``・`>>>`・`{+ +}`・`[~]`・アラート・`#123` などの参照も GitLab と同じに見える。
