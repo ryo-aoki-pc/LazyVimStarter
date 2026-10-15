@@ -1,6 +1,6 @@
 # 設定の仕組み (IME 連携・日本語の検索・Markdown / GLFM)
 
-[AGENTS.md](../../AGENTS.md) の「アーキテクチャ」から分けた節。AGENTS.md を Codex が読める大きさ (32 KiB) に収めるため、ここに置く。下のファイルを変える前に読む。
+[AGENTS.md](../../AGENTS.md) を Codex が読める大きさ (32 KiB) に収めるため、アーキテクチャはここに置く。下のファイルを変える前に読む。
 
 ## IME 連携 (この設定で最も複雑な部分)
 
@@ -100,7 +100,7 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   分類の表に無い組み込みルール (markdownlint を上げて増えたもの) の修正は、表に足すまで当てない。
   修正候補はまとめて当てて 1 回で検査し、構造が変わるときだけ半分に分けて原因を除く (修正ごとに
   文書全体を解析すると、違反の多い長い文書で保存の上限を超えるため)。markdownlint の設定は、
-  以前の `markdownlint-cli2 --fix` と同じく Neovim の作業ディレクトリを基準に探す (ファイルが
+  Neovim の作業ディレクトリを基準に探す (ファイルが
   その下にあるとき。上の階層のプロジェクト設定も効く)。
   固定した npm 依存は `stdpath("data")/glfm-format` に `:GlfmFormatInstall` で導入する。
   保存時に依存を自動取得しない。Node.js 22 以上が必要。conform の
@@ -190,7 +190,6 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   MDX の連鎖と nvim-lint には渡さない。ルールごとの例は [GLFM 整形器のルール一覧](../reference/glfm-format.md)、
   代表的な例は README の「整形の例」にあり、`tools/glfm-format/test/reference.test.mjs` がどちらの例もすべて整形し直して確かめる。
 - render-markdown.nvim と **markdown-preview.nvim は無効** (後者は 2023-10 から更新が止まり、GLFM を描けない)。
-  `lazy-lock.json` から markdown-preview.nvim の行は手で消した (lazy.nvim は無効にしたプラグインの行を残し続ける)。
 - **プレビューは自作の GitLab プレビュー** (`<leader>cp`)。**`lua/config/gitlab_preview/`** が実体で、
   編集中の内容を curl で GitLab の Markdown API (`POST /api/v4/markdown`) に送り、返ってきた HTML を
   127.0.0.1 の HTTP サーバー (`vim.uv`) と SSE でブラウザのページに流す。分担と守ること:

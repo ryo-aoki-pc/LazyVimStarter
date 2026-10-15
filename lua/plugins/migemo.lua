@@ -2,9 +2,10 @@
 -- 例: /kensaku<CR> が「検索」「けんさく」「ケンサク」等にマッチ。同じ変換を flash の s と
 -- snacks picker の grep にも配線しているので、バッファ内ジャンプもプロジェクト grep も
 -- IME を入れずに済む。/kensaku<Tab> なら一致した文字列そのものを補完候補から選べる (blink.cmp)。
--- 以前は vim-kensaku (denops) を使っていたが、Deno という外部ランタイム・初回の辞書
--- ダウンロード・起動直後は denops 未起動で検索が失敗する、という 3 つの面倒があった。
--- luamigemo は同じ jsmigemo の純 Lua 移植で辞書も同梱しているため、いずれも無くなる。
+-- vim-kensaku (denops) は Deno という外部ランタイム・初回の辞書ダウンロードが要り、
+-- 起動直後は denops 未起動で検索が失敗するので使わない。
+-- luamigemo は同じ jsmigemo の純 Lua 移植で辞書も同梱し、外部ランタイムと辞書の取得が要らず、
+-- 起動直後から検索できる。
 local migemo = require("config.migemo")
 
 -- 決して一致しないパターン (0 行目)。flash に渡す skip パターンなどに使う。

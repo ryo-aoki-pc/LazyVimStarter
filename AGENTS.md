@@ -86,7 +86,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
 
 ### IME 連携・日本語の検索・Markdown / GLFM
 
-この設定で最も複雑な部分なので、[docs/dev/architecture.md](docs/dev/architecture.md) に分けてある。次のファイルを変える前に、その節を読む。
+この設定で最も複雑な部分の説明は、[docs/dev/architecture.md](docs/dev/architecture.md) にある。次のファイルを変える前に、その節を読む。
 
 - 「IME 連携」: `lua/config/ime.lua`・`ime_indicator.lua`・`ime_preedit.lua`・`noice_cmdline.lua`、
   `lua/config/autocmds.lua` のモード遷移、`lua/config/keymaps.lua` の `<C-j>`、`lua/plugins/ime.lua`、
@@ -168,10 +168,10 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
 
 - 導入・利用・更新の手順は正本に置き、README の「導入」の表から正本の項へ直接リンクする (手順書の先頭やカテゴリの見出しへはリンクしない)。執筆規則は setup-notes の `docs/dev/writing-rules.md`
 - `docs/extra/setup.md` はロールバック・必要なもの一覧・注意点、`docs/reference/setup.md` は正本の各手順の背景 (見出しは `### <項> / 手順 N: 補足: <題>`)、`docs/verification/` は検証記録 (環境・日付・対象コミット・実出力・未確認事項)
-- `docs/dev/architecture.md` は設計、`docs/dev/check.md` は変更後の確認 (整形器の回帰テスト)、`docs/reference/glfm-format.md` は整形器のルール一覧 (`tools/glfm-format/test/reference.test.mjs` がこの文書の例を検査する)。`docs/verification/claude.md` は旧 CLAUDE.md から移した記録
+- `docs/dev/architecture.md` は設計、`docs/dev/check.md` は変更後の確認 (整形器の回帰テスト)、`docs/reference/glfm-format.md` は整形器のルール一覧 (`tools/glfm-format/test/reference.test.mjs` がこの文書の例を検査する)。`docs/verification/claude.md` は実施範囲の要約
 - 正本の手順番号が変わったら、参考資料と extra の手順番号を付け替える。setup-notes から張られている見出し (extra の「ロールバック」「必要なもの一覧」「注意点」など) は名前を変えない
-- 案内だけになった文書・節は消し、旧パスと移動先を setup-notes の集約対応表に足す。消すときは参照元のリンクを付け替える (検証記録は、削除前の固定コミットの URL にする)
-- 検証記録の既存の本文・手順番号・出力は変えない。新しい対象版・環境・範囲は追記する
+- 文書を移す・分ける・まとめるときは、移した経緯と、旧ファイル名・旧見出しとの対応を文書に書かない (経緯は git の履歴と Pull Request の本文に残す)。リンクを今の場所へ直す。中身が新しい場所への案内だけになったファイルは消す
+- 残す検証記録の実施日・対象版・環境・出力・成功と失敗・未実施の範囲・記録したときの手順番号は書き換えない。再検証せずに検証範囲を広げない。記録の手順番号が今の手順と違い、本文を読むのに要るときだけ「記録の手順 | 今の手順」の表で結ぶ
 
 ## 共同作業の規則
 
@@ -182,7 +182,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
 - 頼まれた範囲のファイルだけを変える。範囲の外を変えるときは、変える前に理由を書いて確かめる
 - 終わったら、テストとリンターを通してから、目的ごとにコミットする。通らなければコミットせずに、結果を報告する
 - コミットしたら、今のブランチを push し、`custom` への Pull Request を作る（既にあれば足す）。今のブランチに `custom` を取り込むのは、頼まれたときと、Pull Request が競合したときだけ
-- `custom` への取り込み（マージ）は、エージェントが行ってよい（2026-10-15、利用者の決定）。テストとリンターが通り、Pull Request が競合していなければ、`gh pr merge --squash` で Pull Request を取り込む（手元の `custom` にはコミットも push もしない）。利用者が取り込まないよう頼んだときは取り込まず、そのことを報告する。取り込んだ Pull Request のブランチは、GitHub がリモートから自動で消す（リポジトリの Automatically delete head branches は人が有効にしておき、エージェントは変えない）。取り込んだブランチには、その後コミットも push もせず、次の作業は新しいブランチで始める。手元に残ったブランチの削除は人が行う
+- `custom` への取り込み（マージ）は、エージェントが行ってよい。テストとリンターが通り、Pull Request が競合していなければ、`gh pr merge --squash` で Pull Request を取り込む（手元の `custom` にはコミットも push もしない）。利用者が取り込まないよう頼んだときは取り込まず、そのことを報告する。取り込んだ Pull Request のブランチは、GitHub がリモートから自動で消す（リポジトリの Automatically delete head branches は人が有効にしておき、エージェントは変えない）。取り込んだブランチには、その後コミットも push もせず、次の作業は新しいブランチで始める。手元に残ったブランチの削除は人が行う
 - 秘密情報（`.env`・鍵・トークン・パスワード）を読まない・書かない・出力しない
 - レビューを頼まれたら、ファイルを変えずに、指摘を「重大度・場所（ファイル:行）・理由・直し方」で挙げる
 - ほかの担当の変更は、`git diff custom...agent/codex` のように git で読む（ほかの worktree へ移らない）
@@ -190,7 +190,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
 
 ## 既定の分担
 
-利用者が Claude Code に、分担を指定せずにファイルを変える作業を頼んだときは、Claude Code が取りまとめて次の 4 つで分担する（2026-10-15、利用者の決定）。「共同作業の規則」の「分担は人が決める」で、人が分担を決めていないときの既定にする。利用者がほかのエージェントに直接頼んだときは、この節は使わず「共同作業の規則」に従う。
+利用者が Claude Code に、分担を指定せずにファイルを変える作業を頼んだときは、Claude Code が取りまとめて次の 4 つで分担する。「共同作業の規則」の「分担は人が決める」で、人が分担を決めていないときの既定にする。利用者がほかのエージェントに直接頼んだときは、この節は使わず「共同作業の規則」に従う。
 
 - Claude Code だけで行うもの: 利用者の質問への答え、ファイルを変えない調べもの、1 つのファイルの数行で振る舞いを変えない直し（誤字・リンク・値の直しなど）
 - Claude Code: 計画・実機での確かめ・ほかの 3 つへの依頼・指摘の確かめ・統合・コミットと Pull Request・取り込み
