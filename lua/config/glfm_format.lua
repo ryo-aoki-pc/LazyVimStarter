@@ -94,6 +94,31 @@ function M.formatter(opts)
   }
 end
 
+-- conform に渡す formatter。バッファごとに設定を返す関数で、予備のプロセス (config.glfm_spare) が使えるときは
+-- それに要求を渡す Lua の formatter、使えないときは上の CLI の設定をそのまま返す。
+---@param opts? {config_path?: string, fixes?: table<string, boolean>, spare?: boolean, name?: string, timeout_ms?: integer}
+function M.conform_formatter(opts)
+  opts = opts or {}
+  local job = M.formatter(opts)
+  if opts.spare == false then
+    return job
+  end
+  local spare = require("config.glfm_spare")
+  local name = opts.name or "glfm_markdownlint"
+  local timeout_ms = opts.timeout_ms or 10000
+  local lua_formatter = {
+    inherit = false,
+    format = function(_, ctx, lines, callback)
+      spare.format(job, name, timeout_ms, ctx, lines, callback)
+    end,
+    -- Lua の formatter でも、conform は range_args の有無で範囲を分け直すかを決める (runner.lua の format_lines_sync)。
+    range_args = job.range_args,
+  }
+  return function()
+    return spare.usable() and lua_formatter or job
+  end
+end
+
 local function read_file(path)
   local fd = assert(uv.fs_open(path, "r", 438))
   local stat = assert(uv.fs_fstat(fd))
@@ -168,8 +193,12 @@ function M.install(opts, callback)
   local source_dir = opts.source_dir or M.source_dir()
   local runtime_dir = opts.runtime_dir or M.runtime_dir()
   installing = true
+  -- 導入の間は予備のプロセスを止め、入れ替わる途中の依存を読ませない。終わったら起動し直す。
+  local spare = require("config.glfm_spare")
+  spare.block(true)
   local function finish(success, message)
     installing = false
+    spare.block(false)
     report(success, message)
   end
   if not opts.quiet then
@@ -232,10 +261,13 @@ function M.install(opts, callback)
   return true
 end
 
-function M.setup()
+---@param opts? {spare?: boolean}
+function M.setup(opts)
+  opts = opts or {}
   vim.api.nvim_create_user_command("GlfmFormatInstall", function()
     M.install()
   end, { desc = "GLFM 整形器の依存を導入", force = true })
+  require("config.glfm_spare").setup({ enabled = opts.spare ~= false })
 end
 
 return M

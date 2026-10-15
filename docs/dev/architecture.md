@@ -123,8 +123,28 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
     整形済みの文書でも毎回出るコードの中の MD038・MD010 の確かめに、全文の解析を使わなくなった
   - 選ばれる修正が無く、説明リストの印 (行頭の `:`・`~`) も無い文書は、解析せずに返す
   - 試験用の `exhaustive: true` で近道を切った結果と、近道ありの結果が同じことを `test/fast-paths.test.mjs` が確かめる
-  - CLI は、Node が対応していれば (22.8 以上) 依存のコンパイルの結果を `stdpath("data")/glfm-format/.compile-cache` に残す。
-    保存のたびに起動する方式は変えていない (常駐のプロセスは、時間切れ・カスタムルール・更新の扱いが難しいので見送った)
+  - CLI は、Node が対応していれば (22.8 以上) 依存のコンパイルの結果を `stdpath("data")/glfm-format/.compile-cache` に残す
+- 短い文書の保存の時間の大半は、node の起動 (約 60 ms) と依存の読み込み (約 160 ms) なので、予備のプロセス
+  (`lua/config/glfm_spare.lua` と `tools/glfm-format/spare.mjs`) で保存の外へ出している。
+  - Markdown のバッファを開くと、依存を読み込んで標準入力を待つ node を 1 つ起動しておく。保存のときは、
+    CLI に渡すはずの引数と cwd を JSON の 1 行で、その後に本文を渡す。予備は `format.mjs` の `cli()` を同じ引数で走らせ、
+    stdout・stderr・終了コードは CLI と同じ。1 回使ったら終わり、保存の後に次の予備を起動する
+  - 使い回さないのは、同じ node で続けて整形すると、JS の設定やカスタムルールのモジュールと内部の状態が残り、
+    CLI と結果が変わるため (状態を持つカスタムルールで実際に変わった)。設定・カスタムルールは要求のときに読むので、
+    予備を起動した後の変更も次の保存で効く
+  - conform の formatter は、バッファごとに設定を返す関数 (`glfm_format.conform_formatter`)。予備が使えるときは Lua の
+    formatter、使えないとき (予備が無い・起動の後に `format.mjs`・`spare.mjs`・依存の lock・node の実体・環境変数・
+    依存の場所が変わった) は、今までの CLI の設定をそのまま返す。Lua の formatter の結果とエラーの文言は、conform の job と
+    同じ規則で作る (行の分け方・末尾の改行・`Formatter '…' error: …`)
+  - 予備が要求を受け付けなかったとき (終了コード 86) は、残りの時間で CLI を走らせる。整形器そのものの失敗では
+    やり直さない (今と同じく原文のまま保存する)
+  - conform は Lua の formatter の子を止めないので、整形の上限 (`lang-markdown.lua` の `format_timeout_ms`) で予備を止め、
+    遅れた結果は当てない
+  - Markdown のバッファをすべて閉じたとき・`VimLeavePre`・`:GlfmFormatInstall` の間は予備を止める。予備を使わないときは
+    `lang-markdown.lua` の `format_spare = false`
+  - 見送った案: 常駐 (上の理由)、V8 の起動スナップショット (Node 26.10 は自前のモジュールを読むと作る段階で止まり、
+    依存を 1 つにまとめる道具が要る)、markdownlint を直接呼ぶ (減るのは約 40 ms で、設定の探し方の再実装が出力の差になる)、
+    保存の後に整形する `format_after_save` (未整形の内容がいったんディスクに書かれ、`:wq` で待たされる)
 - フォーマッターの回帰テストは `tools/glfm-format/test/`。説明リストと GLFM 固有記法の
   保持・説明内部の安全な修正・設定の優先順位・冪等性・CLI の失敗時を確認する。説明の後に
   `>` だけの行 (空の引用) を足さないこと・上の階層の設定・末尾の空行・小文字の目次・
