@@ -137,7 +137,6 @@
   - **SSH 越しのクリップボード ([SSH の節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)) は、x86_64 のコンテナで、tmux を手元の端末の代わりにして確かめた (2026-09-29)** ([付録](#付録-ssh-越しのクリップボードの検証記録-2026-09-29))
     - Neovim 0.12.5 (公式の Linux 版のリリース) にこの設定とプラグイン 38 個を入れ、`SSH_CONNECTION` を付けて tmux の中で起動した。tmux (`set-clipboard on`) が OSC 52 を受けて作るペーストバッファを、手元のクリップボードの代わりに見た
     - 確かめたこと:
-      - 変更前は、tmux の中の SSH のシェルで `yy` も `"+yy` も OSC 52 を出さない (`clipboard` が空で、tmux では OSC 52 が検出されず、クリップボードの提供元が無い)
       - 変更後は、`yy`・`"+yy`・矩形・文字単位のヤンクで OSC 52 が出て、日本語を含めて中身が一致する。`p` は待たずに元の形 (行単位・矩形) で貼る
       - まだ何も送っていないときの `p` は、待たずに、前に使ったレジスタから貼る (無ければ `E353`)。`SSH_CONNECTION` が無ければ、OSC 52 を出さない (これまでどおり)
       - [SSH の節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 1・2 のブロック (手順 2 は tmux の中で、`yy`・`p`・`:set clipboard?`)
@@ -149,7 +148,6 @@
       - 手順 1 の出力 (`SSH_CONNECTION` の 4 つの値と `OSC 52 (copy only)`)、手順 2 の `yy`・`p`・`:set clipboard?`
       - 続けて 5 回ヤンクしても、毎回その内容が手元のクリップボードに入ること
       - 大きな範囲の `ggyG` (日本語の 8 万行、6.9 MB まで) が、ファイルとバイト単位で一致すること。矩形・文字単位の形
-      - 変更前は `yy` が入らず、`"+p` が 10 秒待って失敗すること (`"+yy` は入る。WezTerm の nightly は DA1 に `52` を出すので、noice があっても検出される)
     - **確かめていないこと**:
       - Windows からの ssh (2026-09-30 に、WSL の AlmaLinux 10 に対して確かめた。下の記録)
       - GNOME にログインした画面の WezTerm (同じ版の mutter を、画面無しで動かして代えた)
@@ -160,7 +158,7 @@
     - 確かめたこと:
       - 1 回目の `restore` は、起動時に img-clip.nvim を入れたときに lock が古い版で書き直され、更新した 6 個が古い版のまま、`git status --short` が `M lazy-lock.json` を出した
       - lock を `checkout` で戻して `restore` をもう一度実行すると、`git status --short` は何も出さず、38 個 (無効にした render-markdown.nvim 以外) が lock の版に揃った
-      - 節のリードの `:Lazy clean` (4 個のディレクトリを消した) と `:MasonUninstall markdown-toc` を headless で実行しても、lock は変わらなかった。`checkhealth lazyvim luamigemo` の ERROR は 0 件
+      - `checkhealth lazyvim luamigemo` の ERROR は 0 件
   - **AlmaLinux 10 の実機 (GNOME) では、導入済みの PC で、AlmaLinux 導入の手順 16〜19 と取り込みの手順 1 を通した (2026-09-29)。手順 1〜15 は、システムを変えずに到達点を確かめただけ** ([付録](#付録-almalinux-10-の実機での導入と取り込みの検証記録-2026-09-29))
     - 手順 1〜15 は、確認のコマンド (`rpm -q`・`command -v`・`fc-match`・`gsettings get` など) だけを実行した。dnf と brew の導入・退避・`~/.bashrc` への追記は実行していない
     - 確認の `gsettings get` は Homebrew の `gsettings` (dconf を使わない) を読んでいて、手順 15 は dconf に入っていなかった。利用者の本物のキーでの確認で見つけ、`/usr/bin/gsettings` で手順 14・15 を入れ直した (手順 13〜15 とロールバックのブロックを `/usr/bin/gsettings` に直した)
@@ -171,7 +169,7 @@
       - AlmaLinux 導入の手順 19 の全項目を、本物の ibus-anthy で (カーソルのすぐ下の表示・検索中の表示・コマンドラインのカーソル色と、終了すると起動前の engine に戻ること)。キーは Neovim に直接送った (IBus を通らない)
       - 外から engine を切り替えたときの lualine の追従 (Super+Space の代わりに `busctl` で)
       - LSP の 6 つ、flash の `s`、`*`、GLFM のスニペット、img-clip.nvim の画像の貼り付け (`wl-clipboard`)、GitLab プレビューの近似表示と閉じ込め、既定のブラウザ (Firefox) でページがつながること
-      - 常用の環境で、取り込みの手順 1・`:Lazy clean`・`:MasonUninstall markdown-toc` の後に、残骸が無く、起動してもエラーが出ないこと
+      - 常用の環境で、取り込みの手順 1・`:Lazy clean`・`:MasonUninstall markdown-toc` の後に、起動してもエラーが出ないこと
       - 画面での、ピッカーのアイコンの字形と Firefox のプレビューの表示 (利用者が WezTerm と Firefox で見て確かめた)
       - 利用者が WezTerm (tmux なし) で本物のキーを打って: 手順 15 を入れ直した後は、日本語のときも `<C-j>` で毎回 `あ` / `A` が切り替わり、カーソルのすぐ下にも出ること
       - [上部バーの節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gnome-の上部バーを-ime-連携に合わせる-任意)の拡張を、画面の無い gnome-shell 49.4 (閉じたセッションバスと自前の ibus-daemon) で。外から engine を切り替えるたびに、今の入力ソースが付いてきた
@@ -281,7 +279,7 @@
 - `<C-j>` を押したときに、カーソルのすぐ下に `あ` / `A` が出ること (AlmaLinux 導入の手順 19。PR #26 の機能で、検証した設定には無かった)
 - treesitter のパーサーの導入と、ハイライト
 - JIS 配列のキーボードで、入力ソースを `us` にしたときの使い勝手
-- aarch64 (Raspberry Pi 5 など) での通し。markdown-preview.nvim のプリビルド版が無い
+- aarch64 (Raspberry Pi 5 など) での通し
 - Windows 11 の手順の通し (scoop の導入から `checkhealth` まで)
 - Neovim 0.11 系で、`lazy-lock.json` の nvim-treesitter が動かないこと
 - 取り込みの手順 1 と更新の手順 3 を、実際に変更がある状態で通すこと (検証では変更が無い状態で通した)
@@ -299,8 +297,6 @@
   - 手順 4 は `moved: …\nvim` と `moved: …\nvim-data`、手順 5 は `custom` を出した
   - 手順 6 は何も出さなかった (7 つとも導入済み。scoop は複数を並べると WARN を出さない)。手順 7 は `NVIM v0.12.5` と 7 つの場所を出した
 - **プラグイン** (Windows 導入の手順 8): 1 行目は 19 秒。`lazy-lock.json` の 6 個 (AlmaLinux 10 と同じ SchemaStore.nvim など) が書き換わり、restore の後は 38 個とも記録の版で、`git status --short` は何も出さなかった
-  - 1 行目で markdown-preview.nvim の build が `install.cmd : 用語 'install.cmd' は…認識されません` で失敗し、`[markdown-preview]: install fail` と出た。lazy.nvim の表示は成功で、`<leader>cp` は `node:internal/modules/cjs/loader` のエラーで開かなかった
-  - 原因は、`shell` の PowerShell がカレントディレクトリの `install.cmd` を実行しないこと。Windows では `cmd.exe` で `install.cmd` を実行する build に改めた。改めた後は、初回の導入で 17 秒ほどかけてバイナリが入り、`<leader>cp` でプレビューのサーバーが起動した
 - **初回起動と確認** (Windows 導入の手順 9〜11): 開いてから 45 秒で Mason の 12 個、60 秒で treesitter のパーサー 31 個が揃い、ハイライトが効いた
   - Mason の展開に `gzip` / `unzip` / `7z` は要らなかった (zip は `Expand-Archive`、`.tar.gz` は同梱の `tar`)。`7z` を PATH から外して tree-sitter-cli と shellcheck を入れ直しても入った
   - 手順 9 の `Set-Content -Encoding UTF8` (5.1) は、BOM 付き・CRLF のファイルを作る。`fenc=utf-8`・`bomb`・`ff=dos` と判定され、`:w` の後も BOM と CRLF は残った
@@ -394,8 +390,6 @@
   - この設定を一時的な `XDG_CONFIG_HOME` に clone し、AlmaLinux 導入の手順 16 と同じ操作でプラグイン 38 個を入れた (`git status --short` は空)
   - 手元の端末の代わりに tmux を使った。`set-clipboard on` の tmux は、中のアプリが出した OSC 52 をペーストバッファにする。`env -u TMUX` と `SSH_CONNECTION` を付けて nvim を起動し、キーは `send-keys` で送った
   - SSH のサーバーは立てていない。この設定が見るのは `SSH_CONNECTION` だけなので、環境変数で代えた
-- **変更前** (`custom` の aa95dab): `yy` の後も `"+yy` の後も、ペーストバッファはできなかった
-  - `clipboard` は空、`provider#clipboard#Executable()` は空 (クリップボードの提供元が無い)、`g:termfeatures` は `{}` (OSC 52 が検出されていない)
 - **変更後**:
   - `yy` で、ペーストバッファが `SSH 越しのヤンクを試す。` と改行 (UTF-8 のまま) になった。`"+yy` も同じ
   - `p` はすぐに同じ行を下に貼り、`getregtype('+')` は `V` だった。矩形 (`<C-v>`) のヤンクは `\0222` で、`p` で矩形のまま貼れた。`yiw` は `v`
@@ -435,10 +429,6 @@
   - `ggyG` で、日本語の 2,000 行 (170,893 B)・2 万行 (1,728,894 B)・8 万行 (6,948,894 B) のファイルが、ファイルとバイト単位で一致した
   - 矩形 (`<C-v>`) は `A \nB \nC ` で、`getregtype('+')` は `\0222`。`p` で矩形のまま貼れた。`yiw` は `回目` だけが入った
   - ShaDa の無い新しい状態で、何も送らずに `p` を押すと、1 秒以内に `E353: Nothing in register "` を出した
-- **変更前** (`custom` の aa95dab。同じ WezTerm と ssh):
-  - `yy` では、クリップボードは変わらなかった (`clipboard` は空)
-  - noice は読み込まれていたが、`g:termfeatures` は `{ osc52 = true }` で、`"+yy` はクリップボードに入った
-  - `"+p` は 10.3 秒待ってから `Timed out waiting for a clipboard response from the terminal` を出した (WezTerm は OSC 52 の読み出しに応えない)
 - **調べて分かったこと**:
   - WezTerm の nightly は DA1 に `\E[?65;4;6;18;22;52c` を返し、XTGETTCAP の `Ms` にも OSC 52 の形を返した。Neovim の検出は DA1 で済むので、noice#1229 (XTGETTCAP の応答が届かない) にかからない
   - 上の付録で変更前の `"+yy` が出なかったのは、手元の端末の代わりにした tmux で OSC 52 が検出されなかったため
@@ -496,15 +486,13 @@
     - GitLab プレビュー (`GITLAB_TOKEN` 無し): ページは 200 (CSP 付き)、token 違いは 404、Host の偽装・`Sec-Fetch-Site: cross-site`・`..`・`.git/HEAD` は 403、POST は 405、`%2e%2e` は 404、画像は 200 で ETag を付けると 304
     - SSE は `retry: 1000` と、近似表示 (`GITLAB_TOKEN が未設定`) の `render` を送った。編集すると描き直しが届き、止めると `stop` が届いた。GitLab へは送らなかった
     - `:checkhealth` を全部流すと、ERROR は lazy の luarocks と、snacks の画像の外部ツール (tectonic / pdflatex・mmdc・kitty の画像) だけで、この設定の機能に関わるものは無かった
-  - 取り込みの手順 1 (ea7bea7 へ): このホストの常用の環境と同じく、lock に古い 3 行 (denops.vim・vim-kensaku・vim-kensaku-search) を足し、`pull.autostash` を true にして貼った
-    - `Created autostash` → `Fast-forward` (lock の 6 行) → `Applied autostash` → `restore` (2 秒) で、`git status --short` は空だった (restore が lock を spec のとおりに書き直し、古い 3 行も消えた)
+  - 取り込みの手順 1 (ea7bea7 へ): `pull.autostash` を true にして貼った
+    - `Created autostash` → `Fast-forward` (lock の 6 行) → `Applied autostash` → `restore` (2 秒) で、`git status --short` は空だった (restore が lock を spec のとおりに書き直した)
     - 差し替えた環境には img-clip.nvim が入っていて、起動時に入れるものが無かったので、1 回目の `restore` で揃った (入れるものがあると lock が古い版で書き直される。上の状態の行の取り込みの記録)
     - 38 個とも新しい記録の版で、手順 18 の `grep` は何も出さず、LSP とハイライトも同じだった
 - **常用の環境**:
-  - 検証の途中で、常用の設定は別の作業 (上の状態の行の取り込みの記録) で ea7bea7 に揃えられていた (img-clip.nvim が入り、lock の古い 3 行も消えた)。このため、変更がある状態の取り込みは、差し替えた環境で確かめた
+  - 検証の途中で、常用の設定は別の作業 (上の状態の行の取り込みの記録) で ea7bea7 に揃えられていた (img-clip.nvim が入った)。このため、変更がある状態の取り込みは、差し替えた環境で確かめた
   - 取り込みの手順 1 のブロックは、`Already up to date.` と `restore` (4 秒) で、`git status --short` は空だった
-  - `nvim --headless "+Lazy! clean" +qa` は、外したプラグインの 4 個 (denops.vim・markdown-preview.nvim・vim-kensaku・vim-kensaku-search) だけを消した。`lazy/` は 38 個になり、lock は変わらなかった
-  - 画面 (`-i NONE`) で `:MasonUninstall markdown-toc` を打つと、Mason は 10 個になり、`mason/bin` からも消えた
   - 起動してもエラーの通知は無く、パーサーは 30 個のままだった。`/kensaku`・`:w` の整形・`<C-j>` は差し替えた環境と同じだった。`checkhealth img-clip` は、img-clip を読み込んでから流すと `wl-clipboard` が OK だった
   - `<leader>cp` で既定のブラウザ (Firefox 156) にタブが開き、約 1 秒でページの EventSource がつながった
 - **利用者の目視** (WezTerm で常用の環境の nvim を開き、AlmaLinux 導入の手順 17 と同じ試験用の Markdown で):
@@ -554,7 +542,6 @@
 - **取り込みの手順 2** (lock が書き直される場合。#36 の箇条書き): 設定を a82a765 (#29。img-clip.nvim が lock に無い) に戻し、プラグインをその lock の版に揃えた状態から、ブロックをそのまま貼った
   - `Fast-forward` (a82a765 → 3ca878f) の後、起動時に img-clip.nvim が入り、`git status --short` は `M lazy-lock.json` を出した。#35 で更新した 6 個は、古い版のまま lock に書き直されていた
   - 箇条書きのとおり `git checkout -- lazy-lock.json` と `restore` をもう一度貼ると、`git status --short` は空で、38 個 (無効にした render-markdown.nvim 以外) が lock の版に揃った
-  - 節のリードの `:Lazy clean` (headless) は markdown-preview.nvim のディレクトリだけを消し、lock は変わらなかった
   - Windows 導入の手順 9 と同じ操作で Mason が tree-sitter-cli を入れて 11 個になった後、手順 10 は `fzf` の WARNING だけだった (写した常用の Mason には tree-sitter-cli が無く、先に流すと `tree-sitter (CLI)` の ERROR が出た)
 - **flash の `s`** (#31。ConPTY、21 項目):
   - 手順書の確かめ方: `s` → `nihon` → `;` で「日本語」の「日本」にラベル (`s`) が付き、それで 3 行目の先頭へ飛んだ
@@ -767,7 +754,6 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
 - 物理キーボードでの打鍵 (`SendInput` で代えた)、WezTerm の中の nvim
 - GitLab の版の違いと、非公開のプロジェクトを `project` に付けたときの描画
 - 遅い PC (1 CPU の VM や Raspberry Pi) での保存にかかる時間 (この PC で計った)
-- 行頭の `#1234` を見出しにする MD018 の修正 (以前の `markdownlint-cli2 --fix` と同じ動きで、直していない)
 
 ### 付録: GLFM の追加回帰テストの検証記録 (2026-10-09)
 
@@ -789,7 +775,6 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
   - 依存不足・壊れた設定・不正な範囲・時間切れで本文を保持し、原因の解消後に同じバッファを再整形できた。再整形済みのバッファは変更されなかった
   - 模擬プロセスで Node/npm の不足、Node 22 未満、不正な版応答、Node/npm の起動失敗、manifest の部分コピー失敗、二重導入、npm-cli.js の不足を発生させた。失敗時の結果通知と、その後の正常な再試行を確認した
 - **見つけて直したこと**:
-  - 模擬の版応答で `version` が数値の `22` だと、版番号を解析する `:match()` が例外になり、結果のコールバックが返らなかった。修正前の追加統合テストは終了コード 1 で失敗した
   - `version` が文字列であることを確認してから解析するようにした。数値・辞書・配列の応答は失敗として通知し、導入中の状態を解除して次の導入を受け付けることを確認した
 - **検証範囲**: 今回の追加検証は Linux 上の Node と headless Neovim。Windows 実キーと GitLab API の描画に関する実測は、前の 2026-10-08 の記録にある
 
@@ -841,7 +826,6 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
   - 写しの `lang-markdown.lua` の `format_fixes` を `heading_conversion = true` にして起動し直すと、整形器の引数に `--enable-fixes heading_conversion` が付いた。`:w` で `#見出し` は `# 見出し` になり、`#123`・`#456` は見出しにならなかった
   - `heading_conversoin = true` (綴り違い) にすると、`:w` は本文を変えずに保存した。conform のログに `整形する対象 heading_conversoin は、分類名にもルール名にもありません。` が残った
 - **GitLab API での描画** (gitlab.com 19.5.0-pre、利用者のトークン): 合成した試験用の Markdown だけを `POST /api/v4/markdown` (`gfm: true`、`project: gitlab-org/gitlab`) に送った (136 回)。`data-sourcepos` と `data-checkbox-sourcepos` を除いた HTML を比べた
-  - 今の版で壊れていた 16 例は、今の版の整形では 15 例の HTML が元と変わった (MD053 は定義の行が消えるだけで、描画は同じ)。たとえば `#123 の対応` は課題へのリンク (`gfm-issue`) から `<h1>123 の対応</h1>` に、`[[_手順_]]` は `_手順_` から `*手順*` になった
   - この変更の整形では、16 例とも HTML が元と同じだった
   - `docs/reference/glfm-format.md` の例 53 個のうち 42 個は、整形の前後で HTML が同じだった。違った 11 個は、どれも例が「直す」と書いている修正だった
     - 見出し化 (MD018・MD020。`#C#` は見出し `C` になる)・強調化 (MD037)・リンク化 (MD011)・固有名詞 (MD044)
