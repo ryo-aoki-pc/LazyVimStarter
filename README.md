@@ -1,22 +1,31 @@
 # 💤 LazyVim 設定 (日本語編集 + Markdown 執筆向け)
 
-導入・利用・更新は [Neovim のセットアップ（AlmaLinux 10・Windows 11）](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md) に集約している。設定仕様・開発者向け操作・過去の検証・ロールバックはこのリポジトリで管理する。
-
-移動先は[集約対応表](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/dev/consolidation-map.md)で確認する。
-
-
 [LazyVim](https://github.com/LazyVim/LazyVim) をベースに、日本語の入力・検索と
 Markdown (GLFM) 執筆を強化した Neovim 設定。
 
-**新しいマシンで動かすまでの手順は setup-notes の「Neovim のセットアップ」** にある
-(外部コマンドの導入、GNOME + ibus の初期設定、初回起動と動作確認まで)。
+## 導入
+
+- 対象: AlmaLinux 10 + GNOME と Windows 11 の自分のユーザー。手順は setup-notes の[Neovim のセットアップ](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md)にあり、
+  本体を入れてから、この設定を `~/.config/nvim` (Windows は `%LOCALAPPDATA%\nvim`) に clone する
+- 外部コマンドとフォントは[外部依存](#外部依存)を前提にしている。足りなくてもエラーにならず静かに壊れるので、手順書の前提を先に通す
+
+| | AlmaLinux 10 | Windows 11 |
+| --- | --- | --- |
+| 本体とこの設定 | [Neovim](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#neovim) (手順 3 で「LazyVim の設定を導入する」も通す) | [Windows 11 で Neovim を入れる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-neovim-を入れる) (手順 4 で「Windows 11 で LazyVim の設定を導入する」も通す) |
+| この設定だけ (本体が入っているとき) | [LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する) |
+| 安全な Markdown 整形 | [LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する) | [Windows 11 で LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の安全な-markdown-整形を導入する) |
+| 動作の確認 | [LazyVim の日本語検索・整形・IME 連携を確かめる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の日本語検索整形ime-連携を確かめる) (この設定と安全な整形の後、再起動してから) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 10 (その項を最後まで通したなら済んでいる) |
+| ほかのマシンの変更を取り込む | [LazyVim の設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定とプラグインの版を揃える) | [Windows 11 で LazyVim の設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定とプラグインの版を揃える) |
+| 更新 | [LazyVim の本体・外部コマンド・プラグインを更新する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の本体外部コマンドプラグインを更新する) | [Windows 11 で LazyVim の本体・外部コマンド・プラグインを更新する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の本体外部コマンドプラグインを更新する) |
+| 戻す | [ロールバック](docs/extra/setup.md#ロールバック)の手順 1〜4 | 同じ節の手順 5〜7 |
+
+- 任意: [GitLab プレビューを設定する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを設定する) (Windows 11 は[同じ名前の項](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の-gitlab-プレビューを設定する))・
+  [カーソル色を tmux で使う](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のカーソル色を-tmux-で使う)・
+  [IME 連携に GNOME の上部バーを合わせる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)・
+  [ヤンクを SSH 越しに手元へ送る](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のヤンクを-ssh-越しに手元へ送る)・
+  [Neovim を既定のエディタにする](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#neovim-を既定のエディタにする) (Windows 11)
+
 この README は「何ができる設定か」を説明する。
-
-
-## 手順書
-
-
-導入・設定の取り込み・任意操作・更新は [AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) / [Windows 11](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)。元の [docs/setup.md](docs/setup.md) は移動先と開発者検査の案内。[検証記録](docs/verification/setup.md)・[ロールバック](docs/extra/setup.md)はこのリポジトリに残す。
 
 ## 主なカスタマイズ
 
@@ -72,11 +81,11 @@ OS の IME (Linux: ibus/anthy、Windows: zenhan) を Neovim のモードに追�
   何もせず静かに無効化される (エラーは出ない)。
 
 Linux では **GNOME の入力ソース登録と anthy のショートカット調整が必要**。
-手順は [docs/setup.md の AlmaLinux 導入の手順 13〜15](docs/setup.md#almalinux-10-に導入する-1-度だけ)
+手順は setup-notes の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 7〜9
 にある (この 2 つをやらないと `<C-j>` が anthy に食われる)。設定は `/usr/bin/gsettings` で書くこと
 (Homebrew の glib が入っていると、PATH の先頭の `gsettings` は GNOME の設定に書かないので効かない)。
 日本語が一切入力できなくなった場合の切り分けは
-[注意点](docs/setup.md#注意点)を参照。
+[注意点](docs/extra/setup.md#注意点)を参照。
 
 #### 補足
 
@@ -87,7 +96,7 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   (もう一度押せば揃う)。`<C-j>` は nvim が直接切り替えるので常に意図どおり動く。
   なお nvim を抜けた時点では上記の復帰処理で必ず整合が取れるため、OS 側の切替が
   壊れたままになることはない。
-  GNOME 49 では、[docs/setup.md の上部バーの節](docs/setup.md#gnome-の上部バーを-ime-連携に合わせる-任意)で
+  GNOME 49 では、setup-notes の[LazyVim の IME 連携に GNOME の上部バーを合わせる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)で
   GNOME Shell の拡張 (`gnome-shell/ibus-engine-follow@ryo-aoki-pc.github.com`) を入れると、上部バーと
   Super+Space の順番が nvim の切り替えに付いてくるので、このずれは起きない。
 - **変換中の `<Esc>` は 2 回**: 1 回目は anthy が変換のキャンセルに使うため、
@@ -95,7 +104,7 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
 - **カーソル色**: 挿入モードとコマンドライン (検索中を含む) のカーソル色も IME 状態で変わるが、
   `tmux-256color` には `Cs`/`Cr` が無く Neovim が OSC 12 を出さないため、tmux 越しでは既定で効かない。
   使いたい場合の設定は
-  [docs/setup.md の任意設定](docs/setup.md#カーソル色を-tmux-で効かせる-任意)にある。
+  setup-notes の[LazyVim のカーソル色を tmux で使う](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のカーソル色を-tmux-で使う)にある。
 - **Windows**: `zenhan.exe` (推奨) か `im-select.exe` が PATH にあれば、モード連動と
   終了時の復帰は同じように動く。ただし ibus の `GlobalEngineChanged` に相当する通知が
   無いため、**OS 側で IME を切り替えても Neovim は気付けない** (あ/A 表示が実態と
@@ -153,7 +162,7 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
     保存時と `<leader>cf` で動き、診断を待たずに整形できる。
     Markdown を開くと、依存を読み込んだ整形用の node を 1 つ先に起動しておき (約 85 MB)、保存の待ち時間を縮める
     (結果は同じ。使わないときは `lang-markdown.lua` の `format_spare = false`)。
-    初回と依存の変更後は [安全な整形の導入](docs/setup.md#gitlab-markdown-の安全な整形を導入する-初回と依存の変更後) が必要。
+    初回と依存の変更後は安全な整形の導入 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する) / [Windows 11](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の安全な-markdown-整形を導入する)) が必要。
     MDX は prettier と markdownlint-cli2。Markdown / MDX の待ち時間の上限は 10 秒
     (速い環境では処理が終わった時点で戻る)。ほかのファイルは LazyVim 既定の 3 秒。
   - **markdown-toc を外した** (npm の最終リリースが 2017 年で、更新が止まっている)。目次は GitLab が
@@ -170,7 +179,7 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
     表示している markdown のバッファに追従する (別のファイルに移ると、ページもそちらになる)
   - **内容を GitLab に送るのは、環境変数 `GITLAB_TOKEN` (`read_api` のアクセストークン) があるときだけ**。
     送り先は `GITLAB_HOST` (無ければ gitlab.com) だけで、git の remote のホスト名からは決めない。
-    設定の手順は [GitLab プレビューのトークンを設定する](docs/setup.md#gitlab-プレビューのトークンを設定する-任意)
+    設定の手順は setup-notes の[LazyVim の GitLab プレビューを設定する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを設定する) (Windows 11 は[同じ名前の項](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の-gitlab-プレビューを設定する))
   - git の remote (origin) のホストが送り先と同じなら、そのプロジェクトとして描かせる (`#123` などがリンクになる)。
     違うとき、そのプロジェクトを読めないときは、プロジェクト無しで描かせる
   - 画像と動画の相対リンクは手元のファイルを出す (push していない画像も見える)。ほかのファイルへの
@@ -362,7 +371,7 @@ GitLab の記法は変えない。`#123` は見出しにせず、説明リスト
   手元でコピーしたものは端末の貼り付けで入れる。LazyVim 既定のままでは SSH の中の `clipboard` が空で `y` が
   入らず (Neovim は `clipboard` が空のときしか OSC 52 を自動で選ばない)、`"+p` も 10 秒待つので、
   `lua/config/options.lua` で明示している。手順は
-  [docs/setup.md の SSH の節](docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)
+  setup-notes の[LazyVim のヤンクを SSH 越しに手元へ送る](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のヤンクを-ssh-越しに手元へ送る)
 
 ## 外部依存
 
@@ -373,8 +382,8 @@ Node.js / Nerd Font / ibus + ibus-anthy (Linux) を前提にしている
 GitLab プレビューには GitLab のアクセストークン・curl 8.3 以上・ブラウザが、Linux での画像の貼り付けには
 wl-clipboard が要る (どれも任意。無ければその機能だけが使えない)。
 
-用途と必須かどうかの一覧、導入手順は
-[docs/setup.md](docs/setup.md#必要なもの一覧)にまとめてある。
+用途と必須かどうかの一覧は
+[必要なもの一覧](docs/extra/setup.md#必要なもの一覧)にまとめてある。
 
 ## lazy-lock.json の運用
 
@@ -383,4 +392,12 @@ wl-clipboard が要る (どれも任意。無ければその機能だけが使�
 (別マシンでは `:Lazy restore` で同じバージョンに揃う)。
 `:Lazy sync` は update を含むので、揃えるだけのときは使わない。
 初めてのマシンでは初回の導入が lock ファイルを書き換えるので、
-[正本の LazyVim 導入の手順 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) の形で揃える。
+正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 10 (Windows 11 は[Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 7) の形で揃える。
+
+## 文書
+
+- [ロールバックと注意点・必要なもの一覧](docs/extra/setup.md)
+- [導入の補足資料](docs/reference/setup.md)・[GLFM 整形器のルール一覧](docs/reference/glfm-format.md)
+- 検証記録: [導入](docs/verification/setup.md)・[README の観測](docs/verification/readme.md)
+- 変更するとき: [設計](docs/dev/architecture.md)・[変更後の確認](docs/dev/check.md)・[AGENTS.md](AGENTS.md)
+- 旧手順書の移動先: setup-notes の[集約対応表](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/dev/consolidation-map.md)

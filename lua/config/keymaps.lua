@@ -11,7 +11,7 @@ local map = vim.keymap.set
 -- (下のウィンドウへ移動) に、ターミナルモードの <C-j> も LazyVim が使っているため奪わない。
 --
 -- 前提: 既定では Ctrl+J が anthy の on_off ショートカットに消費されて Neovim まで届かない。
--- docs/setup.md の gsettings 手順で on_off から Ctrl+J / Ctrl+space を外しておくこと
+-- setup-notes の neovim.md の「LazyVim の設定を導入する」の手順 8・9 で on_off から Ctrl+J / Ctrl+space を外しておくこと
 -- (外すと preedit が無いときの Ctrl+J は anthy の commit ハンドラが素通しする)。
 map({ "i", "c" }, "<C-j>", function()
   require("config.ime").toggle()

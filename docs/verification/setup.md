@@ -3,67 +3,67 @@
 以下は既存文書から移した記録。本文の「本書」「この文書」と手順番号は、記録元の手順書を指す。新しく検証した記録ではない。
 ただし、「付録: Windows 導入の手順 6 の VC++ ランタイムを条件付きにした記録 (2026-10-08)」は新しく検証した記録 (Windows では実行していない)。
 
-手順は [setup.md](../setup.md)、背景説明は [補足資料](../reference/setup.md) を参照する。日付・対象の版・実施範囲は各記録に記載する。
+手順は [setup.md](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md)、背景説明は [補足資料](../reference/setup.md) を参照する。日付・対象の版・実施範囲は各記録に記載する。
 
 ### EPEL が要る理由の検証記録
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 2 に対応する。
+元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 2 に対応する。
 
 - 最後の `Many EPEL packages require the CodeReady Builder (CRB) repository.` は、この節で入れるものには当てはまらない (CRB を有効にせずに通した)
 
 ### dnf で入れるものの検証記録
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 3 に対応する。
+元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 3 に対応する。
 
 - コンテナ (最小構成の `almalinux:10`) での実測は、101 個を入れて 4 個を更新した (git の依存の perl など。`wl-clipboard` を足す前の数)。GNOME の PC ではもっと少ない
 
 ### Homebrew を使う理由と導入先の検証記録
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 8 に対応する。
+元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 8 に対応する。
 
 - `Next steps` の `sudo dnf group install development-tools` は、この設定には要らない (入れずに通した)
 
 ### brew の確認の検証記録
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 10 に対応する。
+元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 10 に対応する。
 
 - 検証した Homebrew 7.0.7 は、依存のある formula を入れる前に確認を求めた (`==> Would install 2 formulae:` → `==> Would install 7 dependencies for neovim:` → `[y/n]`)
 
 ### Neovim の版の検証記録
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 11 に対応する。
+元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 11 に対応する。
 
 - ただし `lazy-lock.json` に記録した nvim-treesitter (main ブランチ) は Neovim 0.12 以上を要求する。0.11 系では試していない
 
 ### 入力ソースを 2 つとも登録する理由の検証記録
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 13 に対応する。
+元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 13 に対応する。
 
 - 英数のエンジン名は `ime.lua` の中で `xkb:us::eng` に固定してある。入力ソースを `('xkb', 'jp')` にすると、Neovim が英数に戻すたびに US 配列のエンジンになる (コードから読んだもので、JIS 配列では試していない)
 
 ### 初回起動で入るものの検証記録
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 17 に対応する。
+元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 17 に対応する。
 
 - コンテナではパーサーの取得がプロキシに拒まれた ([付録](#付録-コンテナでの検証記録-2026-09-28))。AlmaLinux 10 の実機では、開いてから 13 秒で 30 個が入り、ハイライトが効いた ([付録](#付録-almalinux-10-の実機での導入と取り込みの検証記録-2026-09-29))
 
 ### 機能の確かめ方の検証記録
 
-元の説明は [AlmaLinux 10 に導入する (1 度だけ)](../setup.md#almalinux-10-に導入する-1-度だけ)の手順 19 に対応する。
+元の説明は [AlmaLinux 10 に導入する (1 度だけ)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ)の手順 19 に対応する。
 
 - コンテナでは ibus-daemon を `--panel disable` で起動して、`<C-j>` で `ibus engine` が `anthy` に、`<Esc>` で `xkb:us::eng` に変わるのを確かめた。アイコンの見た目は確かめていない
 
 ### トークンの置き場所の検証記録
 
-元の説明は [GitLab プレビューのトークンを設定する (任意)](../setup.md#gitlab-プレビューのトークンを設定する-任意)の手順 3 に対応する。
+元の説明は [GitLab プレビューのトークンを設定する (任意)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gitlab-プレビューのトークンを設定する-任意)の手順 3 に対応する。
 
-元の説明は [GitLab プレビューのトークンを設定する (任意)](../setup.md#gitlab-プレビューのトークンを設定する-任意)の手順 1 に対応する。
+元の説明は [GitLab プレビューのトークンを設定する (任意)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gitlab-プレビューのトークンを設定する-任意)の手順 1 に対応する。
 
 - 時間がかかるのは、変えたことを開いている全てのウィンドウに知らせ終わるまで戻らないため (検証した PC では 1 回 2 秒ほど)
 
 ### 仕組みと、手元から Neovim への向きの検証記録
 
-元の説明は [SSH 越しのヤンクを手元のクリップボードに送る (任意)](../setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 2 に対応する。
+元の説明は [SSH 越しのヤンクを手元のクリップボードに送る (任意)](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 2 に対応する。
 
 - 手元が Windows のときは、WezTerm の nightly と Windows Terminal で確かめた。ssh は Windows の OpenSSH (`ssh.exe`) でも Git for Windows の `ssh` でもよい ([付録](#付録-windows-11-の実機での未確認項目の検証記録-2026-09-30))
 
@@ -135,17 +135,17 @@
     - **確かめていないこと**:
       - 本物の GitLab での、記法ごとの見え方 (数式・mermaid・画像・参照などは、模擬の API でだけ確かめた)
       - トークンの節の AlmaLinux 10 の手順 (`HOME` を差し替えて Windows の bash で実行しただけ)
-  - **SSH 越しのクリップボード ([SSH の節](../setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)) は、x86_64 のコンテナで、tmux を手元の端末の代わりにして確かめた (2026-09-29)** ([付録](#付録-ssh-越しのクリップボードの検証記録-2026-09-29))
+  - **SSH 越しのクリップボード ([SSH の節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)) は、x86_64 のコンテナで、tmux を手元の端末の代わりにして確かめた (2026-09-29)** ([付録](#付録-ssh-越しのクリップボードの検証記録-2026-09-29))
     - Neovim 0.12.5 (公式の Linux 版のリリース) にこの設定とプラグイン 38 個を入れ、`SSH_CONNECTION` を付けて tmux の中で起動した。tmux (`set-clipboard on`) が OSC 52 を受けて作るペーストバッファを、手元のクリップボードの代わりに見た
     - 確かめたこと:
       - 変更前は、tmux の中の SSH のシェルで `yy` も `"+yy` も OSC 52 を出さない (`clipboard` が空で、tmux では OSC 52 が検出されず、クリップボードの提供元が無い)
       - 変更後は、`yy`・`"+yy`・矩形・文字単位のヤンクで OSC 52 が出て、日本語を含めて中身が一致する。`p` は待たずに元の形 (行単位・矩形) で貼る
       - まだ何も送っていないときの `p` は、待たずに、前に使ったレジスタから貼る (無ければ `E353`)。`SSH_CONNECTION` が無ければ、OSC 52 を出さない (これまでどおり)
-      - [SSH の節](../setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 1・2 のブロック (手順 2 は tmux の中で、`yy`・`p`・`:set clipboard?`)
+      - [SSH の節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 1・2 のブロック (手順 2 は tmux の中で、`yy`・`p`・`:set clipboard?`)
     - 実物の WezTerm と AlmaLinux 10 での通しは、次の記録で確かめた
   - **SSH 越しのクリップボードは、AlmaLinux 10 の実機で、WezTerm の nightly から ssh して通した (2026-09-29)** ([付録](#付録-almalinux-10-の実機での-ssh-越しのクリップボードの検証記録-2026-09-29))
     - AlmaLinux 10.2 (x86_64) の上で、WezTerm 20260928 (nightly。利用者の設定ファイルのまま) を画面の無い mutter 49.4 で動かした
-    - その WezTerm から sshd に ssh し、ログインしたシェルに[SSH の節](../setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)の**手順 1・2 のブロックをそのまま貼って**通した
+    - その WezTerm から sshd に ssh し、ログインしたシェルに[SSH の節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)の**手順 1・2 のブロックをそのまま貼って**通した
     - 確かめたこと:
       - 手順 1 の出力 (`SSH_CONNECTION` の 4 つの値と `OSC 52 (copy only)`)、手順 2 の `yy`・`p`・`:set clipboard?`
       - 続けて 5 回ヤンクしても、毎回その内容が手元のクリップボードに入ること
@@ -175,7 +175,7 @@
       - 常用の環境で、取り込みの手順 1・`:Lazy clean`・`:MasonUninstall markdown-toc` の後に、残骸が無く、起動してもエラーが出ないこと
       - 画面での、ピッカーのアイコンの字形と Firefox のプレビューの表示 (利用者が WezTerm と Firefox で見て確かめた)
       - 利用者が WezTerm (tmux なし) で本物のキーを打って: 手順 15 を入れ直した後は、日本語のときも `<C-j>` で毎回 `あ` / `A` が切り替わり、カーソルのすぐ下にも出ること
-      - [上部バーの節](../setup.md#gnome-の上部バーを-ime-連携に合わせる-任意)の拡張を、画面の無い gnome-shell 49.4 (閉じたセッションバスと自前の ibus-daemon) で。外から engine を切り替えるたびに、今の入力ソースが付いてきた
+      - [上部バーの節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gnome-の上部バーを-ime-連携に合わせる-任意)の拡張を、画面の無い gnome-shell 49.4 (閉じたセッションバスと自前の ibus-daemon) で。外から engine を切り替えるたびに、今の入力ソースが付いてきた
     - **確かめていないこと**:
       - 手順 1〜15 の実行と、ログインし直しての ibus の読み直し
       - 上部バーの節を、本物のログインで通すこと (拡張を入れて有効にしたが、ログインし直していない)。本物の Super+Space で空振りしなくなること
@@ -188,7 +188,7 @@
       - 取り込みの手順 2 で、増えたプラグインを起動時に入れて lock が古い版で書き直される場合と、箇条書きの対処 (`checkout` して `restore` をもう一度)
       - flash の `s` (`s` → `nihon` → `;` → ラベルなど。端末と Neovide 0.16.2)、フォーカスが戻ったときのカーソルのすぐ下の表示、手順 11 の確認項目 (最新の設定で)
       - 本物の IME (Microsoft IME) と本物の zenhan: Neovide 0.16.2 と WezTerm の nightly で、`Ctrl+J` で IME が開閉し、`nihon` の未確定文字列 (Neovide はハンドラ経由でカーソル位置に描く) が変換・確定されること。IME が開いたままの `Ctrl+J` も Neovim に届く。キーは `SendInput` で入れた (IME を通る)
-      - SSH 越しのクリップボード: WezTerm の nightly (Windows の OpenSSH と Git for Windows の ssh) と Windows Terminal 1.24 (Windows の OpenSSH) から WSL の AlmaLinux 10.2 に ssh し、[SSH の節](../setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 1・2 のブロックをそのまま貼って、`yy` が Windows のクリップボードに入ること。sshd は、自分のユーザーのまま立てたものと、PAM を通すもの (root)
+      - SSH 越しのクリップボード: WezTerm の nightly (Windows の OpenSSH と Git for Windows の ssh) と Windows Terminal 1.24 (Windows の OpenSSH) から WSL の AlmaLinux 10.2 に ssh し、[SSH の節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)の手順 1・2 のブロックをそのまま貼って、`yy` が Windows のクリップボードに入ること。sshd は、自分のユーザーのまま立てたものと、PAM を通すもの (root)
     - 見つけて直したこと: scoop の git (`core.autocrlf=true` が既定) で clone すると、手順 8 の `git status --short` が `M lazy-lock.json` を出し続けた。`.gitattributes` で改行を LF に揃えた
     - **確かめていないこと**:
       - VC++ のランタイム (`VCRUNTIME140.dll`) が無い Windows 11 (`nvim.exe` は読み込むが、この PC にはシステムに入っている)
@@ -215,8 +215,8 @@
 
 > [!NOTE]
 > - 本書には変数が無い。設定の置き場所と clone 元の URL は、Neovim と GitHub が決める固定の値なので、コマンドに直接書いてある
-> - 途中で作る値は `ANTHY_SHORTCUT` だけ ([AlmaLinux 導入の手順 14](../setup.md#almalinux-10-に導入する-1-度だけ) で作り、手順 15 で使う)
-> - 出力例の中のユーザーのホームは `…` で省いてある。パスワードと鍵は扱わない。トークンは [GitLab プレビューのトークンの節](../setup.md#gitlab-プレビューのトークンを設定する-任意)でだけ扱い、貼った後に入力させる (文書には書かない)
+> - 途中で作る値は `ANTHY_SHORTCUT` だけ ([AlmaLinux 導入の手順 14](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#almalinux-10-に導入する-1-度だけ) で作り、手順 15 で使う)
+> - 出力例の中のユーザーのホームは `…` で省いてある。パスワードと鍵は扱わない。トークンは [GitLab プレビューのトークンの節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gitlab-プレビューのトークンを設定する-任意)でだけ扱い、貼った後に入力させる (文書には書かない)
 
 ### 完了時点の状態の測定・実施記録
 
@@ -391,7 +391,7 @@
 
 ### 付録: SSH 越しのクリップボードの検証記録 (2026-09-29)
 
-- **対象**: SSH のシェルで起動したときに、ヤンクを OSC 52 で手元のクリップボードに送る変更 (`lua/config/options.lua`) と、[SSH の節](../setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)
+- **対象**: SSH のシェルで起動したときに、ヤンクを OSC 52 で手元のクリップボードに送る変更 (`lua/config/options.lua`) と、[SSH の節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#ssh-越しのヤンクを手元のクリップボードに送る-任意)
 - **環境**: x86_64 のクラウドのコンテナ (AlmaLinux ではない)。Neovim 0.12.5 は公式の Linux 版のリリース (`nvim-linux-x86_64.tar.gz`)、tmux 3.4
   - この設定を一時的な `XDG_CONFIG_HOME` に clone し、AlmaLinux 導入の手順 16 と同じ操作でプラグイン 38 個を入れた (`git status --short` は空)
   - 手元の端末の代わりに tmux を使った。`set-clipboard on` の tmux は、中のアプリが出した OSC 52 をペーストバッファにする。`env -u TMUX` と `SSH_CONNECTION` を付けて nvim を起動し、キーは `send-keys` で送った
@@ -517,7 +517,7 @@
   - 日本語のときの `<C-j>` は、3 回とも Neovim に届かなかった。続けて打った `a` は、そのまま `a` で届いたり「あ」で届いたりした (Anthy の中のひらがなと英字が `Ctrl+J` で切り替わっていた)
   - Anthy の設定を Anthy 自身の読み方 (`AnthyPrefs`) で読むと、`on_off` が `['Zenkaku_Hankaku', 'Ctrl+space', 'Ctrl+J']` のままで、dconf にも利用者の値が無かった。手順 13〜15 が Homebrew の `gsettings` で keyfile に書かれていた (Homebrew の glib は cairo・ffmpeg-full・imagemagick-full などの依存で入っていた)
   - `/usr/bin/gsettings` で手順 14・15 を入れ直すと (`Ctrl+J` は `commit` だけに残る。未確定の文字が無ければ Anthy は `Ctrl+J` を通す)、日本語のときも `<C-j>` で毎回 `あ` / `A` が切り替わり、カーソルのすぐ下にも出た (利用者が確かめた)
-  - Neovim を開いた時点で上部バーがずれていて、最初の Super+Space では engine が変わらなかった (すでに `xkb:us::eng` だった)。GNOME Shell 49.4 の `ui/status/keyboard.js` と `misc/ibusManager.js` を読むと、外からの engine の変更で「今の入力ソース」と Super+Space の順番 (MRU) を更新しない。そのため[上部バーの節](../setup.md#gnome-の上部バーを-ime-連携に合わせる-任意)の拡張を足した
+  - Neovim を開いた時点で上部バーがずれていて、最初の Super+Space では engine が変わらなかった (すでに `xkb:us::eng` だった)。GNOME Shell 49.4 の `ui/status/keyboard.js` と `misc/ibusManager.js` を読むと、外からの engine の変更で「今の入力ソース」と Super+Space の順番 (MRU) を更新しない。そのため[上部バーの節](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md#gnome-の上部バーを-ime-連携に合わせる-任意)の拡張を足した
   - Super+Space では、GNOME Shell がキーボードを掴むので、WezTerm から FocusLost → engine の切り替え → FocusGained の順で届くことがあった (記録の 23:36:15.715 → 16.198 → 16.200)。カーソルのすぐ下の表示は、フォーカスが外れている間は出さないので、Super+Space の表示が出なかった。`lua/config/ime_indicator.lua` を、外れている間に変わっていたら FocusGained で出すように直した
 - **上部バーの拡張の確認**: 画面の無い gnome-shell 49.4 を、閉じたセッションバス (`dbus-run-session`)・一時的な XDG の置き場所・`GSETTINGS_BACKEND=keyfile` で起動し、拡張を有効にして確かめた
   - gnome-shell が自前の ibus-daemon を起動し、拡張は `enabled` になった
@@ -1031,3 +1031,35 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
 
 - 途中で閉じても、次に起動したときに足りないものが入る (コンテナで確認)
 
+## 実施前と完了時点の状態
+
+2026-10-15 に extra (ロールバックと注意点) から移した、導入の前提と完了時点の想定。「AlmaLinux 導入の手順 N」「Windows 導入の手順 N」は、移した時点の正本の「LazyVim の設定を導入する」「Windows 11 で LazyVim の設定を導入する」の手順。
+
+### 実施前の状態
+
+| 項目 | 状態 |
+|---|---|
+| OS | AlmaLinux 10 + GNOME (Wayland) / Windows 11 |
+| ユーザー | AlmaLinux 10 は `sudo` のできる一般ユーザーで、GNOME にログインしている。Windows 11 は一般ユーザー |
+| ネットワーク | github.com・Homebrew・npm・scoop に届く (初回のプラグイン・Mason・treesitter の取得に要る)。GitLab プレビューには、使う GitLab と cdn.jsdelivr.net も |
+| Neovim の設定 | 無い、または退避してよい (AlmaLinux 導入の手順 3 / Windows 導入の手順 3 で `.bak` にする) |
+| Homebrew / scoop | setup-notes の初期設定で導入済み |
+| 入力ソース | 何でもよい (AlmaLinux 導入の手順 7 で `us` と `anthy` の 2 つに置き換える) |
+
+### 完了時点の状態
+
+| 場所 | 中身 |
+|---|---|
+| `~/.config/nvim` (`%LOCALAPPDATA%\nvim`) | このリポジトリの clone (`custom` ブランチ) |
+| `~/.local/share/nvim/lazy` | プラグイン 38 個 (`lazy-lock.json` の版) |
+| `~/.local/share/nvim/mason` | Mason のツール 11 個 |
+| `~/.local/share/nvim/site/parser` | treesitter のパーサー (初回起動で入る) |
+| `~/.local/share/fonts` | HackGen Console NF と HackGen35 Console NF (Linux) |
+| `~/.bashrc` | 共通 bash 設定を読む 1 行。トークンの節を行ったときは `GITLAB_TOKEN` (と `GITLAB_HOST`) の行も |
+| `org.gnome.desktop.input-sources sources` | `[('xkb', 'us'), ('ibus', 'anthy')]` (Linux) |
+| `org.freedesktop.ibus.engine.anthy.shortcut default` | `on_off` が `['Zenkaku_Hankaku']` だけ (Linux) |
+| `~/.local/share/gnome-shell/extensions/ibus-engine-follow@ryo-aoki-pc.github.com` | [上部バーの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)を行ったとき、`~/.config/nvim/gnome-shell/` の拡張へのつなぎ。`org.gnome.shell enabled-extensions` にも入る (Linux) |
+| `*.bak` | 退避した以前の設定とデータ (あった場合だけ) |
+
+- Windows のプラグインと Mason のツールは `%LOCALAPPDATA%\nvim-data` に入る
+- Windows でトークンの節を行ったときは、ユーザーの環境変数に `GITLAB_TOKEN` (と `GITLAB_HOST`) が入る

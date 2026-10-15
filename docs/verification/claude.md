@@ -2,7 +2,7 @@
 
 以下は既存文書から移した記録。本文の「本書」「この文書」と手順番号は、記録元の手順書を指す。新しく検証した記録ではない。
 
-以下は既存 CLAUDE.md にあった実施範囲の記録。操作は [導入手順](../setup.md)、詳細は [導入の検証記録](setup.md) を参照する。
+以下は既存 CLAUDE.md にあった実施範囲の記録。操作は [導入手順](https://github.com/ryo-aoki-pc/LazyVimStarter/blob/7826bd8c3a47b2e49809ba3aac448d8969edcb0f/docs/setup.md)、詳細は [導入の検証記録](setup.md) を参照する。
 
   - 2026-10-06 は新規 AlmaLinux 10.2 x86_64 VM に ae7f049 を新規導入し、CLI の前提・lock 38 個・Mason 11 個・パーサー 30 個・検索・保存を確認した (setup.md の CLI 付録)。遅い VM で Markdown 整形が 3 秒を超えたため、Markdown / MDX 限定で 10 秒の上限に修正して再実行し、GLFM 記法の保持・他のファイル形式の設定も確認した。別の新規 GNOME VM で手順 13〜19 も実行し、入力ソースと Anthy キー保持・通常 GUI・Mason11 / パーサー30・Migemo / Tab・修正後の保存・IBus Ctrl+J / Esc と検索 sticky・アイコンを実 evdev keycode と PNG で確認した (setup.md の GUI 付録)。物理キー・上部バー拡張・画像貼り付け等は今回未実施
   - 状態の要約 (補足の状態行を変えたらここも直す): AlmaLinux 10 は x86_64 のコンテナで、文書のブロックを

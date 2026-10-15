@@ -6,12 +6,7 @@
 
 ## 導入手順の正本
 
-Windows 11・AlmaLinux 10 の Neovim の導入・利用・更新・任意操作は、setup-notes の [Neovim のセットアップ](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md) に集約する。既存の手順も対象とする。
-
-- 固有の仕様・他 OS の手順・開発者検査・理由・注意・検証記録・ロールバックが残る文書は保持する
-- 案内だけになった旧文書は削除する。README から上の正本と[集約対応表](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/dev/consolidation-map.md)へ案内する
-
-文書規則は、Windows・AlmaLinux の実行手順には上の正本へ適用する。操作や移動先を変えたら正本・README・集約対応表・参照情報を同期し、過去の検証本文は保持する。共通 bash 設定が読むツールの初期化を `~/.bashrc` に直接追記しない。
+導入・利用・更新の手順は、setup-notes の [neovim.md](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md) (Neovim のセットアップ。AlmaLinux 10 と Windows 11) にある。このリポジトリには置かない。
 
 ## このリポジトリについて
 
@@ -27,7 +22,7 @@ LazyVim をベースにした Neovim 設定。リポジトリのルートが **N
 | ブランチ | 内容 |
 | --- | --- |
 | `custom` | 実運用の設定。**作業ブランチはここ**。 |
-| `main` | [LazyVim starter](https://github.com/LazyVim/LazyVim) の上流ミラー。upstream 追従以外では触らない。 |
+| `main` | [LazyVim starter](https://github.com/LazyVim/starter) の上流ミラー。upstream 追従以外では触らない。 |
 
 `main` には `lua/plugins/example.lua` 等の starter 由来のファイルしか無い。以下の説明は
 すべて `custom` の内容を指す。
@@ -37,7 +32,7 @@ LazyVim をベースにした Neovim 設定。リポジトリのルートが **N
 ## コマンド
 
 Markdown 整形器の Node 回帰テストは `tools/glfm-format/test/` にある。CI・ビルドは無い。
-整形器の導入は setup-notes の `docs/neovim.md`、開発者検査は `docs/setup.md` にまとめる。ほかに使うのは以下。
+整形器の導入は setup-notes の `docs/neovim.md`、回帰テストの手順は `docs/dev/check.md` にまとめる。ほかに使うのは以下。
 
 ```sh
 # 整形 (stylua.toml = 2 スペース / 120 桁)。PATH には無く Mason 導入版を使う
@@ -66,7 +61,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
   `:Lazy restore` で揃える)。`:Lazy sync` は update を含むので、揃えるだけのときは使わない。
 - **初回導入は `lazy-lock.json` を書き換える**。lazy.nvim の起動時の導入は何回かに分かれ、1 回目の後に
   導入済みの分だけで lock を書き直す (`lazy/manage/lock.lua` の `update()`) ため、後から入るプラグインが最新になる。
-  git で lock を戻してから `:Lazy restore` し直すと揃う (正本の「LazyVim の設定を導入する」の手順 10)。
+  git で lock を戻してから `:Lazy restore` し直すと揃う (正本の「LazyVim の設定を導入する」の手順 10、Windows 11 は「Windows 11 で LazyVim の設定を導入する」の手順 7)。
 - `checkhealth lazyvim` を headless で見るときは、先に `mason.nvim` を読み込む (Mason の `bin` が PATH に
   入るのは Mason を読み込んだときだけで、読み込まないと `tree-sitter (CLI)` が ERROR になる)。
 
@@ -128,7 +123,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
   ソースを足すときはそこに足す。
 - 手順書や検証で GNOME / Anthy の設定を読み書きするときは `/usr/bin/gsettings` と書く。Homebrew の glib
   (cairo・ffmpeg・imagemagick などの依存で入る) の `gsettings` が PATH の先頭に来ると、dconf を使えずに
-  `~/.config/glib-2.0/settings/keyfile` へ黙って書くので、GNOME にも Anthy にも効かない (実機で手順 15 が効いていなかった)。
+  `~/.config/glib-2.0/settings/keyfile` へ黙って書くので、GNOME にも Anthy にも効かない (実機で Anthy のキーの書き戻しが効いていなかった)。
   Anthy が実際に使うキー割り当ては、`/usr/share/ibus-anthy/setup` の `AnthyPrefs` で読むと確かめられる
 - IME のキー (`<C-j>` など) を確かめるときは、キーを本物のキーボードから打つ。`--remote-send` や `nvim_input` は
   IBus を通らないので、Anthy がキーを食う不具合を見逃す
@@ -169,16 +164,14 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
   優先するので、両方の OS で明示している。snacks は自分の設定を `LG_CONFIG_FILE` の最後に足すので、自分用の lazygit の
   config.yml より勝つ。Linux で `true` にすると、`e` の後に lazygit の窓が閉じずに残る。
 
-## 既存ドキュメント
+## 文書の置き場所
 
-
-Windows・AlmaLinux の Neovim の操作は setup-notes の `docs/neovim.md` を正本にする。執筆規則は setup-notes の `docs/dev/writing-rules.md` に従う。文書の保持・削除と README の案内は[導入手順の正本](#導入手順の正本)に従う。操作を変えたら正本と参照情報を同期する。検証記録の既存本文は実施時点のまま保持し、新しい対象版・環境・範囲を追記する。
-
-## 手順書と記録の分離
-
-- 実行・更新・ロールバック・再実行用の確認手順には、必要な前提・注意・分岐・待機条件・期待結果だけを載せる
-- 検証の環境・実施日・対象コミット・実出力・結果・未確認事項は `docs/verification/<手順書名>.md`、背景説明は必要なときだけ `docs/reference/<手順書名>.md` に置く。README は `readme.md` を使う
-- 既存の記録の本文を保持して移動し、ファイルと見出しへの参照を更新する。再実行できる確認コマンドを実施済みの記録と混同しない
+- 導入・利用・更新の手順は正本に置き、README の「導入」の表から正本の項へ直接リンクする (手順書の先頭やカテゴリの見出しへはリンクしない)。執筆規則は setup-notes の `docs/dev/writing-rules.md`
+- `docs/extra/setup.md` はロールバック・必要なもの一覧・注意点、`docs/reference/setup.md` は正本の各手順の背景 (見出しは `### <項> / 手順 N: 補足: <題>`)、`docs/verification/` は検証記録 (環境・日付・対象コミット・実出力・未確認事項)
+- `docs/dev/architecture.md` は設計、`docs/dev/check.md` は変更後の確認 (整形器の回帰テスト)、`docs/reference/glfm-format.md` は整形器のルール一覧 (`tools/glfm-format/test/reference.test.mjs` がこの文書の例を検査する)。`docs/verification/claude.md` は旧 CLAUDE.md から移した記録
+- 正本の手順番号が変わったら、参考資料と extra の手順番号を付け替える。setup-notes から張られている見出し (extra の「ロールバック」「必要なもの一覧」「注意点」など) は名前を変えない
+- 案内だけになった文書・節は消し、旧パスと移動先を setup-notes の集約対応表に足す。消すときは参照元のリンクを付け替える (検証記録は、削除前の固定コミットの URL にする)
+- 検証記録の既存の本文・手順番号・出力は変えない。新しい対象版・環境・範囲は追記する
 
 ## 共同作業の規則
 

@@ -47,7 +47,7 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
 - **`lua/config/keymaps.lua`** — `<C-j>` トグル。**挿入モードとコマンドラインのみ**に張る
   (ノーマルモードの `<C-j>` は LazyVim のウィンドウ移動)。
 - **`gnome-shell/ibus-engine-follow@ryo-aoki-pc.github.com/extension.js`** — GNOME Shell の拡張 (任意。
-  docs/setup.md の上部バーの節で入れる。Neovim の設定ではない)。GNOME Shell は ibus の engine が外から変わっても
+  setup-notes の neovim.md の「LazyVim の IME 連携に GNOME の上部バーを合わせる」で入れる。Neovim の設定ではない)。GNOME Shell は ibus の engine が外から変わっても
   「今の入力ソース」(上部バー・Super+Space の MRU) を更新しないので、`GlobalEngineChanged` を受けて合わせる。
   `activateInputSource()` はキーボードを掴んで端末にフォーカスの出入りを起こすので使わず、内部の
   `_currentInputSourceChanged()` を呼ぶ。GNOME Shell 49.4 で確認 (`metadata.json` の `shell-version` は 49 だけ)。
