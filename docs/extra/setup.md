@@ -138,7 +138,7 @@
 | C コンパイラ (gcc または MSVC の cl) | treesitter のパーサーのビルド | 必須 |
 | tree-sitter CLI | treesitter のパーサーのビルド。PATH に無ければ LazyVim が Mason で入れる | 必須 (自動で入る) |
 | curl / tar / gzip / unzip | treesitter と Mason の取得・展開。curl は GitLab プレビューが GitLab の API を呼ぶのにも使う (8.3 以上) | 必須 (Windows 11 は同梱の curl と tar だけでよい。[Windows の外部コマンドの説明](../reference/setup.md#windows-11-で-lazyvim-の設定を導入する--手順-5-補足-windows-の外部コマンド)) |
-| [Node.js](https://nodejs.org/) 22 以上 (node + npm) | Mason の LSP・lint と、安全な Markdown 整形用依存 | 必須 |
+| [Node.js](https://nodejs.org/) 22 以上 (node + npm) | Mason の LSP・lint と、Markdown の整形器 [md-format](https://github.com/ryo-aoki-pc/md-format) | 必須 |
 | Nerd Font ([HackGen Console NF](https://github.com/yuru7/HackGen)) | アイコン表示と `guifont` | 実質必須 (無いと記号が豆腐になる) |
 | ibus + ibus-anthy、`busctl` か `gdbus` | 日本語入力 (Linux)。global engine を切り替える | Linux で必須 |
 | [zenhan](https://github.com/iuchim/zenhan) または im-select | 日本語入力 (Windows) | 任意 (無ければ IME 連携のみ無効) |
@@ -169,10 +169,11 @@
   - Windows で `gcc` を入れた直後は PATH が反映されていないことがある。端末を開き直してから `nvim` を起動する
 - **ファイルピッカーが空のまま**: `fd` も `rg` も無い。Linux には `find` へのフォールバックがあるが、Windows には無い
 - **保存しても Markdown が整形されない / lint が出ない**: Node.js 22 以上と npm が必要
-  - 整形用の依存は `:GlfmFormatInstall` で導入する。設定を取り込んで lock ファイルが変わったときも入力する
-  - `HTML の整形器 (js-beautify) を読み込めません` と出たら、HTML の整形を足した設定を取り込んだ後に `:GlfmFormatInstall` を入力していない。入力すると直る (HTML のブロックの無い文書は、入力する前も整形される)
+  - 整形器は md-format を setup-notes の md-format の導入 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#md-format-を導入更新する) / [Windows 11](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/windows-setup.md#md-format-を導入更新する)) で入れる。`md-format (mdfmt) が導入されていません` と出たら、まだ入れていない
+  - md-format の clone で `node scripts/setup.mjs --check` を実行すると、導入の状態 (版・依存・起動役・PATH) を確かめられる
+  - `HTML の整形器 (js-beautify) を読み込めません` と出たら、md-format の導入が途中で壊れている。導入スクリプトを実行し直す
   - lint の診断用は `:Mason` で状態を見て、`:MasonInstall markdownlint-cli2` で入れ直す
-  - `:ConformInfo` を開く。`Formatter 'glfm_markdownlint' timeout` は整形の時間切れで、ツールの未導入とは区別する
+  - `:ConformInfo` を開く。`Formatter 'mdfmt' timeout` は整形の時間切れで、ツールの未導入とは区別する
   - Markdown / MDX の整形上限は 10 秒。ほかのファイルは既定の 3 秒
 - **GitLab プレビュー (`<leader>cp`) が `近似表示` になる**: ページの上のバナーに理由が出る
   - `GITLAB_TOKEN が未設定`: [トークンの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを設定する)を行い、端末 (と Neovide) を開き直す

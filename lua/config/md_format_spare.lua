@@ -1,19 +1,17 @@
--- GLFM 整形器の予備のプロセス。保存の時間の大半は node の起動と依存の読み込みなので、依存を読み込み終えて
--- 標準入力を待つ node (tools/glfm-format/spare.mjs) を 1 つ先に起動しておき、保存のときに要求だけを渡す。
+-- Markdown の整形器 (md-format) の予備のプロセス。保存の時間の大半は node の起動と依存の読み込みなので、依存を読み込み終えて
+-- 標準入力を待つ node (md-format の導入先の spare.mjs) を 1 つ先に起動しておき、保存のときに要求だけを渡す。
 -- 予備は 1 回使ったら終わり、次の予備を起動する。プロジェクトの設定・カスタムルールは要求のときに読むので、
 -- 次の保存から必ず効く (同じ node を使い回すと、JS の設定やカスタムルールのモジュールと状態が残る)。
--- 予備が無い・使えないときは、今までどおり conform が CLI (format.mjs) を起動する。
+-- 予備が無い・使えないときは、今までどおり conform が CLI (導入先の format.mjs) を起動する。
 local M = {}
 local uv = vim.uv or vim.loop
 
 local state = {
   enabled = false,
-  -- :GlfmFormatInstall の実行中は、入れ替わる途中の依存を読ませない。
-  blocked = false,
   ---@type table?
   spare = nil,
 }
--- 予備が受け付けなかった要求 (見出しの行の誤り・format.mjs の違い・cwd に移れない) の終了コード。
+-- 予備が受け付けなかった要求 (見出しの行の誤り・format.mjs の違い・cwd に移れない・標準入力でない依頼) の終了コード。
 local TRANSPORT_FAILURE = 86
 -- 使い終わった後の次の予備は、保存が終わってから起動する (保存と依存の読み込みが CPU を取り合わないように)。
 local RESTART_DELAY_MS = 100
@@ -39,30 +37,39 @@ local function has_markdown_buffer(except)
 end
 
 -- 予備を起動したときと、保存するときに比べる値。どれかが違えば、今の CLI と同じ結果にならないかもしれないので使わない。
--- 先に読み込む整形器と依存の中身、conform が起動するはずの node (exepath) とリンクの先の実体、環境変数 (PATH・
--- NODE_OPTIONS など)、依存の場所。依存は lock と主な包みの package.json を比べる (それ以外の node_modules の中の
--- 書き換えは見ない)。
+-- 先に読み込む整形器 (導入先の *.mjs) と導入の記録 (install.json)・依存の中身、conform が起動するはずの node (exepath) と
+-- リンクの先の実体、環境変数 (PATH・NODE_OPTIONS など)、導入先。依存は lock と主な包みの package.json を比べる
+-- (それ以外の node_modules の中の書き換えは見ない)。導入し直すと install.json と lock が変わる。
 local function identity()
-  local glfm = require("config.glfm_format")
-  local source_dir, runtime_dir = glfm.source_dir(), glfm.runtime_dir()
+  local dir = require("config.md_format").install_dir()
   local node = vim.fn.exepath("node")
   local real = node ~= "" and uv.fs_realpath(node) or nil
   local stat = real and uv.fs_stat(real) or nil
-  local files = {
-    read_file(vim.fs.joinpath(source_dir, "format.mjs")),
-    read_file(vim.fs.joinpath(source_dir, "spare.mjs")),
-    read_file(vim.fs.joinpath(runtime_dir, "package.json")),
-    read_file(vim.fs.joinpath(runtime_dir, "package-lock.json")),
-    read_file(vim.fs.joinpath(runtime_dir, "node_modules", ".package-lock.json")),
-  }
-  for _, package in ipairs({ "markdownlint-cli2", "markdownlint", "comrak" }) do
-    table.insert(files, read_file(vim.fs.joinpath(runtime_dir, "node_modules", package, "package.json")))
+  local files = {}
+  local scripts = {}
+  if uv.fs_stat(dir) then
+    for name, kind in vim.fs.dir(dir) do
+      if kind == "file" and name:match("%.mjs$") then
+        table.insert(scripts, name)
+      end
+    end
+  end
+  table.sort(scripts)
+  for _, name in ipairs(scripts) do
+    files[name] = read_file(vim.fs.joinpath(dir, name))
+  end
+  for _, name in ipairs({ "install.json", "package.json", "package-lock.json" }) do
+    files[name] = read_file(vim.fs.joinpath(dir, name))
+  end
+  files[".package-lock.json"] = read_file(vim.fs.joinpath(dir, "node_modules", ".package-lock.json"))
+  for _, package in ipairs({ "markdownlint-cli2", "markdownlint", "comrak", "js-beautify" }) do
+    files[package] = read_file(vim.fs.joinpath(dir, "node_modules", package, "package.json"))
   end
   return {
     node = node,
     node_real = real or false,
     node_stat = stat and { stat.size, stat.mtime.sec, stat.mtime.nsec } or false,
-    runtime_dir = runtime_dir,
+    dir = dir,
     env = vim.fn.environ(),
     files = files,
   }
@@ -75,35 +82,35 @@ end
 
 ---予備を 1 つ起動する (既にある・使わない設定・依存が無いときは何もしない)。
 function M.start()
-  if not state.enabled or state.blocked or state.spare or not has_markdown_buffer() then
+  if not state.enabled or state.spare or not has_markdown_buffer() then
     return
   end
-  local glfm = require("config.glfm_format")
+  local md_format = require("config.md_format")
+  if not md_format.installed() then
+    return
+  end
   local spare = { identity = identity() }
   local node = spare.identity.node
-  local spare_path = vim.fs.joinpath(glfm.source_dir(), "spare.mjs")
-  local runtime_dir = glfm.runtime_dir()
-  if node == "" or not uv.fs_stat(spare_path) or not uv.fs_stat(vim.fs.joinpath(runtime_dir, "node_modules")) then
+  local spare_path = vim.fs.joinpath(md_format.install_dir(), "spare.mjs")
+  if node == "" or not uv.fs_stat(spare_path) then
     return
   end
-  -- shell を介さず argv で起動する。環境は Neovim のものを継ぐ。cwd は要求のときに移るので、待つ間は依存の場所に置く
-  -- (Windows では、プロセスの cwd になっているフォルダーを消せない。依存が cwd を読むのは要求のときだけ)。
-  local ok, proc = pcall(
-    vim.system,
-    { node, spare_path, "--runtime-dir", runtime_dir },
-    { stdin = true, text = true, cwd = runtime_dir },
-    function(result)
-      spare.exited = true
-      vim.schedule(function()
-        if state.spare == spare then
-          state.spare = nil
-        end
-        if spare.on_exit then
-          spare.on_exit(result)
-        end
-      end)
-    end
-  )
+  -- shell を介さず argv で起動する。環境は Neovim のものを継ぐ。依存は spare.mjs の隣 (導入先) から読む。
+  -- cwd は要求のときに移るので、待つ間は Neovim のキャッシュのフォルダに置く。導入先にすると、Windows では
+  -- プロセスの cwd になっているフォルダを入れ替えられず、md-format の導入し直しが止まる。
+  local cache = vim.fn.stdpath("cache")
+  vim.fn.mkdir(cache, "p")
+  local ok, proc = pcall(vim.system, { node, spare_path }, { stdin = true, text = true, cwd = cache }, function(result)
+    spare.exited = true
+    vim.schedule(function()
+      if state.spare == spare then
+        state.spare = nil
+      end
+      if spare.on_exit then
+        spare.on_exit(result)
+      end
+    end)
+  end)
   if ok then
     spare.proc = proc
     state.spare = spare
@@ -143,17 +150,6 @@ function M.pid()
   return spare and not spare.exited and spare.proc.pid or nil
 end
 
----:GlfmFormatInstall の間は予備を止め、起動しない。
----@param blocked boolean
-function M.block(blocked)
-  state.blocked = blocked
-  if blocked then
-    M.stop()
-  else
-    M.start()
-  end
-end
-
 -- conform の job (runner.lua の vim.system の結果の扱い) と同じ規則で、結果を行かエラーの文言にする。
 local function is_empty_output(output)
   return not output or vim.tbl_isempty(output) or (#output == 1 and output[1] == "")
@@ -184,7 +180,7 @@ local function convert(result, eol, name)
 end
 
 ---conform の Lua の formatter の本体。予備があれば要求を渡し、無ければ CLI を起動する。
----@param job table glfm_format.formatter() が返す CLI の設定
+---@param job table md_format.formatter() が返す CLI の設定
 ---@param name string conform の formatter の名前 (エラーの文言に使う)
 ---@param timeout_ms integer 保存の整形の上限 (conform は Lua の formatter の子を止めないので、ここで止める)
 function M.format(job, name, timeout_ms, ctx, lines, callback)
@@ -271,7 +267,7 @@ end
 ---@param opts {enabled: boolean}
 function M.setup(opts)
   state.enabled = opts.enabled
-  local group = vim.api.nvim_create_augroup("glfm_format_spare", { clear = true })
+  local group = vim.api.nvim_create_augroup("md_format_spare", { clear = true })
   if not state.enabled then
     M.stop()
     return
