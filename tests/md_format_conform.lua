@@ -1,14 +1,17 @@
--- 実行: nvim --headless -u NONE -i NONE -l tools/glfm-format/test/conform.lua
+-- 実行: nvim --headless -u NONE -i NONE -l tests/md_format_conform.lua
 -- lazy.nvim を起動せず、保存時と同じ同期整形・範囲整形・失敗時の原文保持を確かめる。
+-- 整形器は導入した md-format (既定の導入先か、環境変数 MD_FORMAT_DIR のフォルダ) を使う。
 local uv = vim.uv or vim.loop
 local script = debug.getinfo(1, "S").source:sub(2)
-local root = vim.fs.dirname(vim.fs.dirname(vim.fs.dirname(vim.fs.dirname(vim.fn.fnamemodify(script, ":p")))))
+local root = vim.fs.dirname(vim.fs.dirname(vim.fn.fnamemodify(script, ":p")))
 local sandbox = vim.fn.tempname()
 vim.fn.mkdir(sandbox, "p")
 vim.opt.runtimepath:prepend(root)
-vim.opt.runtimepath:append(vim.env.GLFM_CONFORM_DIR or vim.fs.joinpath(vim.fn.stdpath("data"), "lazy", "conform.nvim"))
+vim.opt.runtimepath:append(
+  vim.env.MD_FORMAT_CONFORM_DIR or vim.fs.joinpath(vim.fn.stdpath("data"), "lazy", "conform.nvim")
+)
 
-local glfm = require("config.glfm_format")
+local md_format = require("config.md_format")
 local conform = require("conform")
 local gate = function()
   return false
@@ -19,25 +22,26 @@ local opts = {
   default_format_opts = { async = false, timeout_ms = 10000, lsp_format = "fallback" },
 }
 -- spec が既定の空の format_fixes を整形器に渡すことも確かめる。
-local original_formatter = glfm.formatter
+local original_formatter = md_format.formatter
 local formatter_options
-glfm.formatter = function(options)
+md_format.formatter = function(options)
   formatter_options = options
   return original_formatter(options)
 end
 for _, spec in ipairs(dofile(vim.fs.joinpath(root, "lua", "plugins", "lang-markdown.lua"))) do
   if spec[1] == "stevearc/conform.nvim" and type(spec.opts) == "function" then
-    assert(vim.tbl_contains(spec.cmd, "GlfmFormatInstall"))
+    -- Neovim からは導入しないので、導入のコマンドで conform を読み込まない。
+    assert(spec.cmd == nil)
     -- 予備のプロセスを Markdown を開いた時点で起動するため、conform も Markdown で読み込む。
     assert(vim.tbl_contains(spec.ft, "markdown"))
     spec.opts(nil, opts)
   end
 end
-glfm.formatter = original_formatter
+md_format.formatter = original_formatter
 assert(formatter_options and vim.deep_equal(formatter_options.fixes, {}))
 assert(formatter_options.spare == true and formatter_options.timeout_ms == 10000)
 assert(vim.deep_equal(opts.formatters_by_ft.markdown, {
-  "glfm_markdownlint",
+  "mdfmt",
   timeout_ms = 10000,
   lsp_format = "never",
 }))
@@ -48,15 +52,18 @@ assert(vim.deep_equal(opts.formatters_by_ft["markdown.mdx"], {
 }))
 assert(opts.formatters["markdownlint-cli2"].condition == gate)
 -- バッファごとに、予備のプロセスに渡す Lua の formatter か、CLI の設定を返す関数。
-assert(type(opts.formatters.glfm_markdownlint) == "function")
-assert(vim.fn.exists(":GlfmFormatInstall") == 2)
+assert(type(opts.formatters.mdfmt) == "function")
+assert(vim.fn.exists(":GlfmFormatInstall") == 0, "Neovim から導入するコマンドは無い")
 conform.setup(opts)
-if vim.env.GLFM_FORMAT_RUNTIME_DIR then
-  glfm.runtime_dir = function()
-    return vim.env.GLFM_FORMAT_RUNTIME_DIR
+local original_install_dir = md_format.install_dir
+if vim.env.MD_FORMAT_DIR then
+  md_format.install_dir = function()
+    return vim.env.MD_FORMAT_DIR
   end
 end
-local spare = require("config.glfm_spare")
+assert(md_format.installed(), "md-format を導入してから動かす: " .. md_format.install_dir())
+local install_dir = md_format.install_dir()
+local spare = require("config.md_format_spare")
 
 local function alive(pid)
   return pid ~= nil and uv.kill(pid, 0) == 0
@@ -101,7 +108,7 @@ assert(vim.tbl_contains(first_lines, ": Description."))
 assert(vim.tbl_contains(first_lines, "  - One"))
 assert(vim.tbl_contains(first_lines, "  - Two"))
 
--- 保存と同じ経路でも、GitLab の課題の参照 (#123) は見出しにせず、同じ行の末尾の空白だけを直す。
+-- 保存と同じ経路でも、課題の参照 (#123) は見出しにせず、同じ行の末尾の空白だけを直す。
 local reference = buffer({ "#123 の対応 ", "", "本文" })
 local reference_result, reference_lines = format(reference)
 assert(not reference_result.err, vim.inspect(reference_result.err))
@@ -138,13 +145,16 @@ assert(vim.deep_equal(html_cli_formatted, html_expected), vim.inspect(html_cli_f
 
 -- --config をスクリプト名の後に置き、実ファイル名と空白を含むパスを argv で渡す。
 local config_file = vim.fs.joinpath(sandbox, "設定.markdownlint.jsonc")
-local args = glfm.formatter({ config_path = config_file }).args(nil, { buf = first })
-assert(args[1] == vim.fs.joinpath(root, "tools", "glfm-format", "format.mjs"))
-assert(args[4] == "--filename")
-assert(args[5] == vim.api.nvim_buf_get_name(first))
-assert(args[6] == "--config" and args[7] == config_file)
-local range_args = glfm.formatter().range_args(nil, { buf = first, range = { start = { 4, 2 }, ["end"] = { 5, 7 } } })
-assert(vim.deep_equal(vim.list_slice(range_args, 6), {
+-- 導入先の format.mjs を直接動かし、依存の場所 (--runtime-dir) は渡さない (format.mjs の隣の node_modules を使う)。
+local args = md_format.formatter({ config_path = config_file }).args(nil, { buf = first })
+assert(args[1] == vim.fs.joinpath(install_dir, "format.mjs"))
+assert(args[2] == "--filename")
+assert(args[3] == vim.api.nvim_buf_get_name(first))
+assert(args[4] == "--config" and args[5] == config_file)
+assert(not vim.tbl_contains(args, "--runtime-dir"))
+local range_args =
+  md_format.formatter().range_args(nil, { buf = first, range = { start = { 4, 2 }, ["end"] = { 5, 7 } } })
+assert(vim.deep_equal(vim.list_slice(range_args, 4), {
   "--range-start",
   "4",
   "--range-end",
@@ -156,13 +166,13 @@ assert(vim.deep_equal(vim.list_slice(range_args, 6), {
 }))
 
 -- 整形対象の true / false を名前順に分け、通常整形と範囲整形で同じ順序にする。
-local fixes_formatter = glfm.formatter({
+local fixes_formatter = md_format.formatter({
   config_path = config_file,
   fixes = { lists = false, MD026 = true, heading_conversion = true },
 })
 local fixes_args = fixes_formatter.args(nil, { buf = first })
-assert(vim.deep_equal(vim.list_slice(fixes_args, 1, 7), args))
-assert(vim.deep_equal(vim.list_slice(fixes_args, 8), {
+assert(vim.deep_equal(vim.list_slice(fixes_args, 1, 5), args))
+assert(vim.deep_equal(vim.list_slice(fixes_args, 6), {
   "--enable-fixes",
   "heading_conversion,MD026",
   "--disable-fixes",
@@ -173,47 +183,47 @@ local fixes_range_args = fixes_formatter.range_args(nil, {
   range = { start = { 4, 2 }, ["end"] = { 5, 7 } },
 })
 assert(vim.deep_equal(vim.list_slice(fixes_range_args, 1, #fixes_args), fixes_args))
-assert(vim.deep_equal(vim.list_slice(fixes_range_args, #fixes_args + 1), vim.list_slice(range_args, 6)))
+assert(vim.deep_equal(vim.list_slice(fixes_range_args, #fixes_args + 1), vim.list_slice(range_args, 4)))
 
 -- 片方だけの指定では、空になる側のオプションを渡さない。
-local enabled_only = glfm.formatter({ fixes = { MD026 = true, heading_conversion = true } })
-assert(vim.deep_equal(vim.list_slice(enabled_only.args(nil, { buf = first }), 6), {
+local enabled_only = md_format.formatter({ fixes = { MD026 = true, heading_conversion = true } })
+assert(vim.deep_equal(vim.list_slice(enabled_only.args(nil, { buf = first }), 4), {
   "--enable-fixes",
   "heading_conversion,MD026",
 }))
-local disabled_only = glfm.formatter({ fixes = { whitespace = false, lists = false } })
-assert(vim.deep_equal(vim.list_slice(disabled_only.args(nil, { buf = first }), 6), {
+local disabled_only = md_format.formatter({ fixes = { whitespace = false, lists = false } })
+assert(vim.deep_equal(vim.list_slice(disabled_only.args(nil, { buf = first }), 4), {
   "--disable-fixes",
   "lists,whitespace",
 }))
 
 -- nil と空の表では引数を増やさず、spec が作った整形器も同じ引数になる。
-local default_args = glfm.formatter().args(nil, { buf = first })
-assert(vim.deep_equal(glfm.formatter({ fixes = nil }).args(nil, { buf = first }), default_args))
-assert(vim.deep_equal(glfm.formatter({ fixes = {} }).args(nil, { buf = first }), default_args))
+local default_args = md_format.formatter().args(nil, { buf = first })
+assert(vim.deep_equal(md_format.formatter({ fixes = nil }).args(nil, { buf = first }), default_args))
+assert(vim.deep_equal(md_format.formatter({ fixes = {} }).args(nil, { buf = first }), default_args))
 local default_range = { buf = first, range = { start = { 4, 2 }, ["end"] = { 5, 7 } } }
-assert(vim.deep_equal(glfm.formatter({ fixes = nil }).range_args(nil, default_range), range_args))
-assert(vim.deep_equal(glfm.formatter({ fixes = {} }).range_args(nil, default_range), range_args))
+assert(vim.deep_equal(md_format.formatter({ fixes = nil }).range_args(nil, default_range), range_args))
+assert(vim.deep_equal(md_format.formatter({ fixes = {} }).range_args(nil, default_range), range_args))
 -- spec の整形器は、予備が無ければ CLI の設定そのものを、あれば同じ範囲の引数を持つ Lua の formatter を返す。
 spare.stop()
-local spec_job = opts.formatters.glfm_markdownlint(first)
+local spec_job = opts.formatters.mdfmt(first)
 assert(spec_job.command == "node" and spec_job.format == nil)
 assert(vim.deep_equal(spec_job.args(nil, { buf = first }), default_args))
 assert(vim.deep_equal(spec_job.range_args(nil, default_range), range_args))
 spare.start()
-local spec_lua = opts.formatters.glfm_markdownlint(first)
+local spec_lua = opts.formatters.mdfmt(first)
 assert(type(spec_lua.format) == "function" and spec_lua.command == nil)
 assert(vim.deep_equal(spec_lua.range_args(nil, default_range), range_args))
-assert(glfm.conform_formatter({ spare = false }).command == "node", "spare = false なら CLI の設定だけ")
+assert(md_format.conform_formatter({ spare = false })().command == "node", "spare = false なら CLI の設定だけ")
 
 -- 値とキーの型が不正なら、日本語のエラーで設定の誤りを知らせる。
 for _, value in ipairs({ "false", 0, {} }) do
-  local ok, err = pcall(glfm.formatter, { fixes = { lists = value } })
+  local ok, err = pcall(md_format.formatter, { fixes = { lists = value } })
   assert(not ok and tostring(err):find("fixes[lists] は true または false", 1, true))
 end
-local invalid_key_ok, invalid_key_err = pcall(glfm.formatter, { fixes = { [1] = true } })
+local invalid_key_ok, invalid_key_err = pcall(md_format.formatter, { fixes = { [1] = true } })
 assert(not invalid_key_ok and tostring(invalid_key_err):find("キーは文字列", 1, true))
-local invalid_table_ok, invalid_table_err = pcall(glfm.formatter, { fixes = false })
+local invalid_table_ok, invalid_table_err = pcall(md_format.formatter, { fixes = false })
 assert(not invalid_table_ok and tostring(invalid_table_err):find("表で指定", 1, true))
 
 local selected = buffer({ "#  Outside", "", "#  Selected", "", "Term", ": Description.   " })
@@ -256,18 +266,18 @@ assert(vim.deep_equal(nested_lines, { "* one", "* two" }), vim.inspect(nested_li
 vim.api.nvim_set_current_dir(previous_cwd)
 vim.fn.delete(vim.fs.joinpath(sandbox, ".markdownlint.json"))
 
--- runtime 未導入時はエラーにし、stock markdownlint や LSP の結果へ置き換えない。
-local runtime_dir = glfm.runtime_dir
-glfm.runtime_dir = function()
-  return vim.fs.joinpath(sandbox, "missing-runtime")
+-- md-format が導入されていなければ、導入を促すエラーにし、stock markdownlint や LSP の結果へ置き換えない。
+local install_dir_function = md_format.install_dir
+md_format.install_dir = function()
+  return vim.fs.joinpath(sandbox, "missing-install")
 end
 local missing_input = { "#  Heading", "", "Term", ": Description.   " }
 local missing = buffer(missing_input)
-local missing_result, missing_lines = format(missing)
-assert(missing_result.err)
+local missing_result, missing_lines = format(missing, nil, true)
+assert(missing_result.err and missing_result.err:find(md_format.missing_message, 1, true), vim.inspect(missing_result))
 assert(not missing_result.edited)
 assert(vim.deep_equal(missing_lines, missing_input))
-glfm.runtime_dir = runtime_dir
+md_format.install_dir = install_dir_function
 local recovered_result, recovered_lines = format(missing)
 assert(not recovered_result.err, vim.inspect(recovered_result.err))
 assert(recovered_result.edited)
@@ -279,16 +289,16 @@ assert(vim.deep_equal(recovered_again_lines, recovered_lines))
 
 -- 壊れた設定を直すと、失敗時に保持した同じバッファを再整形できる。
 vim.fn.writefile({ "{ broken JSON" }, config_file)
-conform.formatters.glfm_config_test = glfm.formatter({ config_path = config_file })
+conform.formatters.mdfmt_config_test = md_format.formatter({ config_path = config_file })
 local config_input = { "#  Heading", "", "Term", ": Description.   " }
 local config_buf = buffer(config_input)
-local config_result, config_lines = format(config_buf, { formatters = { "glfm_config_test" }, lsp_format = "never" })
+local config_result, config_lines = format(config_buf, { formatters = { "mdfmt_config_test" }, lsp_format = "never" })
 assert(config_result.err)
 assert(not config_result.edited)
 assert(vim.deep_equal(config_lines, config_input))
 vim.fn.writefile({ vim.json.encode({ default = false, MD019 = true, MD009 = true }) }, config_file)
 local fixed_config_result, fixed_config_lines =
-  format(config_buf, { formatters = { "glfm_config_test" }, lsp_format = "never" })
+  format(config_buf, { formatters = { "mdfmt_config_test" }, lsp_format = "never" })
 assert(not fixed_config_result.err, vim.inspect(fixed_config_result.err))
 assert(fixed_config_result.edited)
 assert(vim.deep_equal(fixed_config_lines, { "# Heading", "", "Term", ": Description." }))
@@ -307,7 +317,7 @@ assert(valid_range_result.edited)
 assert(vim.deep_equal(valid_range_lines, { "# Heading" }))
 
 -- 外部プロセスを使うので、conform の timeout が待機だけでなくプロセスにも効く。
-conform.formatters.glfm_timeout_test = {
+conform.formatters.mdfmt_timeout_test = {
   inherit = false,
   command = "node",
   args = { "-e", "setTimeout(() => {}, 5000)" },
@@ -316,7 +326,7 @@ conform.formatters.glfm_timeout_test = {
 local timeout_buf = buffer({ "#  Heading" })
 local began = uv.hrtime()
 local timeout_result, timeout_lines = format(timeout_buf, {
-  formatters = { "glfm_timeout_test" },
+  formatters = { "mdfmt_timeout_test" },
   timeout_ms = 30,
   lsp_format = "never",
 })
@@ -330,18 +340,19 @@ assert(timeout_retry_result.edited)
 assert(vim.deep_equal(timeout_retry_lines, { "# Heading" }))
 
 -- 予備のプロセスを通した結果 (行・edited・エラーの文言) が、CLI の job と同じになる。
-conform.formatters.glfm_cli_test = glfm.formatter({ config_path = config_file })
-conform.formatters.glfm_spare_test = glfm.conform_formatter({ config_path = config_file, name = "glfm_spare_test" })
+conform.formatters.mdfmt_cli_test = md_format.formatter({ config_path = config_file })
+conform.formatters.mdfmt_spare_test =
+  md_format.conform_formatter({ config_path = config_file, name = "mdfmt_spare_test" })
 local function compare(lines, extra, setup_buf)
   local outcomes = {}
-  for _, name in ipairs({ "glfm_cli_test", "glfm_spare_test" }) do
+  for _, name in ipairs({ "mdfmt_cli_test", "mdfmt_spare_test" }) do
     local buf = buffer(lines)
     if setup_buf then
       setup_buf(buf)
     end
     local result, formatted, via_spare =
       format(buf, vim.tbl_extend("force", { formatters = { name }, lsp_format = "never" }, extra or {}))
-    if name == "glfm_spare_test" then
+    if name == "mdfmt_spare_test" then
       assert(via_spare, "予備のプロセスを通る")
     end
     outcomes[#outcomes + 1] = {
@@ -367,7 +378,7 @@ compare({ "#  Outside", "", "#  Selected  " }, { range = { start = { 3, 0 }, ["e
 vim.fn.writefile({ "{ broken JSON" }, config_file)
 local broken = compare({ "#  Heading" })
 assert(
-  broken.err and broken.err:find("Formatter '<name>' error: GitLab Markdown の整形に失敗しました", 1, true),
+  broken.err and broken.err:find("Formatter '<name>' error: mdfmt: Markdown の整形に失敗しました", 1, true),
   broken.err
 )
 vim.fn.writefile({ vim.json.encode({ default = true }) }, config_file)
@@ -383,7 +394,7 @@ vim.fn.writefile(
   { vim.json.encode({ default = false, MD004 = { style = "asterisk" } }) },
   vim.fs.joinpath(project, ".markdownlint.json")
 )
-local late_result, late_lines, late_via_spare = format(late_buf, { formatters = { "glfm_spare_test" } })
+local late_result, late_lines, late_via_spare = format(late_buf, { formatters = { "mdfmt_spare_test" } })
 assert(late_via_spare and not late_result.err, vim.inspect(late_result.err))
 assert(vim.deep_equal(late_lines, { "* one", "* two" }), vim.inspect(late_lines))
 
@@ -399,14 +410,14 @@ vim.fn.writefile(
   vim.fs.joinpath(slow, ".markdownlint-cli2.jsonc")
 )
 -- --config を渡すと、markdownlint-cli2 はカスタムルールをその設定の場所から探すので、ここでは渡さない。
-conform.formatters.glfm_spare_slow = glfm.conform_formatter({ name = "glfm_spare_slow", timeout_ms = 300 })
+conform.formatters.mdfmt_spare_slow = md_format.conform_formatter({ name = "mdfmt_spare_slow", timeout_ms = 300 })
 local slow_buf = buffer({ "#  遅い" })
 vim.api.nvim_buf_set_name(slow_buf, vim.fs.joinpath(slow, "文書.md"))
 spare.start()
 local slow_pid = spare.pid()
 local slow_began = uv.hrtime()
 local slow_result, slow_lines, slow_via_spare =
-  format(slow_buf, { formatters = { "glfm_spare_slow" }, timeout_ms = 300, lsp_format = "never" })
+  format(slow_buf, { formatters = { "mdfmt_spare_slow" }, timeout_ms = 300, lsp_format = "never" })
 assert(
   slow_via_spare and slow_result.err and slow_result.err:lower():find("timeout", 1, true),
   vim.inspect(slow_result)
@@ -426,13 +437,22 @@ assert(
 assert(vim.deep_equal(slow_lines, { "#  遅い" }))
 
 -- 先に読み込んだ整形器 (format.mjs) が変わったら、その予備は使わずに止め、CLI で整形する。
-local copied_source = vim.fs.joinpath(sandbox, "source-copy")
+-- 導入先の写し (整形器の .mjs と導入の記録。依存は本物の導入先へのリンク) を作って使う。
+local copied_source = vim.fs.joinpath(sandbox, "install-copy")
 vim.fn.mkdir(copied_source, "p")
-for _, name in ipairs({ "format.mjs", "spare.mjs", "package.json" }) do
-  assert(uv.fs_copyfile(vim.fs.joinpath(glfm.source_dir(), name), vim.fs.joinpath(copied_source, name)))
+for name, kind in vim.fs.dir(install_dir) do
+  if kind == "file" and (name:match("%.mjs$") or name:match("%.json$")) then
+    assert(uv.fs_copyfile(vim.fs.joinpath(install_dir, name), vim.fs.joinpath(copied_source, name)))
+  end
 end
-local source_dir_function = glfm.source_dir
-glfm.source_dir = function()
+assert(
+  uv.fs_symlink(
+    vim.fs.joinpath(install_dir, "node_modules"),
+    vim.fs.joinpath(copied_source, "node_modules"),
+    { junction = true, dir = true }
+  )
+)
+md_format.install_dir = function()
   return copied_source
 end
 spare.stop()
@@ -446,7 +466,7 @@ assert(vim.wait(1500, function()
   return not alive(stale_pid)
 end, 20))
 local stale_buf = buffer({ "#  変えた後" })
-local stale_result, stale_lines = format(stale_buf, { formatters = { "glfm_spare_test" } })
+local stale_result, stale_lines = format(stale_buf, { formatters = { "mdfmt_spare_test" } })
 assert(not stale_result.err and stale_lines[1] == "# 変えた後", vim.inspect(stale_result))
 -- 予備が要求を受け付けなかったら (終了コード 86・出力なし)、CLI でやり直す。
 spare.stop()
@@ -457,11 +477,23 @@ vim.fn.writefile({
 spare.start()
 local refused_buf = buffer({ "#  受け付けない" })
 local refused_result, refused_lines, refused_via_spare =
-  format(refused_buf, { formatters = { "glfm_spare_test" } }, true)
+  format(refused_buf, { formatters = { "mdfmt_spare_test" } }, true)
 assert(refused_via_spare and not refused_result.err, vim.inspect(refused_result))
 assert(vim.deep_equal(refused_lines, { "# 受け付けない" }))
 spare.stop()
-glfm.source_dir = source_dir_function
+-- 起動のときの警告などが標準エラーに出ていても、86 なら CLI でやり直す。
+vim.fn.writefile({
+  "process.stderr.write('warning\\n');",
+  "process.stdin.resume();",
+  "process.stdin.on('end', () => { process.exitCode = 86; });",
+}, vim.fs.joinpath(copied_source, "spare.mjs"))
+spare.start()
+local warned_buf = buffer({ "#  警告の後" })
+local warned_result, warned_lines, warned_via_spare = format(warned_buf, { formatters = { "mdfmt_spare_test" } }, true)
+assert(warned_via_spare and not warned_result.err, vim.inspect(warned_result))
+assert(vim.deep_equal(warned_lines, { "# 警告の後" }))
+spare.stop()
+md_format.install_dir = install_dir_function
 
 -- 待っている間に外から止められた予備は使わずに CLI で整形し、次の保存のために起動し直す。
 -- 前の整形が予約した起動 (100 ms 後) が済んでから止める (その予約で起動し直したのでは確かめにならない)。
@@ -477,7 +509,7 @@ assert(
   "止められた予備を捨てる"
 )
 local killed_buf = buffer({ "#  止められた後" })
-local killed_result, killed_lines, killed_via_spare = format(killed_buf, { formatters = { "glfm_spare_test" } }, true)
+local killed_result, killed_lines, killed_via_spare = format(killed_buf, { formatters = { "mdfmt_spare_test" } }, true)
 assert(not killed_via_spare and not killed_result.err, vim.inspect(killed_result))
 assert(vim.deep_equal(killed_lines, { "# 止められた後" }))
 assert(
@@ -497,16 +529,16 @@ assert(not spare.usable(), "node が変わった予備は使わない")
 vim.fn.exepath = exepath
 spare.start()
 assert(spare.usable())
-vim.env.GLFM_SPARE_TEST = "変えた"
+vim.env.MD_FORMAT_SPARE_TEST = "変えた"
 assert(not spare.usable(), "環境変数が変わった予備は使わない")
-vim.env.GLFM_SPARE_TEST = nil
+vim.env.MD_FORMAT_SPARE_TEST = nil
 
 -- 非同期の整形も予備を通って終わり、上限を過ぎたときも conform に時間切れを返す (止まったままにならない)。
 spare.start()
 local async_buf = buffer({ "#  非同期" })
 local async_done
 conform.format(
-  { bufnr = async_buf, async = true, quiet = true, formatters = { "glfm_spare_test" } },
+  { bufnr = async_buf, async = true, quiet = true, formatters = { "mdfmt_spare_test" } },
   function(err, edited)
     async_done = { err = err, edited = edited }
   end
@@ -520,9 +552,12 @@ spare.start()
 local async_slow_buf = buffer({ "#  遅い非同期" })
 vim.api.nvim_buf_set_name(async_slow_buf, vim.fs.joinpath(slow, "非同期.md"))
 local async_slow
-conform.format({ bufnr = async_slow_buf, async = true, quiet = true, formatters = { "glfm_spare_slow" } }, function(err)
-  async_slow = { err = err }
-end)
+conform.format(
+  { bufnr = async_slow_buf, async = true, quiet = true, formatters = { "mdfmt_spare_slow" } },
+  function(err)
+    async_slow = { err = err }
+  end
+)
 assert(
   vim.wait(3000, function()
     return async_slow ~= nil
@@ -531,20 +566,6 @@ assert(
 )
 assert(async_slow.err and async_slow.err:lower():find("timeout", 1, true), vim.inspect(async_slow))
 assert(vim.deep_equal(vim.api.nvim_buf_get_lines(async_slow_buf, 0, -1, false), { "#  遅い非同期" }))
-
--- :GlfmFormatInstall の間は予備を止めて起動せず、終わったら起動し直す。
-spare.start()
-local install_pid = spare.pid()
-assert(install_pid)
-spare.block(true)
-assert(spare.pid() == nil and not spare.usable())
-spare.start()
-assert(spare.pid() == nil, "導入の間は起動しない")
-assert(vim.wait(1500, function()
-  return not alive(install_pid)
-end, 20))
-spare.block(false)
-assert(spare.pid(), "導入の後に起動し直す")
 
 -- Markdown のバッファをすべて閉じると予備を止め、また開くと起動する。
 local closing_pid = spare.pid()
@@ -569,7 +590,7 @@ end, 20))
 vim.bo[reopened].filetype = "markdown"
 assert(spare.pid(), "Markdown に戻すと起動する")
 
--- Neovim の終了で予備を止める。この後の導入の試験は vim.system を置き換えるので、予備を使わない。
+-- Neovim の終了で予備を止める。
 local leaving_pid = spare.pid()
 vim.api.nvim_exec_autocmds("VimLeavePre", {})
 assert(spare.pid() == nil)
@@ -578,183 +599,39 @@ assert(vim.wait(1500, function()
 end, 20))
 spare.setup({ enabled = false })
 
--- 導入テストはプロセスだけを置き換え、通信せず manifest のコピーと argv を確かめる。
-local original_system, original_exepath = vim.system, vim.fn.exepath
-local source_dir = vim.fs.joinpath(sandbox, "source")
-local install_dir = vim.fs.joinpath(sandbox, "runtime")
-vim.fn.mkdir(source_dir, "p")
-vim.fn.writefile({ '{"private":true}' }, vim.fs.joinpath(source_dir, "package.json"))
-vim.fn.writefile({ '{"lockfileVersion":3}' }, vim.fs.joinpath(source_dir, "package-lock.json"))
-local calls = {}
-local npm_result = { code = 0, stdout = "", stderr = "" }
-local valid_version = {
-  code = 0,
-  stdout = vim.json.encode({ version = "v22.0.0", execPath = original_exepath("node") }),
-}
-local version_result = valid_version
-local spawn_failure
-local hold_version = false
-local held_version_callback
-vim.system = function(command, options, callback)
-  calls[#calls + 1] = { command = vim.deepcopy(command), options = options }
-  if command[2] == "-p" then
-    if spawn_failure == "node" then
-      error("mock node spawn failure")
-    end
-    if hold_version then
-      held_version_callback = callback
-    else
-      callback(version_result)
-    end
-  else
-    if spawn_failure == "npm" then
-      error("mock npm spawn failure")
-    end
-    callback(npm_result)
-  end
-  return {}
+-- format_dir (setup の dir) の相対パスは、setup のときの作業フォルダから解く。後で :cd しても導入先は変わらない。
+md_format.install_dir = original_install_dir
+local saved_cwd = uv.cwd()
+vim.cmd.cd(vim.fs.dirname(install_dir))
+md_format.setup({ spare = false, dir = vim.fs.basename(install_dir) })
+vim.cmd.cd(sandbox)
+assert(md_format.install_dir() == vim.fs.normalize(install_dir), md_format.install_dir())
+assert(md_format.installed())
+vim.cmd.cd(saved_cwd)
+
+-- format_dir の無いときの既定は、md-format の setup.mjs と同じ決まり (空や相対の環境変数は使わない)。今の OS の分だけ確かめる。
+md_format.setup({ spare = false })
+local home = uv.os_homedir()
+local function with_env(name, value, check)
+  local saved = vim.env[name]
+  vim.env[name] = value
+  local ok, err = pcall(check)
+  vim.env[name] = saved
+  assert(ok, err)
+end
+if vim.fn.has("win32") == 1 then
+  with_env("LOCALAPPDATA", "", function()
+    local expected = vim.fs.normalize(vim.fs.joinpath(home, "AppData", "Local", "md-format"))
+    assert(vim.fs.normalize(md_format.install_dir()) == expected, md_format.install_dir())
+  end)
+elseif vim.fn.has("mac") == 0 then
+  with_env("XDG_DATA_HOME", "relative/data", function()
+    assert(md_format.install_dir() == vim.fs.joinpath(home, ".local", "share", "md-format"), md_format.install_dir())
+  end)
+  with_env("XDG_DATA_HOME", "/opt/data", function()
+    assert(md_format.install_dir() == "/opt/data/md-format", md_format.install_dir())
+  end)
 end
 
-local function install(extra, expected_started)
-  local outcome
-  local callback_count = 0
-  local started = glfm.install(
-    vim.tbl_extend("force", {
-      source_dir = source_dir,
-      runtime_dir = install_dir,
-      quiet = true,
-    }, extra or {}),
-    function(ok, message)
-      callback_count = callback_count + 1
-      outcome = { ok = ok, message = message }
-    end
-  )
-  assert(started == (expected_started ~= false), "導入を開始したかどうかが一致しない")
-  assert(
-    vim.wait(1000, function()
-      return outcome ~= nil
-    end, 5),
-    "導入結果のコールバックが返らない"
-  )
-  assert(callback_count == 1, "導入結果は一度だけ返す")
-  return outcome
-end
-
-assert(install().ok)
-assert(vim.tbl_contains(calls[2].command, "ci"))
-assert(vim.tbl_contains(calls[2].command, "--ignore-scripts"))
-assert(vim.tbl_contains(calls[2].command, install_dir))
-local copied_lock = vim.fs.joinpath(install_dir, "package-lock.json")
-assert(uv.fs_utime(copied_lock, 100, 100))
-assert(install().ok)
-assert(uv.fs_stat(copied_lock).mtime.sec == 100, "同じ manifest を再コピーしない")
-npm_result = { code = 1, stdout = "", stderr = "offline" }
-local failed = install()
-assert(not failed.ok and failed.message:find("offline", 1, true))
-npm_result = { code = 0, stdout = "", stderr = "" }
-assert(install().ok, "npm ci 失敗後も再試行できる")
-
--- Node/npm の不足はプロセスを起動せず報告し、PATH を直した後は再試行できる。
-for _, missing_command in ipairs({ "node", "npm" }) do
-  local call_count = #calls
-  vim.fn.exepath = function(name)
-    return name == missing_command and "" or original_exepath(name)
-  end
-  local missing_tool = install(nil, false)
-  assert(not missing_tool.ok and missing_tool.message:find("Node.js 22", 1, true))
-  assert(#calls == call_count, "外部コマンド不足時にはプロセスを起動しない")
-  vim.fn.exepath = original_exepath
-  assert(install().ok, missing_command .. " 導入後は再試行できる")
-end
-
--- 版の確認に失敗した場合は npm ci へ進まず、修復後に導入状態が解除されている。
-for _, invalid_version in ipairs({
-  { code = 0, stdout = vim.json.encode({ version = "v20.0.0", execPath = original_exepath("node") }) },
-  { code = 0, stdout = "not JSON" },
-  { code = 0, stdout = vim.json.encode({ version = "v22.0.0" }) },
-  { code = 0, stdout = vim.json.encode({ version = 22, execPath = original_exepath("node") }) },
-  { code = 0, stdout = vim.json.encode({ version = vim.empty_dict(), execPath = original_exepath("node") }) },
-  { code = 0, stdout = vim.json.encode({ version = { "v22.0.0" }, execPath = original_exepath("node") }) },
-  { code = 1, stdout = "", stderr = "version failed" },
-}) do
-  version_result = invalid_version
-  local call_count = #calls
-  local invalid = install()
-  assert(not invalid.ok and invalid.message:find("Node.js 22", 1, true))
-  assert(#calls == call_count + 1, "版の確認失敗時には npm ci を起動しない")
-  version_result = valid_version
-  assert(install().ok, "版の確認失敗後も再試行できる")
-end
-
--- プロセス起動自体の失敗は同期・非同期の両経路で報告し、再試行できる。
-for _, command in ipairs({ "node", "npm" }) do
-  spawn_failure = command
-  local spawn_result = install(nil, command ~= "node")
-  assert(not spawn_result.ok and spawn_result.message:find("mock " .. command .. " spawn failure", 1, true))
-  spawn_failure = nil
-  assert(install().ok, command .. " 起動失敗後も再試行できる")
-end
-
--- manifest のコピーが途中で失敗しても、不足したファイルの復元後に再試行できる。
-local incomplete_source = vim.fs.joinpath(sandbox, "incomplete-source")
-local incomplete_runtime = vim.fs.joinpath(sandbox, "incomplete-runtime")
-vim.fn.mkdir(incomplete_source, "p")
-vim.fn.writefile({ '{"private":true}' }, vim.fs.joinpath(incomplete_source, "package.json"))
-local copy_options = { source_dir = incomplete_source, runtime_dir = incomplete_runtime }
-local copy_call_count = #calls
-local copy_result = install(copy_options)
-assert(not copy_result.ok and copy_result.message:find("コピーできません", 1, true))
-assert(#calls == copy_call_count + 1, "コピー失敗時には npm ci を起動しない")
-assert(uv.fs_stat(vim.fs.joinpath(incomplete_runtime, "package.json")))
-vim.fn.writefile({ '{"lockfileVersion":3}' }, vim.fs.joinpath(incomplete_source, "package-lock.json"))
-assert(install(copy_options).ok)
-assert(uv.fs_stat(vim.fs.joinpath(incomplete_runtime, "package-lock.json")))
-
--- 二重導入は先行プロセスの結果を壊さず拒否し、完了後の再実行は受け付ける。
-hold_version = true
-local first_install_result
-local first_install_callbacks = 0
-assert(glfm.install({ source_dir = source_dir, runtime_dir = install_dir, quiet = true }, function(ok, message)
-  first_install_callbacks = first_install_callbacks + 1
-  first_install_result = { ok = ok, message = message }
-end))
-assert(type(held_version_callback) == "function")
-local pending_call_count = #calls
-local duplicate_result = install(nil, false)
-assert(not duplicate_result.ok and duplicate_result.message:find("実行中", 1, true))
-assert(#calls == pending_call_count, "二重導入で追加プロセスを起動しない")
-assert(first_install_result == nil, "拒否された二重導入は先行導入の結果を返さない")
-hold_version = false
-held_version_callback(valid_version)
-assert(vim.wait(1000, function()
-  return first_install_result ~= nil
-end, 5))
-assert(first_install_result.ok and first_install_callbacks == 1)
-assert(install().ok, "先行導入の完了後は再試行できる")
-
--- Scoop の npm.cmd shim の隣に npm-cli.js がない場合は、Node の実体の隣を探す。
-local app_dir = vim.fs.joinpath(sandbox, "node-app")
-local npm_cli = vim.fs.joinpath(app_dir, "node_modules", "npm", "bin", "npm-cli.js")
-vim.fn.exepath = function(name)
-  return name == "node" and vim.fs.joinpath(app_dir, "node.exe") or vim.fs.joinpath(sandbox, "shims", "npm.cmd")
-end
-vim.system = function(command, options, callback)
-  calls[#calls + 1] = { command = vim.deepcopy(command), options = options }
-  callback(command[2] == "-p" and {
-    code = 0,
-    stdout = vim.json.encode({ version = "v22.0.0", execPath = vim.fs.joinpath(app_dir, "node.exe") }),
-  } or { code = 0, stdout = "", stderr = "" })
-  return {}
-end
-local missing_cli_calls = #calls
-local missing_cli_result = install()
-assert(not missing_cli_result.ok and missing_cli_result.message:find("npm-cli.js", 1, true))
-assert(#calls == missing_cli_calls + 1, "npm-cli.js 不足時には npm ci を起動しない")
-vim.fn.mkdir(vim.fs.dirname(npm_cli), "p")
-vim.fn.writefile({}, npm_cli)
-assert(install().ok)
-assert(calls[#calls].command[1] == vim.fs.joinpath(app_dir, "node.exe"))
-assert(calls[#calls].command[2] == npm_cli)
-vim.system, vim.fn.exepath = original_system, original_exepath
 vim.fn.delete(sandbox, "rf")
-print("GLFM conform / installer integration: PASS")
+print("md-format conform integration: PASS")

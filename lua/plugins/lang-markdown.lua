@@ -18,7 +18,7 @@ local disabled_rules = {
   -- "MD041",
 }
 -- 整形だけの対象を分類名・ルール名 (MD026 や no-trailing-punctuation) で選ぶ。lint の診断は残る。
--- true で有効、false で無効。ルール名の指定 > 分類の指定 > Node 側の既定。検査は外れない。
+-- true で有効、false で無効。ルール名の指定 > 分類の指定 > プロジェクトの .md-format.json > 整形器の既定。検査は外れない。
 -- 分類とルール (既定で有効):
 --   heading_spacing: MD019 MD021 MD023 / heading_punctuation: MD026
 --   whitespace: MD009 MD010 MD047 / blank_lines: MD012 MD022 MD031 MD032 MD058
@@ -27,22 +27,29 @@ local disabled_rules = {
 --   link_style: MD034 MD054 / link_text: MD039 / link_fragments: MD051
 --   tables: MD060 / proper_names: MD044 (名前を設定したときだけ働く)
 --   html: HTML のブロック (<table>・<details> など) をタグの入れ子に合わせて字下げする (js-beautify。markdownlint のルールではない)
+--   tight_lists: loose のリストの空行を消して詰める (markdownlint のルールではない。どの分類も、詰まったリストを loose にしない)
 -- 分類とルール (既定で無効):
 --   heading_conversion: MD018 MD020 (# の後に空白を足す。有効でも #数字 は見出しにしない)
 --   emphasis_spaces: MD037 / reversed_links: MD011 / unused_definitions: MD053
--- カスタムルールは名前で指定し、既定で有効。詳しい例は docs/reference/glfm-format.md にある。
+--   line_length: MD013 (長すぎる行を、既にある空白の位置で折る。幅は MD013 の設定。日本語の文字の間では折らない)
+-- カスタムルールは名前で指定し、既定で有効。詳しい例は md-format の docs/reference/rules.md にある
+-- (https://github.com/ryo-aoki-pc/md-format/blob/main/docs/reference/rules.md)。
 -- 未知の名前や同じ名前の有効・無効の重複は Node 側でエラーになり、conform は原文を保つ。
 local format_fixes = {
   -- heading_conversion = true,
   -- lists = false,
   -- MD026 = false,
 }
--- 保存の整形を速くする予備のプロセス (lua/config/glfm_spare.lua)。Markdown のバッファを開くと、依存を読み込んだ
+-- 保存の整形を速くする予備のプロセス (lua/config/md_format_spare.lua)。Markdown のバッファを開くと、依存を読み込んだ
 -- node を 1 つ先に起動しておき (約 85 MB)、保存のときに使い切る。Markdown のバッファをすべて閉じると止まる。
 -- 整形の結果は使わないときと同じ。false にすると、保存のたびに整形器を起動する。
 local format_spare = true
 -- Markdown の整形の上限。予備のプロセスも、この時間で止める。
 local format_timeout_ms = 10000
+-- 整形器 md-format の導入先。nil なら md-format の導入スクリプトの既定 (Windows は %LOCALAPPDATA%\md-format、
+-- macOS は ~/Library/Application Support/md-format、ほかは ${XDG_DATA_HOME:-~/.local/share}/md-format)。導入スクリプトに --install-dir を渡したときだけ、同じフォルダを絶対パスで書く
+-- (相対パスは、設定を読んだときの作業フォルダから解く)。
+local format_dir = nil
 local config_path
 
 local specs = {
@@ -57,10 +64,11 @@ local specs = {
   -- 記法をそのまま見て書き (conceal も切っている)、見た目はブラウザのプレビューで確かめる。
   { "MeanderingProgrammer/render-markdown.nvim", enabled = false },
 
-  -- GLFM (GitLab Flavored Markdown) を壊さず整形するため、markdown の整形連鎖から
+  -- GLFM (GitLab Flavored Markdown) と GFM を壊さず整形するため、markdown の整形連鎖から
   -- prettier を除外する。prettier は数式 $...$ の \$ 化・複数行脚注の破壊・[[_TOC_]] の
-  -- 再整形などで GLFM 固有構文を壊すため。説明リストを理解する整形器を通して
-  -- markdownlint の修正を適用し、説明の内側も構造を保って整える。
+  -- 再整形などで GLFM 固有構文を壊すため。整形器は別のリポジトリの md-format (mdfmt) で、
+  -- markdownlint の修正を構文木で確かめて適用する。導入は setup-notes の手順で行う
+  -- (Neovim からは導入しない。導入されていなければ、保存の整形は原文のままエラーを知らせる)。
   -- markdown-toc も外す。npm の最終リリースが 2017 年で更新が止まっている。GitLab は [[_TOC_]] で
   -- 目次を描画時に作り、ファイルに書き込む目次が要るときは marksman のコードアクション
   -- ("Table of Contents"。見出し ID は GitLab 方式) で作れる。
@@ -85,19 +93,18 @@ local specs = {
   {
     "stevearc/conform.nvim",
     optional = true,
-    cmd = { "GlfmFormatInstall" },
     ft = { "markdown" },
     opts = function(_, opts)
-      local glfm = require("config.glfm_format")
-      glfm.setup({ spare = format_spare })
+      local md_format = require("config.md_format")
+      md_format.setup({ spare = format_spare, dir = format_dir })
       opts.formatters = opts.formatters or {}
-      opts.formatters.glfm_markdownlint = glfm.conform_formatter({
+      opts.formatters.mdfmt = md_format.conform_formatter({
         config_path = config_path,
         fixes = format_fixes,
         spare = format_spare,
         timeout_ms = format_timeout_ms,
       })
-      opts.formatters_by_ft.markdown = { "glfm_markdownlint", timeout_ms = format_timeout_ms, lsp_format = "never" }
+      opts.formatters_by_ft.markdown = { "mdfmt", timeout_ms = format_timeout_ms, lsp_format = "never" }
       opts.formatters_by_ft["markdown.mdx"] = { "prettier", "markdownlint-cli2", timeout_ms = format_timeout_ms }
     end,
   },

@@ -966,6 +966,46 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
 - GitLab での描画 (GitLab の Markdown API は使っていない。代わりに Comrak と GitHub で比べた)
 - Node.js 22〜23 での実行
 
+### 付録: Markdown の整形器を md-format に移した版の検証記録 (2026-10-16)
+
+- **対象**: ブランチ `claude/md-format-cli` の `81abeb0` (整形器を消し、導入した md-format を呼ぶ Lua・配線の試験・文書)。元の版は `custom` の `33e9481`。
+  呼んだ md-format は、Pull Request 中のブランチ `agent/claude-wrap` の `63d9af6` (GLFM・GFM・`tight_lists`・`line_length`)
+- **環境**: Windows 11 Pro 10.0.26300・Neovim 0.12.5・Node.js 26.10.0・conform.nvim `016802d`。AlmaLinux 10.2 (abiko-pi、aarch64)・Neovim 0.12.5・Node.js 22.23.2
+  - md-format は、どちらも一時のフォルダーに `node scripts/setup.mjs --install-dir … --bin-dir …` で入れた。利用者の `%LOCALAPPDATA%\md-format`・
+    `~/.local/share/md-format` には入れていない
+- **配線の試験**: `tests/md_format_conform.lua` (`MD_FORMAT_DIR` に一時の導入先、`MD_FORMAT_CONFORM_DIR` に conform.nvim) が、Windows と abiko-pi の両方で
+  `md-format conform integration: PASS` を出した。StyLua の `--check` と `git diff --check` も通った
+  - レビューの直しで足した試験のうち、予備が標準エラーに何か出してから 86 で終わったときに CLI でやり直す試験は、直しを戻すと落ちることを確かめた
+  - Windows では、空の値を設定すると環境変数ごと消えるので、`LOCALAPPDATA` が空のときの試験は、変数が無いときの既定を確かめるだけになった
+- **実際の Neovim の画面** (Windows): `LOCALAPPDATA`・`TEMP` を `%TEMP%\g70` の下に差し替え、このブランチを `nvim` に clone し、`lazy`・`mason`・`site` を
+  利用者の `nvim-data` から写した (`lazy-lock.json` は利用者のものと同じ)。md-format は、差し替えた `LOCALAPPDATA` の既定の導入先に入れた。
+  Terminal パネルで `nvim --listen` で開き、`nvim --headless --server … --remote-send` で操作し、`--remote-expr` で状態を読んだ
+  - Markdown を開くと、conform の整形器は `mdfmt` だけで、予備の node (`…\md-format\spare.mjs`) が 1 つ起動した
+  - setup-notes の「Windows 11 で LazyVim の安全な Markdown 整形を導入する」の文書に loose のリストを足したものを `:w` すると、`# 動作確認`・
+    `内部の項目` の字下げのまま・`<summary>` の 2 スペース字下げ・`<table>` の 6 行・loose のリストを詰めた形になり、ファイルも同じだった。
+    予備を使った後、次の保存のための予備が起動し直した
+  - 見出しを 2 つ足し、片方の行だけをビジュアル選択して `<leader>cf` を押すと、選んだ行だけが `# RangeA` になった
+  - `.md-format.json` に `{ "flavor": "gfm", "fixes": { "line_length": true } }` を書いたフォルダーの文書は、`:w` で長い行が 80 桁で折り返され、
+    行頭の `: ` の行は GFM のただの文として残った
+  - 導入先の名前を一時的に変えると、整形は `Formatter 'mdfmt' error: md-format (mdfmt) が導入されていません。setup-notes の手順で導入してください: <導入先>`
+    で失敗し、バッファは変わらなかった (保存は原文のまま)。名前を戻すと、ふたたび整形した
+- **保存の時間** (Windows の実際の画面。文書を開き直して 4 秒待ってから `:w` までの時間を、予備あり・なしを交互に 5 回ずつ測った中央値):
+
+  | 文書 | 予備なし | 予備あり |
+  |---|---|---|
+  | 1 行 | 302 ms | 69 ms |
+  | LazyVimStarter の README (386 行) | 419 ms | 218 ms |
+
+  - 保存したファイルのハッシュは、予備あり・なしで同じだった
+- **レビュー**: Codex と Grok Build が読み取り専用でレビューした。`format_dir` の相対パス (設定を読んだときの作業フォルダーから解く)・空の
+  `LOCALAPPDATA`・86 で断った予備が標準エラーに何か出していたときの扱い・案内の文を直した
+
+#### 未確認事項 (2026-10-16 の md-format に移した版)
+
+- AlmaLinux 10 での実際の Neovim の画面 (abiko-pi では headless の配線の試験だけ)・Neovide
+- 利用者の本物の環境 (`%LOCALAPPDATA%\nvim`・`~/.config/nvim`) での動作。md-format の Pull Request が取り込まれ、setup-notes の手順で導入した後に確かめる
+- md-format を導入し直している最中の保存
+
 ## 導入での観測
 
 ### dnf で入れるものの観測

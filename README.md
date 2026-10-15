@@ -13,7 +13,8 @@ Markdown (GLFM) 執筆を強化した Neovim 設定。
 | --- | --- | --- |
 | 本体とこの設定 | [Neovim](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#neovim) (手順 3 で「LazyVim の設定を導入する」も通す) | [Windows 11 で Neovim を入れる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-neovim-を入れる) (手順 4 で「Windows 11 で LazyVim の設定を導入する」も通す) |
 | この設定だけ (本体が入っているとき) | [LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する) |
-| 安全な Markdown 整形 | [LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する) | [Windows 11 で LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の安全な-markdown-整形を導入する) |
+| Markdown の整形器 md-format (`mdfmt`) | [md-format を導入・更新する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#md-format-を導入更新する) | [md-format を導入・更新する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/windows-setup.md#md-format-を導入更新する) |
+| 安全な Markdown 整形 (md-format の後) | [LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する) | [Windows 11 で LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の安全な-markdown-整形を導入する) |
 | 動作の確認 | [LazyVim の日本語検索・整形・IME 連携を確かめる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の日本語検索整形ime-連携を確かめる) (この設定と安全な整形の後、再起動してから) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 10 (その項を最後まで通したなら済んでいる) |
 | ほかのマシンの変更を取り込む | [LazyVim の設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定とプラグインの版を揃える) | [Windows 11 で LazyVim の設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定とプラグインの版を揃える) |
 | 更新 | [LazyVim の本体・外部コマンド・プラグインを更新する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の本体外部コマンドプラグインを更新する) | [Windows 11 で LazyVim の本体・外部コマンド・プラグインを更新する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の本体外部コマンドプラグインを更新する) |
@@ -151,18 +152,18 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
 
 - LazyVim extra `lang.markdown` を有効化し、以下を上書き:
   - 整形連鎖から **prettier を除外** (GLFM の数式・脚注・`[[_TOC_]]` を壊すため)。
-    Markdown は `glfm_markdownlint` が markdownlint-cli2 の修正候補を Comrak で検査して適用する。
-    説明リスト内の安全な空白修正や箇条書きの記号統一も行い、用語と説明の対応・継続行・
-    内部リストの所属・本文が変わる修正は除外する。構文木の構造が変わる修正と GitLab の参照を変える修正は当てない。
+    Markdown の整形は、別のリポジトリの [md-format](https://github.com/ryo-aoki-pc/md-format) (`mdfmt`) が行う (conform の整形器の名前は `mdfmt`)。
+    markdownlint-cli2 の修正候補のうち、Comrak で読み直して構造・GitLab の参照・リストの tight が変わらないものだけを当て、
+    loose のリストを詰め、埋め込んだ HTML のブロック (`<table>`・`<details>` など) を字下げする。
     `#123` はどの設定でも見出しにしない。整形する対象は `lua/plugins/lang-markdown.lua` の
-    `format_fixes` で選ぶ (診断はそのまま)。ルールごとの例は [GLFM 整形器のルール一覧](docs/reference/glfm-format.md) にある。
-    埋め込んだ HTML のブロック (`<table>`・`<details>` など) も、js-beautify でタグの入れ子に合わせて字下げする
-    (`format_fixes` の `html`。既定で有効)。HTML の中の Markdown (`<details>` の本文など) と空行は変えず、
-    整形の前後で Comrak の描画が変わらないブロックだけを直す。
+    `format_fixes` で選ぶ (診断はそのまま)。ルールごとの例は md-format の [ルール一覧](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/reference/rules.md)、
+    整形の例は [md-format の README](https://github.com/ryo-aoki-pc/md-format#整形の例) にある。
     保存時と `<leader>cf` で動き、診断を待たずに整形できる。
     Markdown を開くと、依存を読み込んだ整形用の node を 1 つ先に起動しておき (約 85 MB)、保存の待ち時間を縮める
     (結果は同じ。使わないときは `lang-markdown.lua` の `format_spare = false`)。
-    初回と依存の変更後は安全な整形の導入 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する) / [Windows 11](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の安全な-markdown-整形を導入する)) が必要。
+    md-format は setup-notes の md-format の導入 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#md-format-を導入更新する) / [Windows 11](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/windows-setup.md#md-format-を導入更新する)) で入れ、
+    安全な整形の導入 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する) / [Windows 11](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の安全な-markdown-整形を導入する)) で確かめる
+    (Neovim からは導入しない。導入されていなければ、保存の整形は原文のまま、導入を促すエラーを出す)。
     MDX は prettier と markdownlint-cli2。Markdown / MDX の待ち時間の上限は 10 秒
     (速い環境では処理が終わった時点で戻る)。ほかのファイルは LazyVim 既定の 3 秒。
   - **markdown-toc を外した** (npm の最終リリースが 2017 年で、更新が止まっている)。目次は GitLab が
@@ -211,146 +212,6 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
 - **[vim-table-mode](https://github.com/dhruvasagar/vim-table-mode)** — パイプ表の整形
   (全角幅対応)。markdown バッファ限定で `<leader>tm` (toggle) / `<leader>tr` (realign)。
 
-#### 整形の例
-
-保存時と `<leader>cf` で、Markdown は次のように変わる。例は markdownlint の既定 (全ルール有効) で整形した結果で、`␣` は空白を表す。
-ルールごとの例と、直す対象の選び方は [GLFM 整形器のルール一覧](docs/reference/glfm-format.md) にある。
-この節の例は、`tools/glfm-format/test/reference.test.mjs` が整形し直して確かめる。
-
-見出しの `#` の後の余分な空白・見出しの後の空行・行末の空白・続く空行を直す (MD019・MD022・MD009・MD012)。
-
-整形前:
-
-```markdown 整形前
-#␣␣見出し
-本文の行末に空白␣
-
-
-
-次の段落
-```
-
-整形後:
-
-```markdown 整形後
-# 見出し
-
-本文の行末に空白
-
-次の段落
-```
-
-箇条書きの記号を最初のものに揃え、入れ子の字下げを 2 つにし、番号を振り直す。リストの前に空行を足す (MD004・MD007・MD029・MD030・MD032)。
-
-整形前:
-
-```markdown 整形前
-本文
-* 親
-␣␣␣␣+ 子
-*␣␣␣次
-
-1. 一
-3. 二
-4. 三
-```
-
-整形後:
-
-```markdown 整形後
-本文
-
-* 親
-  * 子
-* 次
-
-1. 一
-2. 二
-3. 三
-```
-
-強調と太字の記号を最初のものに揃え、リンクの文字の端の空白を消し、裸の URL を `<…>` で囲む (MD049・MD050・MD039・MD034)。
-
-整形前:
-
-```markdown 整形前
-*強調* と _強調_、**太字** と __太字__
-
-[␣リンク␣](https://example.com) と https://example.com を見る
-```
-
-整形後:
-
-```markdown 整形後
-*強調* と *強調*、**太字** と **太字**
-
-[リンク](https://example.com) と <https://example.com> を見る
-```
-
-GitLab の記法は変えない。`#123` は見出しにせず、説明リストの対応と内部のリストの字下げ・数式・目次・ラベルとユーザーの参照もそのまま。
-
-変わらない:
-
-```markdown 変わらない
-#123 の対応
-
-用語
-: 説明
-
-  - 内部の項目
-
-数式 $`a^2`$ と [[_TOC_]] と ~label と @user
-```
-
-埋め込んだ HTML の表は、`<tr>`・`<th>`・`<td>` ごとの行に分け、入れ子に合わせて 2 つずつ字下げする。セルの中の `<kbd>`・`<br>` と文は 1 行のまま。
-
-整形前:
-
-```markdown 整形前
-<table><tr><th>キー</th><th>説明</th></tr><tr><td><kbd>Ctrl</kbd>+<kbd>J</kbd></td><td>日本語入力の切り替え<br>挿入モードで使う</td></tr></table>
-```
-
-整形後:
-
-```markdown 整形後
-<table>
-  <tr>
-    <th>キー</th>
-    <th>説明</th>
-  </tr>
-  <tr>
-    <td><kbd>Ctrl</kbd>+<kbd>J</kbd></td>
-    <td>日本語入力の切り替え<br>挿入モードで使う</td>
-  </tr>
-</table>
-```
-
-折りたたみ (`<details>`) は `<summary>` を 2 つ字下げする。中に書いた Markdown の本文と、その前後の空行は変えない。
-
-整形前:
-
-```markdown 整形前
-<details>
-<summary>詳しい手順</summary>
-
-- 一つ目
-- 二つ目
-
-</details>
-```
-
-整形後:
-
-```markdown 整形後
-<details>
-  <summary>詳しい手順</summary>
-
-- 一つ目
-- 二つ目
-
-</details>
-```
-
 ### その他
 
 - 有効化済み extras: `lang.markdown` / `lang.json` / `lang.yaml` / `lang.toml` /
@@ -397,6 +258,6 @@ wl-clipboard が要る (どれも任意。無ければその機能だけが使�
 ## 文書
 
 - [ロールバックと注意点・必要なもの一覧](docs/extra/setup.md)
-- [導入の補足資料](docs/reference/setup.md)・[GLFM 整形器のルール一覧](docs/reference/glfm-format.md)
+- [導入の補足資料](docs/reference/setup.md)・[Markdown の整形器のルール一覧 (md-format)](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/reference/rules.md)
 - 検証記録: [導入](docs/verification/setup.md)・[README の観測](docs/verification/readme.md)
 - 変更するとき: [設計](docs/dev/architecture.md)・[変更後の確認](docs/dev/check.md)・[AGENTS.md](AGENTS.md)
