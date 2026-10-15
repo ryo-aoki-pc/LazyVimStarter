@@ -829,6 +829,36 @@ CLI の付録とは別の、新規 AlmaLinux 10.2 / x86_64 Workstation VM で Li
 - AlmaLinux 10 での、変えた手順 3・4・10・11 と更新の手順 1 の実行 (手順 10 の `[y/n]` の前の一覧と、依存の数を含む)
 - EPEL の `ripgrep` / `fd-find` を前の版の手順で入れてあった PC で、Homebrew の `rg` / `fd` が PATH の先に来ること (dnf の 2 つは、この変更では外さない)
 
+### 付録: GLFM 整形器の構造の検査と整形する対象の選択の検証記録 (2026-10-15)
+
+- **対象**: ブランチ `claude/glfm-safe-format` の `bc40781` (構文木の全体の検査・GitLab の記法の保護・`format_fixes`)。比べた今の版は `custom` の整形器 (`f1d5363` の時点のもの。整形器は `0811328` まで変わっていない)
+- **環境**: Windows 11 Pro 10.0.26300 の常用のマシン。scoop の neovim 0.12.5・Node.js 26.10.0。整形器の依存は markdownlint-cli2 0.23.3 / Comrak 0.48.0-rc.0
+  - `LOCALAPPDATA` と `TEMP` を `%TEMP%\g53` の下に差し替えた。この設定は `bc40781` の clone、プラグイン・Mason・整形器の依存・`site` は常用のものを robocopy で写した。`lazy-lock.json` が常用と同じだったので、`Lazy! restore` はしていない。常用の `%LOCALAPPDATA%\nvim` と `nvim-data` は触っていない
+- **回帰テスト**: Node の 63 件・`test/conform.lua`・StyLua の `--check`・`git diff --check` が通った
+- **実際の Neovim の画面**: Claude Code の Terminal パネルの pwsh で、画面のある nvim を `--listen` 付きで起動した。キーは `--remote-send` で送り、状態は `--remote-expr` で読んだ (`nvim_list_uis()` は 1。物理キーボードの打鍵ではない)
+  - 36 行の試験の文書を `:w` で保存すると、保存したファイルは CLI の整形結果とバイト単位で一致した。文書には `#123`・段落の続きの `#456`・`#見出し`・行末の空白 3 つ・語の中の強調・記号の違う 2 つのリスト・3 から始まる番号・`www.` の URL・`2 * 3 * 4`・`(注)[…]`・`[[_TOC_]]`・`[[_手順_]]`・`## 注意:` を入れた
+  - 直ったのは行末の空白 (1 つのもの)・見出しの `:`・`https://` の URL の `<…>`・語の外の強調の記号だけだった。`#123`・`#456`・`#見出し` は見出しにならなかった
+  - markdownlint の診断は 22 件から 15 件になった。`#123`・`#456` の MD018 の診断は残った
+  - `u` 1 回で、整形の前と同じ本文に戻った
+  - `V` で 1 行だけを選んだ `<leader>cf` は、その行の行末の空白だけを直した。範囲の外の行末の空白と `#選んだ見出し` (見出し化は既定で無効) は残った
+  - 写しの `lang-markdown.lua` の `format_fixes` を `heading_conversion = true` にして起動し直すと、整形器の引数に `--enable-fixes heading_conversion` が付いた。`:w` で `#見出し` は `# 見出し` になり、`#123`・`#456` は見出しにならなかった
+  - `heading_conversoin = true` (綴り違い) にすると、`:w` は本文を変えずに保存した。conform のログに `整形する対象 heading_conversoin は、分類名にもルール名にもありません。` が残った
+- **GitLab API での描画** (gitlab.com 19.5.0-pre、利用者のトークン): 合成した試験用の Markdown だけを `POST /api/v4/markdown` (`gfm: true`、`project: gitlab-org/gitlab`) に送った (136 回)。`data-sourcepos` と `data-checkbox-sourcepos` を除いた HTML を比べた
+  - 今の版で壊れていた 16 例は、今の版の整形では 15 例の HTML が元と変わった (MD053 は定義の行が消えるだけで、描画は同じ)。たとえば `#123 の対応` は課題へのリンク (`gfm-issue`) から `<h1>123 の対応</h1>` に、`[[_手順_]]` は `_手順_` から `*手順*` になった
+  - この変更の整形では、16 例とも HTML が元と同じだった
+  - `docs/reference/glfm-format.md` の例 53 個のうち 42 個は、整形の前後で HTML が同じだった。違った 11 個は、どれも例が「直す」と書いている修正だった
+    - 見出し化 (MD018・MD020。`#C#` は見出し `C` になる)・強調化 (MD037)・リンク化 (MD011)・固有名詞 (MD044)
+    - 見出しの句読点 (MD026)。見出しの ID は `user-content-注意` のまま
+    - リンクの文字の端の空白 (MD039)、断片の大文字小文字 (MD051)。直した `#heading` は、見出しの ID `user-content-heading` と合う
+    - 文中のタブ (MD010)。HTML の中の文字がタブから空白になるだけで、見た目は同じ
+  - 実際の Neovim で保存した文書は、`## 注意:` の見出しと目次の項目から `:` が消えた所だけが違った。課題へのリンク 2 つ・強制改行の `<br>`・強調 3 つは残った
+
+#### 未確認事項 (2026-10-15 の GLFM 整形器)
+
+- 物理キーボードでの打鍵・Neovide・WezTerm の中の nvim (Terminal パネルの nvim に、RPC でキーを送った)
+- AlmaLinux 10 での実行 (Windows 11 だけで確かめた)
+- 非公開のプロジェクトを `project` に付けたときと、GitLab の版の違い (gitlab.com だけで確かめた)
+
 ## 補足資料に記載していた観測
 
 ### dnf で入れるものの観測
