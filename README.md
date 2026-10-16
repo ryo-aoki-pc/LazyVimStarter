@@ -154,7 +154,8 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   - 整形連鎖から **prettier を除外** (GLFM の数式・脚注・`[[_TOC_]]` を壊すため)。
     Markdown の整形は、別のリポジトリの [md-format](https://github.com/ryo-aoki-pc/md-format) (`mdfmt`) が行う (conform の整形器の名前は `mdfmt`)。
     markdownlint-cli2 の修正候補のうち、Comrak で読み直して構造・GitLab の参照・リストの tight が変わらないものだけを当て、
-    loose のリストを詰め、埋め込んだ HTML のブロック (`<table>`・`<details>` など) を字下げする。
+    loose のリストを詰め、HTML の表の書式のあるセル (`<code>`・`<b>` など) を空行で区切った Markdown にし、
+    埋め込んだ HTML のブロック (`<table>`・`<details>` など) を字下げする。
     `#123` はどの設定でも見出しにしない。整形する対象は `lua/plugins/lang-markdown.lua` の
     `format_fixes` で選ぶ (診断はそのまま)。ルールごとの例は md-format の [ルール一覧](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/reference/rules.md)、
     整形の例は [md-format の README](https://github.com/ryo-aoki-pc/md-format#整形の例) にある。

@@ -28,6 +28,7 @@ local disabled_rules = {
 --   tables: MD060 / proper_names: MD044 (名前を設定したときだけ働く)
 --   html: HTML のブロック (<table>・<details> など) をタグの入れ子に合わせて字下げする (js-beautify。markdownlint のルールではない)
 --   tight_lists: loose のリストの空行を消して詰める (markdownlint のルールではない。どの分類も、詰まったリストを loose にしない)
+--   html_cells: HTML の表の書式のあるセル (<code>・<b> など) を、空行で区切った Markdown にする (markdownlint のルールではない。文字だけのセルは変えない)
 -- 分類とルール (既定で無効):
 --   heading_conversion: MD018 MD020 (# の後に空白を足す。有効でも #数字 は見出しにしない)
 --   emphasis_spaces: MD037 / reversed_links: MD011 / unused_definitions: MD053
