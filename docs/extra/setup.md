@@ -1,6 +1,6 @@
 # LazyVim の設定のロールバックと注意点
 
-[手順書（Neovim のセットアップ）](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md)・[検証記録](../verification/setup.md)・[参考資料](../reference/setup.md)
+[手順書（Neovim のセットアップ）](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md)・[検証記録](https://github.com/ryo-aoki-pc/setup-notes-verification/blob/main/repos/LazyVimStarter/docs/verification/setup.md)・[参考資料](../reference/setup.md)
 
 - 「AlmaLinux 導入の手順 N」は正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)、「Windows 導入の手順 N」は[Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順を指す。「この節の手順 N」はこの文書の手順
 
@@ -11,7 +11,7 @@
 - setup-notes の[端末とエディタを消す](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/extra/almalinux-setup.md#端末とエディタを消す) (AlmaLinux 10)・[エディタとシェルのツールを消す](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/extra/windows-setup.md#エディタとシェルのツールを消す) (Windows 11) から来たときは、そこに書いたとおり、この節の手順 4・7 は行わない (Neovim・lazygit・フォントは、そちらの項で消す)
 - dnf / Homebrew / scoop で入れた共通のコマンド (git・ripgrep・fd・node など) と Homebrew 本体は、ほかでも使うので残す
 - GitLab プレビューのトークンを設定していたら、[設定を消す手順](#gitlab-プレビューの設定を消す)を行う
-- 検証した範囲は [検証記録](../verification/setup.md)を参照する
+- 検証した範囲は [検証記録](https://github.com/ryo-aoki-pc/setup-notes-verification/blob/main/repos/LazyVimStarter/docs/verification/setup.md)を参照する
 
 > [!CAUTION]
 > **この節の手順 2 と手順 6 で、設定のディレクトリごと消える。push していない変更は取り戻せない**。手順 1 と手順 5 で確かめてから貼る。

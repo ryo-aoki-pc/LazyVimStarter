@@ -170,10 +170,11 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
 ## 文書の置き場所
 
 - 導入・利用・更新の手順は正本に置き、README の「導入」の表から正本の項へ直接リンクする (手順書の先頭やカテゴリの見出しへはリンクしない)。執筆規則は setup-notes の `docs/dev/writing-rules.md`
-- `docs/extra/setup.md` はロールバック・必要なもの一覧・注意点、`docs/reference/setup.md` は正本の各手順の背景 (見出しは `### <項> / 手順 N: 補足: <題>`)、`docs/verification/` は検証記録 (環境・日付・対象コミット・実出力・未確認事項)
-- `docs/dev/architecture.md` は設計、`docs/dev/check.md` は変更後の確認 (Markdown の整形の配線の試験)。整形器のルール一覧は md-format の `docs/reference/rules.md` にある。`docs/verification/claude.md` は実施範囲の要約
+- `docs/extra/setup.md` はロールバック・必要なもの一覧・注意点、`docs/reference/setup.md` は正本の各手順の背景 (見出しは `### <項> / 手順 N: 補足: <題>`)。検証記録 (環境・日付・対象コミット・実出力・未確認事項) は非公開の `ryo-aoki-pc/setup-notes-verification` の `repos/LazyVimStarter/docs/verification/` に置く
+- `docs/dev/architecture.md` は設計、`docs/dev/check.md` は変更後の確認 (Markdown の整形の配線の試験)。整形器のルール一覧は md-format の `docs/reference/rules.md` にある。非公開側の検証記録の `claude.md` は実施範囲の要約
 - 正本の手順番号が変わったら、参考資料と extra の手順番号を付け替える。setup-notes から張られている見出し (extra の「ロールバック」「必要なもの一覧」「注意点」など) は名前を変えない
 - 文書を移す・分ける・まとめるときは、移した経緯と、旧ファイル名・旧見出しとの対応を文書に書かない (経緯は git の履歴と Pull Request の本文に残す)。リンクを今の場所へ直す。中身が新しい場所への案内だけになったファイルは消す
+- 検証記録を書く・直すときは、`setup-notes-verification` を clone し、そちらへ Pull Request を作る
 - 残す検証記録の実施日・対象版・環境・出力・成功と失敗・未実施の範囲・記録したときの手順番号は書き換えない。再検証せずに検証範囲を広げない。記録の手順番号が今の手順と違い、本文を読むのに要るときだけ「記録の手順 | 今の手順」の表で結ぶ
 
 ## 共同作業の規則
