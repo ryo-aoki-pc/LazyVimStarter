@@ -115,7 +115,7 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   - Markdown のバッファをすべて閉じたとき・filetype を変えて Markdown のバッファが無くなったとき・`VimLeavePre` で予備を止める。
     予備を使わないときは `lang-markdown.lua` の `format_spare = false`
 - 配線の試験は `tests/md_format_conform.lua` (headless の Neovim。導入した md-format を使う)。整形器そのものの試験は md-format の
-  `test/` にある。Windows 11 の実機・Neovide の実キー・gitlab.com の描画での確認は docs/verification/setup.md の付録にある。
+  `test/` にある。Windows 11 の実機・Neovide の実キー・gitlab.com の描画での確認は、非公開の `ryo-aoki-pc/setup-notes-verification` の `repos/LazyVimStarter/docs/verification/setup.md` の付録にある。
 - **markdown-toc は外した** (npm の最終リリースが 2017 年)。整形連鎖から抜くのに加え、Mason の
   `ensure_installed` からも opts 関数で取り除く (LazyVim の mason.nvim の spec は `opts_extend` で
   リストを連結するので、テーブルで書いても消せない)。

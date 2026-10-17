@@ -224,7 +224,7 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   Windows の lazygit は cmd.exe で実行するので動かないため。Linux は `nvim-remote` のまま。どちらの OS でも
   `editInTerminal` を明示し、自分用の lazygit の `config.yml` の値に左右されないようにしている (`lua/plugins/lazygit.lua`)。
   入れ子の Neovim で `<Esc>` を 0.2 秒以内に 2 回押すと、外側の Neovim が端末モードを抜ける (snacks の端末の既定)。
-  `i` で lazygit の窓に戻る。Windows の実機ではまだ確かめていない ([記録](docs/verification/readme.md#付録-windows-の-lazygit-の-e-の設定を-linux-で確かめた記録-2026-10-08))
+  `i` で lazygit の窓に戻る。Windows の実機ではまだ確かめていない ([記録](https://github.com/ryo-aoki-pc/setup-notes-verification/blob/main/repos/LazyVimStarter/docs/verification/readme.md#付録-windows-の-lazygit-の-e-の設定を-linux-で確かめた記録-2026-10-08))
 - **SSH 越しでは、ヤンク・削除を手元のクリップボードに送る** — ssh したシェル (`SSH_CONNECTION` がある) で起動すると、
   `y` `d` などでレジスタに入れたものを OSC 52 で手元の端末に渡し、手元のクリップボードに入れる (ローカルと同じく
   `clipboard=unnamedplus`)。手元にもサーバーにも足すソフトは無いが、端末が OSC 52 の書き込みに対応している必要がある
@@ -260,5 +260,5 @@ wl-clipboard が要る (どれも任意。無ければその機能だけが使�
 
 - [ロールバックと注意点・必要なもの一覧](docs/extra/setup.md)
 - [導入の補足資料](docs/reference/setup.md)・[Markdown の整形器のルール一覧 (md-format)](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/reference/rules.md)
-- 検証記録: [導入](docs/verification/setup.md)・[README の観測](docs/verification/readme.md)
+- 検証記録: [導入](https://github.com/ryo-aoki-pc/setup-notes-verification/blob/main/repos/LazyVimStarter/docs/verification/setup.md)・[README の観測](https://github.com/ryo-aoki-pc/setup-notes-verification/blob/main/repos/LazyVimStarter/docs/verification/readme.md)
 - 変更するとき: [設計](docs/dev/architecture.md)・[変更後の確認](docs/dev/check.md)・[AGENTS.md](AGENTS.md)
