@@ -5,7 +5,7 @@ Markdown (GLFM) 執筆を強化した Neovim 設定。
 
 ## 導入
 
-- 対象: AlmaLinux 10 + GNOME と Windows 11 の自分のユーザー。手順は setup-notes の[Neovim のセットアップ](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md)にあり、
+- 対象: AlmaLinux 10 + GNOME、Windows 11 と Android の Termux の自分のユーザー。手順は setup-notes にあり、
   本体を入れてから、この設定を `~/.config/nvim` (Windows は `%LOCALAPPDATA%\nvim`) に clone する
 - 外部コマンドとフォントは[外部依存](#外部依存)を前提にしている。足りなくてもエラーにならず静かに壊れるので、手順書の前提を先に通す
 
@@ -20,6 +20,7 @@ Markdown (GLFM) 執筆を強化した Neovim 設定。
 | 更新 | [LazyVim の本体・外部コマンド・プラグインを更新する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の本体外部コマンドプラグインを更新する) | [Windows 11 で LazyVim の本体・外部コマンド・プラグインを更新する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の本体外部コマンドプラグインを更新する) |
 | 戻す | [ロールバック](docs/extra/setup.md#ロールバック)の手順 1〜4 | 同じ節の手順 5〜7 |
 
+- Android の Termux: [Termux の Neovim](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/android.md#termux-の-neovim) (本体が入っているときは、[Termux の Neovim: LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/android.md#termux-の-neovim-lazyvim-の設定を導入する))
 - 任意: [GitLab プレビューを設定する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを設定する) (Windows 11 は[同じ名前の項](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の-gitlab-プレビューを設定する))・
   [カーソル色を tmux で使う](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のカーソル色を-tmux-で使う)・
   [IME 連携に GNOME の上部バーを合わせる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)・
@@ -243,6 +244,9 @@ Node.js / Nerd Font / ibus + ibus-anthy (Linux) を前提にしている
 **足りなくてもエラーにならず静かに壊れる**ため、初回起動の前に揃えること。
 GitLab プレビューには GitLab のアクセストークン・curl 8.3 以上・ブラウザが、Linux での画像の貼り付けには
 wl-clipboard が要る (どれも任意。無ければその機能だけが使えない)。
+
+Termux では、`lua-language-server`・`stylua`・`taplo`・`shellcheck`・`shfmt` を、
+Mason ではなく Termux のパッケージで入れる。
 
 用途と必須かどうかの一覧は
 [必要なもの一覧](docs/extra/setup.md#必要なもの一覧)にまとめてある。

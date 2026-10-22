@@ -6,7 +6,7 @@
 
 ## 導入手順の正本
 
-導入・利用・更新の手順は、setup-notes の [neovim.md](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md) (Neovim のセットアップ。AlmaLinux 10 と Windows 11) にある。このリポジトリには置かない。
+導入・利用・更新の手順は、setup-notes の [neovim.md](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md) (Neovim のセットアップ。AlmaLinux 10 と Windows 11) と [android.md](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/android.md) (Android の Termux) にある。このリポジトリには置かない。
 
 ## このリポジトリについて
 
@@ -150,6 +150,8 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
   外したプラグインの行は手で消す。既に入っているマシンのディレクトリは `:Lazy clean` まで残る。
 - LazyVim の mason.nvim の `ensure_installed` は spec をまたいで連結される (`opts_extend`)。
   ツールを外すときは opts 関数で取り除く。既に入っているツールは Mason が自動では消さない。
+- Termux (Android) の分岐は `lua/plugins/termux.lua` にある。Mason が入れる道具を足すときは、Termux で動くか
+  (npm で入るものか、glibc 向けのバイナリか) を確かめる。glibc 向けなら、`termux.lua` の除外の一覧にも足す。
 - スニペットの JSON で文字の `$` は `\\$` と書く (Neovim のスニペットの文法では `$` がタブストップになる)。
 - `vim.uv` と `vim.system` のコールバックは fast context で走る。`vim.api` / `vim.fn` / `vim.fs` を呼ぶと
   エラーになるので、`vim.schedule` で通常の文脈に移してから呼ぶ (`lua/config/gitlab_preview/` が実例)。
