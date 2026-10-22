@@ -153,6 +153,7 @@
 
 - **Termux (Android)**: `lua-language-server`・`stylua`・`taplo`・`shellcheck`・`shfmt` を Mason ではなく `pkg` で入れる
 - Termux の tree-sitter CLI は `pkg install tree-sitter` で入れる
+- Termux の Markdown の LSP (marksman) は任意。Termux のパッケージは dotnet の runtime に依存して大きい。入れなければ marksman だけが起動しない (Mason でも入れない)
 - Termux では、IME 連携と `<leader>ci` での画像の貼り付けは使えない
 - Termux のクリップボードは Termux:API を使う
 - **不要なもの**: fzf (ピッカーは snacks.nvim の Lua 実装。`:checkhealth lazyvim` が警告を出すが機能には影響しない)、telescope とその C ビルド、make、Python、Deno、win32yank (Neovim の Windows ビルドに同梱済み)、プレビュー用の node のアプリ (GitLab プレビューは Neovim の中の HTTP サーバーと curl だけで動く)、SSH 越しのクリップボードのための X11 転送・xclip・lemonade (OSC 52 で端末に渡す)

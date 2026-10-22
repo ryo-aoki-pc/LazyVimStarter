@@ -2,7 +2,7 @@
 -- Termux は bionic libc なので、Mason が入れる glibc 向け・静的なバイナリ (lua-language-server・stylua・
 -- shellcheck・shfmt・taplo・marksman) は起動できない。それらは Termux のパッケージ (pkg) で入れたものを使う。
 -- npm で入る Mason の道具 (bash-language-server・json-lsp・yaml-language-server・markdownlint-cli2) はそのまま使える。
-local is_termux = vim.fn.has("android") == 1
+local is_termux = vim.fn.has("termux") == 1
 if not is_termux then
   return {}
 end

@@ -245,7 +245,7 @@ Node.js / Nerd Font / ibus + ibus-anthy (Linux) を前提にしている
 GitLab プレビューには GitLab のアクセストークン・curl 8.3 以上・ブラウザが、Linux での画像の貼り付けには
 wl-clipboard が要る (どれも任意。無ければその機能だけが使えない)。
 
-Termux では、`lua-language-server`・`stylua`・`taplo`・`shellcheck`・`shfmt` を、
+Termux では、`lua-language-server`・`stylua`・`taplo`・`shellcheck`・`shfmt`・`tree-sitter` (tree-sitter CLI) を、
 Mason ではなく Termux のパッケージで入れる。
 
 用途と必須かどうかの一覧は
