@@ -27,6 +27,11 @@
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --gp-mono: "GitLab Mono", "JetBrains Mono", "HackGen Console NF", Menlo, "DejaVu Sans Mono", "Liberation Mono",
     Consolas, "Ubuntu Mono", "Courier New", monospace;
+  /* md-table-sticky の操作欄と、body に移る全幅パネルにもページの配色を渡す。 */
+  --gl-background-color-default: var(--gp-bg);
+  --gl-text-color-default: var(--gp-fg);
+  --gl-text-color-subtle: var(--gp-muted);
+  --gl-border-color-default: var(--gp-border);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -112,7 +117,7 @@ body {
 
 #gp-content.md {
   box-sizing: border-box;
-  max-width: 1000px;
+  max-width: none;
   margin: 0 auto;
   padding: 16px 24px 50vh; /* 末尾の行でも、カーソルの高さに合わせてスクロールできるように */
   font-size: 1rem;
