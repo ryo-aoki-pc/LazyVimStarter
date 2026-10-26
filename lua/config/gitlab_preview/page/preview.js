@@ -8,12 +8,121 @@
 (() => {
   const BASE = new URL('./', location.href); // http://127.0.0.1:PORT/<token>/ (token を書き込まない)
   const LIBS = JSON.parse(document.getElementById('gp-libs').textContent);
+  const CONFIG = JSON.parse(document.getElementById('gp-config').textContent);
+  const root = document.documentElement;
   const header = document.getElementById('gp-header');
   const fileEl = document.getElementById('gp-file');
   const modeEl = document.getElementById('gp-mode');
   const banner = document.getElementById('gp-banner');
   const content = document.getElementById('gp-content');
+  const themeEl = document.getElementById('gp-theme');
+  const widthEl = document.getElementById('gp-width');
+  const shellStyle = document.querySelector('link[href="_/preview.css"]');
   const dark = window.matchMedia('(prefers-color-scheme: dark)');
+  const pageAssetsId = CONFIG.assets ? CONFIG.assets.id : false;
+  let officialAssets = CONFIG.assets || null;
+  let styleNotice = CONFIG.notice || '';
+  let styleGeneration = 0;
+  let reloading = false;
+  let fallbackStyle = null;
+  const styleSets = new Map();
+  const appearanceKey = 'gitlab-preview-appearance';
+  let savedAppearance = {};
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(appearanceKey) || '{}');
+    if (saved && typeof saved === 'object') savedAppearance = saved;
+  } catch {
+    // 保存を使えないブラウザでも、設定値とこのページ内の操作は使える。
+  }
+
+  function rememberAppearance(key, value) {
+    savedAppearance[key] = value;
+    try {
+      sessionStorage.setItem(appearanceKey, JSON.stringify(savedAppearance));
+    } catch {
+      // このページを閉じるまでだけ保持する。
+    }
+  }
+
+  function reloadPage() {
+    if (reloading) return;
+    reloading = true;
+    location.reload();
+  }
+
+  // ---- 配色と本文幅 ---------------------------------------------------------------
+
+  function effectiveTheme() {
+    return themeEl.value === 'system' ? (dark.matches ? 'dark' : 'light') : themeEl.value;
+  }
+
+  function assetUrl(path) {
+    return new URL('_/assets/' + encodeURIComponent(officialAssets.id) + '/' + path, BASE).href;
+  }
+
+  function localStyle(url) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = url;
+    // 読み終わる前に、別テーマの一部だけが適用されないようにする。
+    link.media = 'not all';
+    const ready = new Promise((resolve, reject) => {
+      link.onload = resolve;
+      link.onerror = () => reject(new Error(url));
+    });
+    document.head.insertBefore(link, shellStyle);
+    return { link, ready };
+  }
+
+  function useFallbackStyle() {
+    root.dataset.style = 'fallback';
+    for (const set of styleSets.values()) {
+      for (const link of set.links) link.media = 'not all';
+    }
+    if (!fallbackStyle) {
+      fallbackStyle = localStyle(new URL('_/fallback.css', BASE).href);
+      fallbackStyle.link.id = 'gp-fallback-style';
+      fallbackStyle.link.media = 'all';
+      fallbackStyle.ready.then(queueLayout).catch(() => {
+        styleNotice = '近似スタイルを読み込めない。プレビューを開き直す';
+        updateBanner();
+      });
+    }
+  }
+
+  async function applyAppearance() {
+    const request = ++styleGeneration;
+    const theme = effectiveTheme();
+    const changed = root.dataset.theme !== theme;
+    root.dataset.theme = theme;
+    root.dataset.width = widthEl.value;
+    root.classList.toggle('gl-dark', theme === 'dark');
+    if (officialAssets) {
+      try {
+        if (!styleSets.has(theme)) {
+          const entries = officialAssets.styles[theme].map((path) => localStyle(assetUrl(path)));
+          styleSets.set(theme, { links: entries.map((entry) => entry.link), ready: Promise.all(entries.map((entry) => entry.ready)) });
+        }
+        await styleSets.get(theme).ready;
+        if (request !== styleGeneration) return;
+        for (const [name, set] of styleSets) {
+          for (const link of set.links) link.media = name === theme ? 'all' : 'not all';
+        }
+        root.dataset.style = 'official';
+      } catch {
+        if (request !== styleGeneration) return;
+        officialAssets = null;
+        styleNotice = '公式スタイルを読み込めない。従来のスタイルで表示している。:GitLabPreviewInstall で導入し直す';
+        useFallbackStyle();
+      }
+    } else {
+      useFallbackStyle();
+    }
+    updateBanner();
+    // 本文を置き換えると、開いている表の全幅パネルや details が失われる。図だけを描き直す。
+    if (changed && last) await renderMermaid(gen);
+    queueLayout();
+  }
 
   // ---- ライブラリ ---------------------------------------------------------------
 
@@ -63,10 +172,11 @@
   let renderMsg = ''; // 近似表示の理由など
 
   function updateBanner() {
-    const text = connMsg || renderMsg;
+    const text = [connMsg, styleNotice, renderMsg].filter(Boolean).join(' ／ ');
     banner.textContent = text;
     banner.hidden = !text;
-    banner.dataset.kind = connMsg ? 'conn' : 'render';
+    banner.dataset.kind = connMsg ? 'conn' : renderMsg ? 'render' : 'style';
+    queueLayout();
   }
 
   let last = null; // 最後の render
@@ -106,6 +216,7 @@
   es.addEventListener('render', (e) => {
     render(JSON.parse(e.data));
   });
+  es.addEventListener('reload', reloadPage);
   es.addEventListener('scroll', (e) => {
     lastScroll = JSON.parse(e.data);
     syncScroll();
@@ -116,6 +227,11 @@
   let gen = 0; // 描画の世代。非同期の処理の途中で次の描画が来たら、古いほうは捨てる
 
   async function render(m) {
+    // 導入・更新の完了後は、HTML に埋めた資産情報も読み直す。
+    if (Object.hasOwn(m, 'assets_id') && m.assets_id !== pageAssetsId) {
+      reloadPage();
+      return;
+    }
     const my = ++gen;
     last = m;
     fileEl.textContent = m.file || '';
@@ -150,6 +266,12 @@
     }
     updateBanner();
     rewriteUrls(tpl.content, m);
+    // コード配色は要素自身の背景も塗るので、body には付けずコードの範囲へ限定する。
+    for (const highlight of tpl.content.querySelectorAll('.highlight')) {
+      highlight.classList.add('code-syntax-highlight-theme');
+      const pre = highlight.closest('pre');
+      if (pre) pre.classList.add('code-syntax-highlight-theme');
+    }
 
     // 開いていた <details> は、描き直しても開いたままにする
     const open = Array.from(content.querySelectorAll('details'), (d) => d.open);
@@ -224,6 +346,25 @@
   }
 
   function rewriteUrls(root, m) {
+    // GitLab 本体が付けたアイコンの参照だけをローカルへ戻す。ユーザーの SVG は触らない。
+    if (m.mode === 'api' && officialAssets && officialAssets.sprite) {
+      for (const use of root.querySelectorAll('svg use')) {
+        for (const attr of ['href', 'xlink:href']) {
+          const value = use.getAttribute(attr);
+          if (!value) continue;
+          try {
+            const url = new URL(value, m.gitlab.origin + '/');
+            const prefix = (m.gitlab.path || '') + '/assets/';
+            if (url.origin === m.gitlab.origin && url.pathname.startsWith(prefix) &&
+                /^icons(?:-[a-f0-9]+)?\.svg$/.test(url.pathname.slice(prefix.length)) && url.hash) {
+              use.setAttribute(attr, assetUrl(officialAssets.sprite) + url.hash);
+            }
+          } catch {
+            // 通常の参照として、そのまま残す。
+          }
+        }
+      }
+    }
     for (const el of root.querySelectorAll('img, video, audio, source')) {
       const canon = el.getAttribute('data-canonical-src');
       for (const attr of ['src', 'data-src']) {
@@ -497,10 +638,15 @@
 
   let mermaidTheme = null;
   let mermaidSeq = 0;
+  let mermaidGeneration = 0;
   const svgCache = new Map();
+  const mermaidSources = new WeakMap();
 
   async function renderMermaid(my) {
-    const codes = Array.from(content.querySelectorAll('.js-render-mermaid'));
+    const pass = ++mermaidGeneration;
+    const codes = Array.from(content.querySelectorAll('.js-render-mermaid, .gp-mermaid')).filter(
+      (el) => el.matches('.js-render-mermaid') || mermaidSources.has(el),
+    );
     if (!codes.length) return;
     let mermaid;
     try {
@@ -508,17 +654,17 @@
     } catch {
       return; // 読めなければ図の原文を見せる
     }
-    if (my !== gen) return;
-    const theme = dark.matches ? 'dark' : 'default';
+    if (my !== gen || pass !== mermaidGeneration) return;
+    const theme = effectiveTheme() === 'dark' ? 'dark' : 'default';
     if (theme !== mermaidTheme) {
       mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme });
       mermaidTheme = theme;
     }
     for (const code of codes) {
-      if (my !== gen) return;
+      if (my !== gen || pass !== mermaidGeneration) return;
       if (!code.isConnected) continue;
-      const src = code.textContent;
-      const box = code.closest('.markdown-code-block') || code.closest('pre') || code;
+      const src = mermaidSources.get(code) || code.textContent;
+      const box = code.matches('.gp-mermaid') ? code : code.closest('.markdown-code-block') || code.closest('pre') || code;
       const out = document.createElement('div');
       out.className = 'gp-mermaid';
       const pos = sourcepos(box);
@@ -532,8 +678,9 @@
           if (svgCache.size > 100) svgCache.clear();
           svgCache.set(key, svg);
         }
-        if (my !== gen) return;
+        if (my !== gen || pass !== mermaidGeneration) return;
         out.innerHTML = svg;
+        mermaidSources.set(out, src);
       } catch (e) {
         document.getElementById('d' + id)?.remove(); // 失敗したときに mermaid が残す作業用の要素
         out.className = 'gp-error';
@@ -542,11 +689,6 @@
       if (box.isConnected) box.replaceWith(out);
     }
   }
-
-  // OS のライト / ダークが切り替わったら、図の配色ごと描き直す
-  dark.addEventListener('change', () => {
-    if (last) render(last);
-  });
 
   // ---- スクロールの同期 -------------------------------------------------------------
   // GitLab の HTML はブロックに data-sourcepos (開始行:列-終了行:列) を持つ。カーソルの行を含む要素を探し、
@@ -571,7 +713,7 @@
   function syncScroll() {
     const s = lastScroll;
     if (!s || !last) return;
-    const head = header.offsetHeight;
+    const head = header.offsetHeight + (banner.hidden ? 0 : banner.offsetHeight);
     let y;
     if (map.length) {
       let lo = 0;
@@ -607,20 +749,30 @@
     window.scrollTo({ top: Math.max(0, y - head - s.ratio * (window.innerHeight - head)), behavior: 'auto' });
   }
 
-  // 画像が読み込まれると高さが変わるので、合わせ直す
+  // 画像・フォント・本文幅などで高さが変わったら、1 フレームにまとめて合わせ直す。
   let syncQueued = false;
-  content.addEventListener(
-    'load',
-    () => {
-      if (syncQueued) return;
-      syncQueued = true;
-      requestAnimationFrame(() => {
-        syncQueued = false;
-        syncScroll();
-      });
-    },
-    true,
-  );
+  function queueLayout() {
+    if (syncQueued) return;
+    syncQueued = true;
+    requestAnimationFrame(() => {
+      syncQueued = false;
+      const height = header.offsetHeight;
+      root.style.setProperty('--gp-header-height', height + 'px');
+      root.style.setProperty('--gp-toolbar-height', height + (banner.hidden ? 0 : banner.offsetHeight) + 'px');
+      buildMap();
+      syncScroll();
+    });
+  }
+  content.addEventListener('load', queueLayout, true);
+  window.addEventListener('resize', queueLayout);
+  if (typeof ResizeObserver !== 'undefined') {
+    const observer = new ResizeObserver(queueLayout);
+    for (const el of [header, banner, content]) observer.observe(el);
+  }
+  if (document.fonts) {
+    document.fonts.ready.then(queueLayout);
+    document.fonts.addEventListener('loadingdone', queueLayout);
+  }
 
   // ---- ページ内のリンク -------------------------------------------------------------
   // GitLab は見出しなどの id に user-content- を付ける ([[_TOC_]] や脚注の #… はそちらを指す)
@@ -639,4 +791,23 @@
       target.scrollIntoView({ block: 'start' });
     }
   });
+
+  const appearance = CONFIG.appearance || {};
+  const theme = savedAppearance.theme || appearance.theme;
+  const width = savedAppearance.width || appearance.width;
+  themeEl.value = ['system', 'light', 'dark'].includes(theme) ? theme : 'system';
+  widthEl.value = width === 'fixed' ? 'fixed' : 'fluid';
+  themeEl.addEventListener('change', () => {
+    rememberAppearance('theme', themeEl.value);
+    void applyAppearance();
+  });
+  widthEl.addEventListener('change', () => {
+    rememberAppearance('width', widthEl.value);
+    root.dataset.width = widthEl.value;
+    queueLayout();
+  });
+  dark.addEventListener('change', () => {
+    if (themeEl.value === 'system') void applyAppearance();
+  });
+  void applyAppearance();
 })();

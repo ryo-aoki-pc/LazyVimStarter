@@ -176,10 +176,20 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   - render-markdown.nvim は無効化 (記法をそのまま見て書き、見た目はプレビューで確かめる)。
   - 診断と整形の両方から外す markdownlint ルールは `lua/plugins/lang-markdown.lua` の `disabled_rules` に列挙。
 - **GitLab プレビュー** (`<leader>cp` で切り替え、`:GitLabPreview` / `:GitLabPreviewStop`) — 編集中の内容を
-  GitLab の Markdown API に描かせて、ブラウザに出す。GitLab が描いた HTML をそのまま使うので、
-  `[[_TOC_]]`・`` $`…`$ ``・`>>>`・`{+ +}`・`[~]`・アラート・`#123` などの参照も GitLab と同じに見える。
+  GitLab の Markdown API に描かせて、ブラウザに出す。GitLab が描いた HTML を使い、
+  `[[_TOC_]]`・`` $`…`$ ``・`>>>`・`{+ +}`・`[~]`・アラート・`#123` などの参照を GitLab 本体の解釈で確かめられる。
   - 打つたびに (約 0.3 秒ごと。保存しなくてよい) 描き直し、スクロールがカーソルの位置に付いてくる。
     表示している markdown のバッファに追従する (別のファイルに移ると、ページもそちらになる)
+  - CSS・フォント・SVG は GitLab CE の公式資産から導入時に取得する (初回は約 785 MB)。このリポジトリには含めず、
+    Neovim のデータ領域の `gitlab-preview/assets/` に必要なファイルとライセンスを保存する。
+    通常起動・プレビュー表示では取得しない。導入と版を揃える手順は setup-notes の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)
+    (Windows 11 は[同じ名前の項](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する))
+  - `:GitLabPreviewInstall` で公式スタイルを取得し直せる。同じ版とハッシュの資産が揃っていれば取得しない。
+    未導入・破損時は独自 CSS で表示し、「公式スタイル未導入」と案内する (GitLab API と近似表示の区別とは別)
+  - 上部で「システム / ライト / ダーク」と「全幅 / 固定幅」を切り替えられる。初期値はシステム配色・全幅。
+    `vim.g.gitlab_preview_appearance = { theme = "dark", width = "fixed" }` などで初期値を変えられる
+    (`theme` は `system` / `light` / `dark`、`width` は `fluid` / `fixed`。固定幅の上限は 1600 px)
+  - コード配色は、ライセンスを確認できた Dracula を明暗両方のテーマで使う。GitLab.com の標準の white / dark 配色とは異なる
   - **内容を GitLab に送るのは、環境変数 `GITLAB_TOKEN` (`read_api` のアクセストークン) があるときだけ**。
     送り先は `GITLAB_HOST` (無ければ gitlab.com) だけで、git の remote のホスト名からは決めない。
     設定の手順は setup-notes の[LazyVim の GitLab プレビューを設定する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを設定する) (Windows 11 は[同じ名前の項](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の-gitlab-プレビューを設定する))
@@ -191,10 +201,11 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
     近似表示では inline diff・色見本・`>>>`・include・参照・絵文字の短縮記法・PlantUML は描かない。
     描画用のライブラリ (cdn.jsdelivr.net) にも届かないときは、原文をそのまま出す
   - 数式 (KaTeX) と図 (mermaid) は、GitLab と同じくブラウザが描く (ライブラリの版は GitLab とは違う)
-  - 安全策: 127.0.0.1 だけで待ち受け、URL に推測できない値を入れる。返すファイルはリポジトリの中だけで、
-    `.git` は返さない。トークンはコマンドラインにもファイルにも書かない
+  - 安全策: 127.0.0.1 だけで待ち受け、URL に推測できない値を入れる。編集対象のファイルはリポジトリの中だけで、
+    `.git` は返さない。公式スタイルは別の配信口から登録済みの資産だけを返す。トークンはコマンドラインにもファイルにも書かない
   - 制限: 非公開のプロジェクトの `/uploads/` の画像は出ないことがある (ブラウザが GitLab のログインの Cookie を
     送らないため)。`::include` は GitLab が既定のブランチの内容で展開する (手元の未 push の変更は入らない)
+    公式 CSS は固定版で、GitLab.com の更新やブラウザ・OS のフォントによって表示に差が出ることがある
   - ブラウザは OS の既定。変えるときは `vim.g.gitlab_preview_browser` に関数を入れる
     (例: Edge の別窓なら `function(url) vim.system({ "cmd.exe", "/d", "/c", "start", "", "msedge", "--app=" .. url }) end`)
   - 実装は `lua/config/gitlab_preview/` (配線は `lua/plugins/gitlab-preview.lua`)

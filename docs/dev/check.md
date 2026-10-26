@@ -22,3 +22,55 @@
    ```
 
    - 期待する結果はこの節の手順 1 と同じ
+
+## GitLab プレビューの試験
+
+- `lua/config/gitlab_preview/`・`lua/plugins/gitlab-preview.lua`・`tools/gitlab-preview/` を変えたときに行う
+- 実行場所はこのリポジトリのルート。Node.js 22 以上と Neovim 0.12 以上が必要
+- 自動試験は試験用の取得先と一時データを使い、実機の資産を入れ替えない。Markdown API のトークンは不要
+- ページの試験は Playwright と Edge・Chrome・Chromium のいずれかを使う。Playwright を通常の場所から読み込めないときは `PLAYWRIGHT_MODULE` に導入先を指定する
+- ブラウザを自動検出できないときは `EDGE_BIN` または `CHROME_BIN` に実行ファイルを指定する。試験から依存やブラウザを自動で入れることはない
+
+1. Node.js で、導入処理とブラウザの表示を確かめる。
+
+   ```sh
+   node --test tests/gitlab_preview_install.test.mjs tests/gitlab_preview_page.test.mjs
+   ```
+
+   - 失敗が 0 件ならよい。依存やブラウザの未検出による skip は合格に数えず、表示の試験は未実施として扱う
+   - 導入処理は取得・再実行・破損修復・旧版保持・ハッシュ不一致・中断・同時実行を確認する
+   - ページは公式スタイルの有無、テーマ・幅、資産の更新、SVG、スクロールの追従を確認する
+
+1. Neovim で、資産の検証と配信を確かめる。
+
+   ```sh
+   nvim --headless -u NONE -i NONE -l tests/gitlab_preview_assets.lua
+   nvim --headless -u NONE -i NONE -l tests/gitlab_preview_server.lua
+   nvim --headless -u NONE -i NONE -l tests/gitlab_preview_integration.lua
+   ```
+
+   - すべて終了コード 0 ならよい
+   - lazy.nvim の導入・更新を起動せず、資産のマニフェスト、配信範囲、CSP、GET・HEAD を確かめる
+   - 模擬の Markdown API と実際の HTTP・SSE で、描画方式とスタイルの分離、導入後の更新、明示的なコマンドの登録も確かめる
+
+1. 導入済みの公式資産を使い、実際のブラウザで表示を確かめる。
+
+   ```sh
+   node --test tests/gitlab_preview_page.test.mjs tests/gitlab_preview_official.test.mjs
+   ```
+
+   - 失敗が 0 件ならよい。依存・ブラウザ・公式資産の未検出による skip は合格に数えず、その範囲は未実施として扱う。試験から資産や依存の取得は始めない
+   - `GITLAB_PREVIEW_TEST_DATA` に Neovim のデータディレクトリに相当する場所を指定する。既定は `.tests/gitlab-preview-data`。その下の `gitlab-preview/assets/` に、固定版の `install.json` と検証済みの資産が必要
+   - `tests/gitlab_preview_browser_fixture.lua` で実際の Lua サーバーを起動し、フォント・SVG・Dracula の配色、明暗・幅・スクロールを確かめる。`NVIM_BIN` で Neovim の実行ファイルも指定できる
+   - `MD_TABLE_STICKY_SOURCE` に導入済みの `md-table-sticky` の `src/sticky-table.js` を指定すると、全幅パネルとテーマ変更も確かめる。既定は `.tests/md-table-sticky.js`。ファイルがなければ、その試験だけ未実施になる
+   - 画像と計測結果は `.tests/official-preview-*.png` と `.tests/official-preview-metrics.json` に残る。明暗の参照 DOM と computed style を比べる試験であり、画面全体の画像の一致を判定するものではない
+   - `GITLAB_PREVIEW_COMPARE_GITLABCOM=1` を明示した場合だけ、GitLab.com の公開 README にアクセスし、画像と計測結果を `.tests/gitlabcom-public-reference.png` と `.tests/gitlabcom-comparison.json` に残す。到達できなかった場合は、その比較を未実施として記録する
+
+1. ブラウザで、本物の資産を使うプレビューを確かめる。
+
+   - 正本の導入手順で公式スタイルを取得した環境で、Markdown を開き `<leader>cp` を押す
+   - 日本語の長文・見出し・通常と HTML の表・コード・目次・脚注・アラート・タスク・折りたたみを、GitLab.com と同じ本文幅・倍率で比べる
+   - システム配色・ライト・ダーク、全幅・固定幅、狭い画面・広い画面で表示とスクロールを確かめる
+   - `md-table-sticky` の全幅パネルを開いたまま、本文更新・テーマ変更・幅変更を行い、配色と表の操作を確かめる
+   - API の表示と近似表示を別々に確かめ、ブラウザのネットワーク欄とコンソールでフォントの読込・資産の取得失敗・CSP 違反を確認する
+   - 実施日・対象版・環境・出力・未実施の範囲は非公開の検証記録に残す
