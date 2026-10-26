@@ -249,6 +249,26 @@ local function open_events(sock, no_body)
   server.clients[sock] = true
 end
 
+-- 公式資産は検証済みのメモリー上の一覧だけから返す。リポジトリのファイル配信には流さない。
+local function serve_asset(sock, rel, hdr, no_body)
+  local id, path = rel:match("^_/assets/([%w_.%-]+)/(.+)$")
+  local bundle = id and server.assets[id]
+  local file = bundle and bundle.files[path]
+  if not file then
+    return send(sock, 404)
+  end
+  local headers = {
+    ["Content-Type"] = file.mime,
+    ["Cache-Control"] = "private, max-age=31536000, immutable",
+    ["ETag"] = '"' .. file.sha256 .. '"',
+    ["Content-Security-Policy"] = "sandbox",
+  }
+  if hdr["if-none-match"] == headers.ETag then
+    return send(sock, 304, headers)
+  end
+  return send(sock, 200, headers, file.body, no_body)
+end
+
 local function handle(sock, text)
   local lines = {}
   for line in (text .. "\r\n"):gmatch("(.-)\r?\n") do
@@ -315,6 +335,16 @@ local function handle(sock, text)
       page.css,
       no_body
     )
+  elseif rel == "_/fallback.css" then
+    return send(
+      sock,
+      200,
+      { ["Content-Type"] = "text/css; charset=utf-8", ["Cache-Control"] = "no-store" },
+      page.fallback or "",
+      no_body
+    )
+  elseif rel:sub(1, 9) == "_/assets/" then
+    return serve_asset(sock, rel, hdr, no_body)
   elseif rel == "_/events" then
     return open_events(sock, no_body)
   end
@@ -405,8 +435,23 @@ function M.start(opts)
   end
   local port = tcp:getsockname().port
   session.port, session.token = port, token
-  server = { tcp = tcp, port = port, token = token, clients = {}, last = {}, opts = opts }
+  server = { tcp = tcp, port = port, token = token, clients = {}, last = {}, opts = opts, assets = {} }
+  if opts.assets then
+    server.assets[opts.assets.id] = opts.assets
+  end
   return true
+end
+
+--- 取得成功後にページと資産を交換する。開いていたタブの旧 URL も、このセッション中は返せる。
+function M.update_page(page, csp, assets)
+  if server then
+    server.opts.page, server.opts.csp = page, csp
+    -- 新しい HTML と古い render の版が食い違って再読込を繰り返さないようにする。
+    server.last.render = nil
+    if assets then
+      server.assets[assets.id] = assets
+    end
+  end
 end
 
 --- SSE で全てのタブに送る。render と scroll は、後から接続したタブのために最後の 1 件を覚えておく。

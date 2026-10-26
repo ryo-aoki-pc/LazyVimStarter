@@ -141,14 +141,39 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
     リポジトリのファイルは `resolve()` で閉じ込める (`..`・`\`・ドライブ・デバイス名・`.git` を拒み、realpath が
     ルートの内側にあることを確かめる)。**`vim.uv` のコールバックは fast context** なので、ここでは `vim.api` /
     `vim.fn` / `vim.fs` を呼ばない (`vim.system` の終了のコールバックも同じ。`gitlab.lua` は `vim.schedule` で移す)
+    公式スタイルは `_/assets/<版とハッシュ>/` の専用の配信口から、導入済みマニフェストにあるファイルだけを返す。
+    編集対象リポジトリのファイルを返す処理へは流さない。フォントの MIME を付け、CSP は `font-src 'self'` を許す
   - `init.lua` — 状態・autocmd・描画のループ (300ms で間引き、送信中の変更は 1 回にまとめ、古い応答は捨てる)。
-    GitLab に送れないときは生の Markdown を送り、ページの markdown-it で近似表示にする
+    GitLab に送れないときは生の Markdown を送り、ページの markdown-it で近似表示にする。
+    公式スタイルの導入状態は描画方式と分けて扱う。通常の起動やプレビュー開始からインストーラーを呼ばない
   - `page/` — ブラウザ側。GitLab のフロントエンドがする処理 (KaTeX・mermaid・遅延読み込みの画像) と、
-    `data-canonical-src` (GitLab が残す書き換え前の相対リンク) を手元のファイルに戻す処理、スクロールの同期
+    `data-canonical-src` (GitLab が残す書き換え前の相対リンク) を手元のファイルに戻す処理、スクロールの同期。
+    本文は GitLab の `.file-content.js-markup-content.md` に合わせ、コード配色に必要なクラスを補う。
+    公式 CSS があれば本文の独自規則を使わず、未導入なら `fallback.css` を使う。
+    明暗の本体 CSS・コード配色・`html.gl-dark` を同期し、フォント読込・幅変更・リサイズ後にもスクロールを合わせ直す。
+    操作欄とバナーの高さは実測する。公式の色変数はルートへ適用し、`md-table-sticky` が `body` に移す全幅パネルにも渡す
+    コード配色は、原版のライセンスを確認できた Dracula を明暗両方で使う。GitLab 標準の white / dark と Solarized は、
+    派生元までの許諾が未確認のためロックに含めない
+  - `assets.lua` — データ領域にある資産の検証と、ページ・配信側へ渡すマニフェスト。取得処理は持たない。
+    資産 URL に版とロックのハッシュを含め、更新後に古いタブが再接続したときはページを読み直す
+  - `installer.lua`・`tools/install_gitlab_preview.lua` — `:GitLabPreviewInstall` と headless の入口。
+    前者は明示的に実行されたときだけ非同期で取得し、後者は設定や lazy.nvim を読み込まずに完了まで待つ。
+    取得成功後はページのキャッシュと配信情報を更新し、開いているプレビューも読み直す
+  - `tools/gitlab-preview/install.mjs`・`assets.lock.json` — Node.js で固定版の公式 CE 資産イメージを取得し、
+    指定 digest と必要ファイル・ライセンスを検証して、必要な CSS・フォント・SVG を取り出す。
+    展開は Node.js の標準機能で gzip と tar を順に読み、外部の tar コマンドは呼ばない。
+    配布資産はリポジトリに含めない。取得先・版・digest・必要ファイル・ライセンス出典だけを追跡する。
+    `stdpath("data")/gitlab-preview/assets/<版とハッシュ>` の同じファイルシステム上で一時領域を作り、
+    全検証の後に完成版を公開する。失敗・中断時は既存版を保ち、旧版を自動削除しない。
+    導入済みの版と内容が揃っていれば取得を省き、取得アーカイブは保存しない。
+    フォントは無改変で使い、必要な原ライセンス・著作権表示・NOTICE もデータ領域へ保存する
   - `libs.lua` — ページが jsDelivr から読むライブラリの版と SRI。CSP もここから組み立てるので、
     **版を上げるときは url と sri を一緒に書き換える**
   - 配線は `lua/plugins/gitlab-preview.lua` の **lazy.nvim の virtual spec** (取得も runtimepath への追加もせず、
     lock にも載らない)。名前は `[1]` に書く (`name` だけだと lazy.nvim が不正な spec として捨てる)
+- 表示の初期値は `vim.g.gitlab_preview_appearance`。`theme` は `system`・`light`・`dark` (`system` が既定)、
+  `width` は `fluid`・`fixed` (`fluid` が既定)。固定幅の上限は 1600 px。ページの操作欄で変えた値は、
+  本文の描き直しと再接続で保つ。KaTeX・mermaid の版は公式 CSS の資産とは別で、`libs.lua` の版を使う
 - 画像の貼り付けは `lua/plugins/img-clip.lua` (img-clip.nvim、`<leader>ci`)。`relative_to_current_file` で
   .md の隣の `assets/` に保存する。ドラッグ & ドロップは切り、リポジトリの `.img-clip.lua` を dofile させない
   ように `get_config` を差し替えている (img-clip の内部関数。上げたら効いているか確かめる)。
@@ -158,4 +183,3 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   `user_markdown_conceal` で、markdown を表示するウィンドウに `conceallevel=0` を setlocal する
   (`FileType` と `BufWinEnter` の両方で張る理由はコメント参照)。
 - 表の整形は `lua/plugins/table-mode.lua` (markdown バッファ限定、全角幅対応)。
-

@@ -10,6 +10,7 @@ local commands = {
   },
   GitLabPreviewStop = { "stop", "GitLab プレビューを止める" },
   GitLabPreviewToggle = { "toggle", "GitLab プレビューを切り替える" },
+  GitLabPreviewInstall = { "install", "GitLab の公式スタイルを取得する（初回は約785MB）" },
 }
 
 return {

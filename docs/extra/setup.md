@@ -37,7 +37,7 @@
    ```
 
    - 戻したものは `renamed '…/nvim.bak' -> '…/nvim'` と出る。何も出なければ、戻すものは無かった
-   - Mason のツールと treesitter のパーサーも、`~/.local/share/nvim` と一緒に消える
+   - Mason のツール・treesitter のパーサー・GitLab プレビューの公式スタイルも、`~/.local/share/nvim` と一緒に消える
 
 1. AlmaLinux 10 で、入力ソースと Anthy のキーを既定に戻す。
 
@@ -84,6 +84,7 @@
    ```
 
    - 戻したものは `restored: …` と出る
+   - GitLab プレビューの公式スタイルも、`nvim-data` と一緒に消える
 
 1. Windows 11 で、scoop で入れたものも消すときだけ、消す。
 
@@ -130,15 +131,15 @@
 
 | 依存 | 用途 | 必須? |
 | --- | --- | --- |
-| [Neovim](https://neovim.io/) 0.12 以上 | 本体。LazyVim の下限は 0.11.2 だが、`lazy-lock.json` の nvim-treesitter が 0.12 を要る | 必須  |
+| [Neovim](https://neovim.io/) 0.12 以上 | 本体。LazyVim の下限は 0.11.2 だが、`lazy-lock.json` の nvim-treesitter が 0.12 を要る | 必須 |
 | git | lazy.nvim の bootstrap、プラグインの取得・更新、git 系ピッカー | 必須 |
 | PowerShell (pwsh 推奨) | Windows の `shell`。外部コマンドと端末が全部これを通る | Windows で必須 |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) (rg) | grep ピッカーと `grepprg`、`/` の `<Tab>` で出す Migemo の候補 | 必須 |
 | [fd](https://github.com/sharkdp/fd) | ファイルピッカーと explorer | Windows で必須 / Linux では推奨 |
 | C コンパイラ (gcc または MSVC の cl) | treesitter のパーサーのビルド | 必須 |
 | tree-sitter CLI | treesitter のパーサーのビルド。PATH に無ければ LazyVim が Mason で入れる | 必須 (自動で入る) |
-| curl / tar / gzip / unzip | treesitter と Mason の取得・展開。curl は GitLab プレビューが GitLab の API を呼ぶのにも使う (8.3 以上) | 必須 (Windows 11 は同梱の curl と tar だけでよい。[Windows の外部コマンドの説明](../reference/setup.md#windows-11-で-lazyvim-の設定を導入する--手順-5-補足-windows-の外部コマンド)) |
-| [Node.js](https://nodejs.org/) 22 以上 (node + npm) | Mason の LSP・lint と、Markdown の整形器 [md-format](https://github.com/ryo-aoki-pc/md-format) | 必須 |
+| curl / tar / gzip / unzip | treesitter と Mason の取得・展開。curl は GitLab プレビューの API (8.3 以上) にも使う | 必須 (Windows 11 は同梱の curl と tar だけでよい。[Windows の外部コマンドの説明](../reference/setup.md#windows-11-で-lazyvim-の設定を導入する--手順-5-補足-windows-の外部コマンド)) |
+| [Node.js](https://nodejs.org/) 22 以上 (node + npm) | Mason の LSP・lint、Markdown の整形器 [md-format](https://github.com/ryo-aoki-pc/md-format)、GitLab プレビューの公式スタイルの取得 | 必須 |
 | Nerd Font ([HackGen Console NF](https://github.com/yuru7/HackGen)) | アイコン表示と `guifont` | 実質必須 (無いと記号が豆腐になる) |
 | ibus + ibus-anthy、`busctl` か `gdbus` | 日本語入力 (Linux)。global engine を切り替える | Linux で必須 |
 | [zenhan](https://github.com/iuchim/zenhan) または im-select | 日本語入力 (Windows) | 任意 (無ければ IME 連携のみ無効) |
@@ -149,17 +150,25 @@
 | wl-clipboard (`wl-paste`) | `<leader>ci` での画像の貼り付け (Linux) | 任意 (無ければ `<leader>ci` だけが使えない) |
 | GNOME Shell 49 | [上部バーの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)の拡張 (上部バーと Super+Space の順番を Neovim の IME の切り替えに合わせる) | 任意 (無ければ上部バーが Neovim の切り替えに付いてこないだけ) |
 | OSC 52 の書き込みに対応した端末 (WezTerm の nightly など) | SSH 越しのヤンクを手元のクリップボードに入れる ([SSH の節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のヤンクを-ssh-越しに手元へ送る)) | 任意 (SSH で使うときだけ) |
-| ネットワーク | 初回のプラグイン取得、Mason、treesitter のパーサー。GitLab プレビューでは GitLab と cdn.jsdelivr.net | 初回のみ必須 |
+| ネットワーク | 初回のプラグイン・Mason・パーサー・公式スタイルの取得。GitLab プレビューでは API と描画用ライブラリの cdn.jsdelivr.net | 導入・更新時と、API・描画用ライブラリを読むときに必要 |
 
 - **Termux (Android)**: `lua-language-server`・`stylua`・`taplo`・`shellcheck`・`shfmt` を Mason ではなく `pkg` で入れる
 - Termux の tree-sitter CLI は `pkg install tree-sitter` で入れる
 - Termux の Markdown の LSP (marksman) は任意。Termux のパッケージは dotnet の runtime に依存して大きい。入れなければ marksman だけが起動しない (Mason でも入れない)
 - Termux では、IME 連携と `<leader>ci` での画像の貼り付けは使えない
 - Termux のクリップボードは Termux:API を使う
-- **不要なもの**: fzf (ピッカーは snacks.nvim の Lua 実装。`:checkhealth lazyvim` が警告を出すが機能には影響しない)、telescope とその C ビルド、make、Python、Deno、win32yank (Neovim の Windows ビルドに同梱済み)、プレビュー用の node のアプリ (GitLab プレビューは Neovim の中の HTTP サーバーと curl だけで動く)、SSH 越しのクリップボードのための X11 転送・xclip・lemonade (OSC 52 で端末に渡す)
+- **不要なもの**: fzf (ピッカーは snacks.nvim の Lua 実装。`:checkhealth lazyvim` が警告を出すが機能には影響しない)、telescope とその C ビルド、make、Python、Deno、win32yank (Neovim の Windows ビルドに同梱済み)、プレビュー用の常駐 Node.js アプリ・Docker・GitLab サーバー (公式スタイルの取得用 Node.js 処理は導入時だけ使う)、SSH 越しのクリップボードのための X11 転送・xclip・lemonade (OSC 52 で端末に渡す)
 
 ## 注意点
 
+- **GitLab プレビューに「公式スタイル未導入」と出る**: 公式 CSS・フォント・SVG が未導入か、指定された版と内容が揃っていない
+  - Neovim で `:GitLabPreviewInstall` を実行する。Node.js 22 以上と、公式の取得先への通信が必要。初回は約 785 MB を取得する
+  - 取得できなくても独自 CSS で表示する。`近似表示` は Markdown の描画方式を示す別の表示で、トークンを設定しても公式スタイルは入らない
+  - エラーが出たときはメッセージを確かめてから実行し直す。取得中の中断やハッシュ不一致では、以前に導入した版は置き換えない
+  - 公式スタイルの取得に `GITLAB_TOKEN` は要らない。資産の取得と、編集中の本文を Markdown API に送る設定は別
+  - 固定版の CSS なので、GitLab.com の更新と表示が異なることがある。資産の更新は、設定を取り込んだ後に版を揃える手順で行う
+- **コード配色が GitLab.com の標準と異なる**: 明暗両方のテーマで Dracula を使う
+  - 標準の white / dark と Solarized は、派生元まで含む許諾を確認できていないため取得対象にしない
 - **Windows で `nvim` が起動しない (`VCRUNTIME140.dll が見つからない` / `0xC0000135`)**: Visual C++ のランタイムが入っていない
   - scoop の `neovim` は `VCRUNTIME140.dll` を同梱しない (`nvim.exe` と `lua51.dll` が読み込む)。[Windows 導入の手順 5](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の 1 行目が、`System32\vcruntime140.dll` が無いときだけ `vcredist2022` を入れる。手順 6 の `nvim --version` で確かめる
   - `vcruntime140.dll` があるのに手順 6 の `nvim --version` が通らないときは、`scoop install vcredist2022` を条件を付けずに貼り、今の版のランタイムを入れる (手順 5 の 1 行目はファイルの有無だけを見て、版は見ない)。`already installed` と出たら、`scoop uninstall vcredist2022` の後にもう一度貼る (uninstall で消えるのはインストーラーだけで、ランタイムは残る)

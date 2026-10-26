@@ -144,6 +144,18 @@ Windows 11 では「Windows 11 で LazyVim の設定を導入する」の手順 
 - パスワード欄にいる間 (GNOME Shell が ibus を止めて英数に切り替えている間) は何もしない
 - 内部の関数が無くなったら何もしない (上部バーがずれるだけの、この節を行う前の状態に戻る)
 
+### LazyVim の設定を導入する / 手順 13: 補足: 公式スタイルの取得先と保存先
+
+- Windows 導入の手順 11、両 OS の「LazyVim の設定とプラグインの版を揃える」の最後の手順も同じ取得処理を使う
+- GitLab CE の公式資産イメージを固定版と digest で取得する。サーバー全体や Docker は入れず、Node.js で gzip と tar のストリームを読み、必要な表示用ファイルだけを取り出す
+- CSS・フォント・SVG とライセンスは `stdpath("data")/gitlab-preview/assets/<版とハッシュ>` に保存する。既定のデータ領域は AlmaLinux 10 が `~/.local/share/nvim`、Windows 11 が `%LOCALAPPDATA%\nvim-data`
+- 取得先・版・ハッシュ・必要ファイル・ライセンス出典は設定リポジトリで追跡し、取得した資産自体は追跡しない。MIT・OFL などの原ライセンスを維持し、著作権表示と必要な通知を保存する
+- 取得した公式 CSS には GitLab 本体以外の部品も含まれるため、本体の MIT ライセンスだけで全資産を扱わない。対象の出典と条件を資産ごとに確認する
+- コード配色は、原版の MIT ライセンスを確認できた Dracula を明暗両方で使い、原文を保存する。標準の white / dark と Solarized は、派生元まで含む許諾が未確認のため取得しない
+- 通常の起動やプレビューの表示から公式スタイルの取得を始めず、導入と更新の操作を分ける。版が同じでも導入済みファイルを検証し、揃っていれば取得を省く
+- 公式スタイルと API の描画は別。資産を入れていなくても API は使え、トークンが無くても公式 CSS で近似表示できる
+- 初期値はシステム配色・全幅。固定幅の上限 1600 px は GitLab のリポジトリ画面に合わせた値で、サイドバーやファイルツリーを含む画面全体を再現するものではない
+
 ### LazyVim の GitLab プレビューを設定する / 手順 1: 補足: トークンの置き場所
 
 - `~/.bashrc` は平文。ホームディレクトリは自分だけが読める (0700) ので、ほかのユーザーからは読めない
@@ -169,7 +181,7 @@ Windows 11 では「Windows 11 で LazyVim の設定を導入する」の手順 
 **Neovim の入手経路** (Linux):
 
 | 経路 | 状況 | 採否 |
-|---|---|---|
+| --- | --- | --- |
 | **Homebrew** | x86_64 / aarch64 ともボトルがあり、ソースビルドを待たずに最新版が入る | **採用** |
 | EPEL の `neovim` | 0.10.1。0.12 に届かない | 不採用 |
 | 公式リリースの tar.gz | `nvim-linux-x86_64.tar.gz` / `nvim-linux-arm64.tar.gz` を展開して PATH を通す | 不採用 (更新が手作業) |
@@ -205,6 +217,9 @@ Windows 11 では「Windows 11 で LazyVim の設定を導入する」の手順 
 - [ibus-anthy](https://github.com/ibus/ibus-anthy): `on_off` などのキー割り当て
 - [HackGen](https://github.com/yuru7/HackGen): フォントのリリース
 - [GitLab の Markdown API](https://docs.gitlab.com/api/markdown/): GitLab プレビューが呼ぶ API。認証が要ること (`read_api` で足りる) と `project` の扱い
+- [GitLab の公式資産イメージ](https://docs.gitlab.com/omnibus/build/build_package/#fetch-upstream-assets): ビルド済み表示資産の配布元
+- [GitLab CE のライセンス](https://github.com/gitlabhq/gitlabhq/blob/v19.5.1/LICENSE): 本体と第三者部品の条件
+- [GitLab Fonts のライセンス](https://gitlab.com/gitlab-org/frontend/fonts/-/blob/main/LICENSE): フォントごとの OFL 原文の置き場所
 - [GitLab Flavored Markdown](https://docs.gitlab.com/user/markdown/): GLFM の記法 (スニペットと近似表示が扱う記法の出どころ)
 - [GitLab の個人アクセストークン](https://docs.gitlab.com/user/profile/personal_access_tokens/): トークンの作り方とスコープ
 - [img-clip.nvim](https://github.com/HakonHarnes/img-clip.nvim): 画像の貼り付けの設定項目

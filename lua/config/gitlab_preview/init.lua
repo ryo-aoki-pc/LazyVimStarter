@@ -13,6 +13,7 @@
 -- require しただけでは何もしない。
 local gitlab = require("config.gitlab_preview.gitlab")
 local server = require("config.gitlab_preview.server")
+local assets = require("config.gitlab_preview.assets")
 
 local M = {}
 
@@ -46,7 +47,7 @@ local function load_page()
   end
   local libs = require("config.gitlab_preview.libs")
   -- CSP: 読み込みを許すのは、自分のページと libs.lua に書いた版のファイルだけ
-  local scripts, styles, fonts = { "'self'" }, { "'self'", "'unsafe-inline'" }, { "data:" }
+  local scripts, styles, fonts = { "'self'" }, { "'self'", "'unsafe-inline'" }, { "'self'", "data:" }
   for _, lib in pairs(libs) do
     scripts[#scripts + 1] = lib.url
     if lib.css then
@@ -72,12 +73,20 @@ local function load_page()
   }, "; ")
   -- ライブラリの表はページに JSON で埋め込む (実行されない <script type="application/json">)
   local libs_json = vim.json.encode(libs):gsub("<", "\\u003c")
+  local bundle = assets.load()
+  local config_json = vim.json.encode(assets.page_config(bundle)):gsub("<", "\\u003c")
   page_cache = {
-    html = (read("index.html"):gsub("{{LIBS}}", function()
-      return libs_json
-    end)),
+    html = (read("index.html")
+      :gsub("{{LIBS}}", function()
+        return libs_json
+      end)
+      :gsub("{{CONFIG}}", function()
+        return config_json
+      end)),
     js = read("preview.js"),
     css = read("preview.css"),
+    fallback = read("fallback.css"),
+    assets = bundle,
     csp = csp,
   }
   return page_cache
@@ -132,6 +141,7 @@ end
 
 -- 結果をバッファごとに覚え、追従中のバッファのものならページに送る
 local function publish(buf, tick, payload)
+  payload.data.assets_id = state.assets_id or false
   state.cache[buf] = { tick = tick, payload = payload }
   if buf == state.buf then
     state.root = payload.root -- 画像などのファイルは、このルートの内側から返す
@@ -369,6 +379,37 @@ local function create_autocmds()
   })
 end
 
+-- 明示的な開き直しと導入完了の両方で、別プロセスが入れた資産も再検査する。
+local function refresh_page(force_reload)
+  page_cache = nil
+  if not state then
+    return
+  end
+  local ok, page = pcall(load_page)
+  if not ok then
+    return notify("ページを読み込めない: " .. tostring(page), vim.log.levels.ERROR)
+  end
+  local previous = state.assets_id
+  server.update_page(
+    { html = page.html, js = page.js, css = page.css, fallback = page.fallback },
+    page.csp,
+    page.assets
+  )
+  state.assets_id = page.assets and page.assets.id or false
+  for _, cached in pairs(state.cache) do
+    cached.payload.data.assets_id = state.assets_id
+  end
+  local cached = state.buf and state.cache[state.buf]
+  if cached then
+    server.broadcast("render", cached.payload.data)
+  else
+    schedule_render(0)
+  end
+  if force_reload or previous ~= state.assets_id then
+    server.broadcast("reload", {})
+  end
+end
+
 --- プレビューを始める。動いていれば、GitLab への送信の停止を解いて描き直し、ブラウザを開き直す
 --- (トークンや GITLAB_HOST を直した後は、これで送り直す)。
 function M.start()
@@ -377,6 +418,7 @@ function M.start()
     return notify("Markdown のバッファで実行する", vim.log.levels.WARN)
   end
   if state then
+    refresh_page(false)
     state.api_off, state.retry_at, state.retry_reason = nil, nil, nil
     state.ctx_cache, state.cache = {}, {}
     state.buf = buf
@@ -385,13 +427,16 @@ function M.start()
     return
   end
 
+  -- headless の別プロセスで導入した資産も、次の開始から反映する。
+  page_cache = nil
   local ok_page, page = pcall(load_page)
   if not ok_page then
     return notify("ページのファイルを読めない: " .. tostring(page), vim.log.levels.ERROR)
   end
   local ok, err = server.start({
-    page = { html = page.html, js = page.js, css = page.css },
+    page = { html = page.html, js = page.js, css = page.css, fallback = page.fallback },
     csp = page.csp,
+    assets = page.assets,
     root = function()
       return state and state.root
     end,
@@ -400,6 +445,7 @@ function M.start()
     return notify("サーバーを起動できない: " .. tostring(err), vim.log.levels.ERROR)
   end
   state = {
+    assets_id = page.assets and page.assets.id or false,
     buf = nil,
     req_id = 0,
     req = nil,
@@ -473,6 +519,20 @@ end
 
 function M.is_running()
   return state ~= nil
+end
+
+--- 利用者が明示的に要求したときだけ公式資産を取得する。
+function M.install()
+  local ok, err = require("config.gitlab_preview.installer").run({
+    on_done = function(success)
+      if success then
+        refresh_page(true)
+      end
+    end,
+  })
+  if not ok then
+    notify(tostring(err), vim.log.levels.ERROR)
+  end
 end
 
 return M
