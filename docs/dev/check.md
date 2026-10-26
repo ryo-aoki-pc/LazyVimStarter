@@ -53,6 +53,19 @@
    - lazy.nvim の導入・更新を起動せず、資産のマニフェスト、配信範囲、CSP、GET・HEAD を確かめる
    - 模擬の Markdown API と実際の HTTP・SSE で、描画方式とスタイルの分離、導入後の更新、明示的なコマンドの登録も確かめる
 
+1. 導入済みの公式資産を使い、実際のブラウザで表示を確かめる。
+
+   ```sh
+   node --test tests/gitlab_preview_page.test.mjs tests/gitlab_preview_official.test.mjs
+   ```
+
+   - 失敗が 0 件ならよい。依存・ブラウザ・公式資産の未検出による skip は合格に数えず、その範囲は未実施として扱う。試験から資産や依存の取得は始めない
+   - `GITLAB_PREVIEW_TEST_DATA` に Neovim のデータディレクトリに相当する場所を指定する。既定は `.tests/gitlab-preview-data`。その下の `gitlab-preview/assets/` に、固定版の `install.json` と検証済みの資産が必要
+   - `tests/gitlab_preview_browser_fixture.lua` で実際の Lua サーバーを起動し、フォント・SVG・Dracula の配色、明暗・幅・スクロールを確かめる。`NVIM_BIN` で Neovim の実行ファイルも指定できる
+   - `MD_TABLE_STICKY_SOURCE` に導入済みの `md-table-sticky` の `src/sticky-table.js` を指定すると、全幅パネルとテーマ変更も確かめる。既定は `.tests/md-table-sticky.js`。ファイルがなければ、その試験だけ未実施になる
+   - 画像と計測結果は `.tests/official-preview-*.png` と `.tests/official-preview-metrics.json` に残る。明暗の参照 DOM と computed style を比べる試験であり、画面全体の画像の一致を判定するものではない
+   - `GITLAB_PREVIEW_COMPARE_GITLABCOM=1` を明示した場合だけ、GitLab.com の公開 README にアクセスし、画像と計測結果を `.tests/gitlabcom-public-reference.png` と `.tests/gitlabcom-comparison.json` に残す。到達できなかった場合は、その比較を未実施として記録する
+
 1. ブラウザで、本物の資産を使うプレビューを確かめる。
 
    - 正本の導入手順で公式スタイルを取得した環境で、Markdown を開き `<leader>cp` を押す
