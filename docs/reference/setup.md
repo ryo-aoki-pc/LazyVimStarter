@@ -1,6 +1,6 @@
 # LazyVim 導入の補足資料
 
-手順は setup-notes の[Neovim のセットアップ](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md)にある。見出しの「<項> / 手順 N」は、その項の手順を指す。ロールバックと注意点は [extra](../extra/setup.md)、実施結果は[検証記録](https://github.com/ryo-aoki-pc/setup-notes-verification/blob/main/repos/LazyVimStarter/docs/verification/setup.md)。
+手順は setup-notes の[Neovim のセットアップ](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md)にある。見出しの「<項> / 手順 N」は、その項の手順を指す。注意点は [extra](../extra/setup.md)、実施結果は[検証記録](https://github.com/ryo-aoki-pc/setup-notes-verification/blob/main/repos/LazyVimStarter/docs/verification/setup.md)。
 
 ## 補足
 
