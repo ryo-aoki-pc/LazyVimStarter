@@ -1,6 +1,6 @@
 # LazyVim の設定の注意点
 
-[手順書（Neovim のセットアップ）](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md)・[検証記録](https://github.com/ryo-aoki-pc/setup-notes-verification/blob/main/repos/LazyVimStarter/docs/verification/setup.md)・[参考資料](../reference/setup.md)
+[手順書（Neovim のセットアップ）](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md)・検証記録・[参考資料](../reference/setup.md)
 
 - 「AlmaLinux 導入の手順 N」は正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)、「Windows 導入の手順 N」は[Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順を指す
 
