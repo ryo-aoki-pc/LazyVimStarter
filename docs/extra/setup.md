@@ -60,7 +60,7 @@
   - Windows で `gcc` を入れた直後は PATH が反映されていないことがある。端末を開き直してから `nvim` を起動する
 - **ファイルピッカーが空のまま**: `fd` も `rg` も無い。Linux には `find` へのフォールバックがあるが、Windows には無い
 - **保存しても Markdown が整形されない / lint が出ない**: Node.js 22 以上と npm が必要
-  - 整形器は md-format を setup-notes の md-format の導入 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/almalinux-setup.md#md-format-を導入更新する) / [Windows 11](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/windows-setup.md#md-format-を導入更新する)) で入れる。`md-format (mdfmt) が導入されていません` と出たら、まだ入れていない
+  - 整形器は md-format を md-format の導入の手順 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/install.md#md-format-を導入更新する) / [Windows 11](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/install.md#windows-11-で-md-format-を導入更新する)) で入れる。`md-format (mdfmt) が導入されていません` と出たら、まだ入れていない
   - md-format の clone で `node scripts/setup.mjs --check` を実行すると、導入の状態 (版・依存・起動役・PATH) を確かめられる
   - `HTML の整形器 (js-beautify) を読み込めません` と出たら、md-format の導入が途中で壊れている。導入スクリプトを実行し直す
   - lint の診断用は `:Mason` で状態を見て、`:MasonInstall markdownlint-cli2` で入れ直す
