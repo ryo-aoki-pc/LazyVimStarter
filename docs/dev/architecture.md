@@ -172,3 +172,10 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   `user_markdown_conceal` で、markdown を表示するウィンドウに `conceallevel=0` を setlocal する
   (`FileType` と `BufWinEnter` の両方で張る理由はコメント参照)。
 - 表の整形は `lua/plugins/table-mode.lua` (markdown バッファ限定、全角幅対応)。
+- 表の Excel 編集は `lua/plugins/mdtable.lua` の virtual spec (`mdtable-edit`) で配線する。
+  Windows だけで `:MdTableEdit` と markdown バッファの `<leader>te` を登録し、初めて使うときに
+  `lua/config/mdtable.lua` を読み込む。ファイル名と `exepath("mdtable")` を確かめ、未保存なら先に保存する。
+  保存できなければ通知して終わる。`Snacks.terminal` に `{ mdtable の絶対パス, "edit", 文書の絶対パス, "--table", "L<行>" }`
+  を配列で渡し、空白や日本語を含むパスを shell に通さない。Excel のブックの管理と書き戻しは mdtable に任せ、
+  終了コード 0 で閉じて `checktime`、失敗時は端末を残す動作は Snacks.terminal の既定を使う。
+  配線の試験は `tests/mdtable_edit.lua` (Excel と mdtable は起動しない)。

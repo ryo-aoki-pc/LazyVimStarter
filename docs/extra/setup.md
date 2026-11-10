@@ -22,6 +22,7 @@
 | [zenhan](https://github.com/iuchim/zenhan) または im-select | 日本語入力 (Windows) | 任意 (無ければ IME 連携のみ無効) |
 | [Neovide](https://neovide.dev/) 0.16 以上 | GUI クライアント。IME の未確定文字列の表示には Neovim 0.12 以上も要る | 任意 (端末で使うなら不要) |
 | lazygit | `<leader>gg` | 任意 (無ければキーマップが定義されないだけ) |
+| [mdtable](https://github.com/ryo-aoki-pc/md-table-excel) | カーソルのある表を Excel で編集 (`:MdTableEdit` / `<leader>te`) | 任意 (Windows 11 だけ。無くてもほかの機能は動く) |
 | [md-preview](https://github.com/ryo-aoki-pc/md-preview) | GitLab プレビュー (導入: [AlmaLinux 10](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#md-preview-を導入更新する) / [Windows 11](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#windows-11-で-md-preview-を導入更新する)) | 任意 (プレビューを使うときだけ) |
 | ブラウザ | GitLab プレビューのページ | 任意 (プレビューを使うときだけ) |
 | wl-clipboard (`wl-paste`) | `<leader>ci` での画像の貼り付け (Linux) | 任意 (無ければ `<leader>ci` だけが使えない) |
