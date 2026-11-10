@@ -218,6 +218,9 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   一時的に隠し表示へ戻すには `<leader>uc`。
 - **[vim-table-mode](https://github.com/dhruvasagar/vim-table-mode)** — パイプ表の整形
   (全角幅対応)。markdown バッファ限定で `<leader>tm` (toggle) / `<leader>tr` (realign)。
+- **表を Excel で編集** ([md-table-excel](https://github.com/ryo-aoki-pc/md-table-excel)、Windows 11 だけ) —
+  `:MdTableEdit` / markdown バッファの `<leader>te` で、カーソルのある表を開く。未保存の変更は先に保存し、
+  Excel のブックを保存して閉じると Markdown に書き戻す。成功時は端末を閉じてバッファを読み直し、失敗時は端末に結果を残す。
 
 ### その他
 

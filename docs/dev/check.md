@@ -23,6 +23,24 @@
 
    - 期待する結果はこの節の手順 1 と同じ
 
+## 表の Excel 編集の配線の試験
+
+- `lua/config/mdtable.lua`・`lua/plugins/mdtable.lua` を変えたときに行う
+- 実行場所はこのリポジトリのルート。lazy.nvim は起動せず、Excel と mdtable の導入も要らない
+
+1. コマンドとキー、端末へ渡す引数、保存と通知を確かめる。
+
+   ```sh
+   nvim --headless -u NONE -i NONE -l tests/mdtable_edit.lua
+   ```
+
+   - `mdtable edit integration: PASS` と終了コード 0 を確かめる
+   - Windows では `:MdTableEdit` と markdown 限定の `<leader>te`、Windows 以外では空の spec になることを確かめる
+   - 空白と日本語を含む絶対パス、`--table L<行>`、未保存の変更の保存、保存済みのバッファを書き直さないことを確かめる
+   - Markdown のファイルでないバッファ・ファイル名が無い場合・読み取り専用の場合・mdtable が無い場合・保存できない場合は、端末を開かず通知することを確かめる
+   - `Snacks` と実行ファイルの検索を差し替えるので、Excel と mdtable は起動しない
+   - 一時データは作業ツリー内の `.tests/` に作り、試験後に消す。stylua と `git diff --check` も通す
+
 ## GitLab プレビューの試験
 
 - `lua/config/gitlab_preview/init.lua`・`lua/plugins/gitlab-preview.lua` を変えたときに行う
