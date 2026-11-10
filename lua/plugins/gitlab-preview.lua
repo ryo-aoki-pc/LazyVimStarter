@@ -1,4 +1,4 @@
--- GitLab プレビュー (<leader>cp) の配線。実体は lua/config/gitlab_preview/ (説明は init.lua の冒頭)。
+-- md-preview を起こす GitLab プレビュー (<leader>cp) の配線。実体は lua/config/gitlab_preview/init.lua。
 -- lazy.nvim の virtual spec にする: 取得も runtimepath への追加もせず、lazy-lock.json にも載らないが、
 -- cmd / keys による遅延読み込みは普通のプラグインと同じに効く (初めて使うまで何も読み込まない)。
 -- virtual は lazy.nvim の文書に無い機能 (lazy/core/meta.lua と loader.lua で扱っている)。lazy.nvim を
@@ -10,7 +10,7 @@ local commands = {
   },
   GitLabPreviewStop = { "stop", "GitLab プレビューを止める" },
   GitLabPreviewToggle = { "toggle", "GitLab プレビューを切り替える" },
-  GitLabPreviewInstall = { "install", "GitLab の公式スタイルを取得する（初回は約785MB）" },
+  GitLabPreviewInstall = { "install", "md-preview で公式スタイルを取得する（初回は約785MB）" },
 }
 
 return {

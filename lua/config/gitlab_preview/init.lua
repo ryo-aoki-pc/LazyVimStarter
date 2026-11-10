@@ -1,537 +1,616 @@
--- GitLab プレビュー: 編集中の Markdown を GitLab の Markdown API で描かせ、ブラウザにライブで出す。
--- GitLab が描いた HTML をそのまま使うので、GLFM 固有の記法 ([[_TOC_]]・$`…`$・>>>・{+ +}・[~]・
--- アラート・#123 などの参照) も GitLab と同じに見える。数式と mermaid は GitLab と同じく、ページの JS が描く。
--- GitLab に届かない (トークンが無い・通信できない) ときは、ページの markdown-it で近似の表示にする。
---
--- 構成:
---   init.lua   (ここ) 状態・autocmd・描画のループ。公開するのは start / stop / toggle / open / url / is_running
---   gitlab.lua 送り先の決定・git remote の解析・curl での API の呼び出し
---   server.lua 127.0.0.1 の HTTP / SSE サーバーと、リポジトリの外を読ませない閉じ込め
---   libs.lua   ページが jsDelivr から読むライブラリの版と SRI
---   page/      ブラウザ側 (index.html / preview.js / preview.css)
--- 配線は lua/plugins/gitlab-preview.lua (<leader>cp と :GitLabPreview*)。
--- require しただけでは何もしない。
-local gitlab = require("config.gitlab_preview.gitlab")
-local server = require("config.gitlab_preview.server")
-local assets = require("config.gitlab_preview.assets")
-
+-- md-preview との橋渡し。描画・HTTP・公式スタイルの処理は導入先の cli.mjs に任せる。
+-- require だけでは起動せず、Neovim につき1つの子プロセスを標準入出力の取り決めの版1で使う。
+-- stop は休止、VimLeavePre は標準入力を閉じる。設定と配線は lua/plugins/gitlab-preview.lua。
 local M = {}
+local uv = vim.uv or vim.loop
+M.config = { debounce_ms = 300, scroll_ms = 80, reconnect_wait_ms = 1500, ready_timeout_ms = 10000 }
+local app, install_job
+local shutdown_group
+local missing_warned, leaving = false, false
+local send_doc, send_scroll, spawn_app, terminate
 
-M.config = {
-  debounce_ms = 300, -- 打鍵が止まってから送るまで
-  scroll_ms = 80, -- カーソルの移動を送る間隔
-  retry_ms = 30000, -- 通信の失敗・回数制限の後、GitLab に送らない時間
-  reconnect_wait_ms = 1500, -- 開き直したとき、開いたままのタブが戻ってくるのを待つ時間
-}
-
-local state = nil ---@type table?
-local page_cache = nil ---@type table?
-local last_url = nil ---@type string? このセッションで最後に開いた URL
-
-local function notify(msg, level)
-  vim.notify("GitLab プレビュー: " .. msg, level or vim.log.levels.INFO)
+local function notify(message, level)
+  vim.notify("GitLab プレビュー: " .. message, level or vim.log.levels.INFO)
 end
 
--- page/ と libs.lua から、ページ (HTML・JS・CSS) と CSP を作る
-local function load_page()
-  if page_cache then
-    return page_cache
+local function install_dir()
+  local configured = vim.g.gitlab_preview_dir
+  if type(configured) == "string" and configured ~= "" then
+    return vim.fs.normalize(vim.fn.fnamemodify(vim.fs.normalize(configured), ":p"))
   end
-  local src = debug.getinfo(1, "S").source:gsub("^@", "")
-  local dir = vim.fs.joinpath(vim.fs.dirname(vim.fs.normalize(src)), "page")
-  local function read(name)
-    local f = assert(io.open(vim.fs.joinpath(dir, name), "rb"))
-    local s = f:read("*a")
-    f:close()
-    return s
+  local home = uv.os_homedir() or vim.fn.expand("~")
+  local base
+  if vim.fn.has("win32") == 1 then
+    local value = vim.env.LOCALAPPDATA
+    base = (value and value ~= "") and value or vim.fs.joinpath(home, "AppData", "Local")
+  elseif vim.fn.has("mac") == 1 then
+    base = vim.fs.joinpath(home, "Library", "Application Support")
+  else
+    local value = vim.env.XDG_DATA_HOME
+    base = (value and value:sub(1, 1) == "/") and value or vim.fs.joinpath(home, ".local", "share")
   end
-  local libs = require("config.gitlab_preview.libs")
-  -- CSP: 読み込みを許すのは、自分のページと libs.lua に書いた版のファイルだけ
-  local scripts, styles, fonts = { "'self'" }, { "'self'", "'unsafe-inline'" }, { "'self'", "data:" }
-  for _, lib in pairs(libs) do
-    scripts[#scripts + 1] = lib.url
-    if lib.css then
-      styles[#styles + 1] = lib.css
+  return vim.fs.joinpath(base, "md-preview")
+end
+
+local function command()
+  local cli = vim.fs.joinpath(install_dir(), "cli.mjs")
+  if vim.fn.executable("node") == 0 or not uv.fs_stat(cli) then
+    if not missing_warned then
+      missing_warned = true
+      notify(
+        "md-preview が導入されていません。md-preview の docs/install.md の手順で導入してください: "
+          .. "https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md",
+        vim.log.levels.WARN
+      )
     end
-    if lib.fonts then
-      fonts[#fonts + 1] = lib.fonts
-    end
+    return
   end
-  local csp = table.concat({
-    "default-src 'none'",
-    "script-src " .. table.concat(scripts, " "),
-    -- mermaid は SVG の中に <style> を、KaTeX は style 属性を書くので 'unsafe-inline' が要る
-    "style-src " .. table.concat(styles, " "),
-    "font-src " .. table.concat(fonts, " "),
-    -- 画像と動画は、GitLab のアップロードや外部のバッジなど、どこからでも読む
-    "img-src * data: blob:",
-    "media-src *",
-    "connect-src 'self'",
-    "base-uri 'none'",
-    "form-action 'none'",
-    "frame-ancestors 'none'",
-  }, "; ")
-  -- ライブラリの表はページに JSON で埋め込む (実行されない <script type="application/json">)
-  local libs_json = vim.json.encode(libs):gsub("<", "\\u003c")
-  local bundle = assets.load()
-  local config_json = vim.json.encode(assets.page_config(bundle)):gsub("<", "\\u003c")
-  page_cache = {
-    html = (read("index.html")
-      :gsub("{{LIBS}}", function()
-        return libs_json
-      end)
-      :gsub("{{CONFIG}}", function()
-        return config_json
-      end)),
-    js = read("preview.js"),
-    css = read("preview.css"),
-    fallback = read("fallback.css"),
-    assets = bundle,
-    csp = csp,
-  }
-  return page_cache
+  return { "node", cli }
 end
 
 local function is_target(buf)
   return vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].filetype == "markdown" and vim.bo[buf].buftype == ""
 end
 
--- バッファの文脈 (ルート・送り先・project・表示名)。git を呼ぶので、ディレクトリごとに覚えておく
-local function context_for(buf)
-  local name = vim.api.nvim_buf_get_name(buf)
-  local dir = name ~= "" and vim.fs.dirname(name) or vim.uv.cwd()
-  local ctx = state.ctx_cache[dir]
-  if not ctx then
-    ctx = gitlab.context(dir)
-    state.ctx_cache[dir] = ctx
-  end
-  local real_dir = vim.uv.fs_realpath(dir) or dir
-  local reldir = gitlab.relpath(ctx.root, real_dir) or ""
-  local file = name ~= "" and vim.fs.basename(name) or "[No Name]"
-  return {
-    root = ctx.root,
-    api = ctx.api,
-    project = ctx.project,
-    dir = reldir == "" and "" or reldir .. "/", -- .md のディレクトリのルートからの相対 (ページが相対リンクを解決する)
-    file = (reldir == "" and "" or reldir .. "/") .. file,
-    base_ctx = ctx,
-  }
-end
-
--- GitLab に送ってよいか。送れないときは、その理由 (バナーに出す) を返す
-local function blocked()
-  local token = vim.env.GITLAB_TOKEN
-  if not token or vim.trim(token) == "" then
-    return "GITLAB_TOKEN が未設定"
-  end
-  if vim.fn.executable("curl") == 0 then
-    return "curl が見つからない"
-  end
-  if state.api_off then
-    return state.api_off
-  end
-  if state.retry_at and vim.uv.now() < state.retry_at then
-    return state.retry_reason
+local function close_timer(timer)
+  if timer and not timer:is_closing() then
+    timer:stop()
+    timer:close()
   end
 end
 
-local function gitlab_info(ctx)
-  return { origin = ctx.api.origin, host = ctx.api.host, path = ctx.api.path, project = ctx.project }
+local function deactivate(s)
+  s.active = false
+  for _, timer in pairs(s.timers or {}) do
+    close_timer(timer)
+  end
+  s.timers = {}
+  if s.group then
+    pcall(vim.api.nvim_del_augroup_by_id, s.group)
+    s.group = nil
+  end
+  s.last_buf, s.last_tick, s.scroll_key, s.open_mode = nil, nil, nil, nil
 end
 
--- 結果をバッファごとに覚え、追従中のバッファのものならページに送る
-local function publish(buf, tick, payload)
-  payload.data.assets_id = state.assets_id or false
-  state.cache[buf] = { tick = tick, payload = payload }
-  if buf == state.buf then
-    state.root = payload.root -- 画像などのファイルは、このルートの内側から返す
-    server.broadcast("render", payload.data)
-  end
-end
-
-local function fallback(ctx, text, reason)
-  return {
-    root = ctx.root,
-    data = {
-      mode = "fallback",
-      file = ctx.file,
-      dir = ctx.dir,
-      markdown = text,
-      reason = reason,
-    },
-  }
-end
-
-local render_now
-
-local function schedule_render(delay)
-  if not state then
-    return
-  end
-  state.timers.render:stop()
-  state.timers.render:start(delay, 0, vim.schedule_wrap(render_now))
-end
-
-render_now = function()
-  if not state then
-    return
-  end
-  local buf = state.buf
-  if not buf or not vim.api.nvim_buf_is_valid(buf) then
-    return
-  end
-  local tick = vim.api.nvim_buf_get_changedtick(buf)
-  local cached = state.cache[buf]
-  if cached and cached.tick == tick then
-    -- 変わっていない (別のバッファから戻ってきた) ときは、前回の結果を送り直すだけ
-    if state.req and state.req.buf ~= buf then
-      state.req.cancel()
-      state.req = nil
-    end
-    state.root = cached.payload.root
-    server.broadcast("render", cached.payload.data)
-    return
-  end
-  if state.req then
-    if state.req.buf == buf then
-      state.dirty = true -- 送信中にまた変わった。終わってからもう 1 度だけ送る
-      return
-    end
-    state.req.cancel() -- 別のバッファのものは要らない
-    state.req = nil
-  end
-
-  local text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n") .. "\n"
-  local ctx = context_for(buf)
-  local reason = blocked()
-  if reason then
-    return publish(buf, tick, fallback(ctx, text, reason))
-  end
-
-  state.req_id = state.req_id + 1
-  local id = state.req_id
-  state.dirty = false
-  local req = { id = id, buf = buf }
-  state.req = req
-  req.cancel = gitlab.render(text, ctx, function(r)
-    if not state or state.req ~= req then
-      return -- 止めた・別の依頼に置き換わった
-    end
-    state.req = nil
-    if r.project_dropped then
-      ctx.base_ctx.project = nil -- 読めない project はこのディレクトリでは送らない
-      ctx.project = nil
-    end
-    local payload
-    if r.kind == "ok" then
-      state.retry_at = nil
-      payload = {
-        root = ctx.root,
-        data = {
-          mode = "api",
-          file = ctx.file,
-          dir = ctx.dir,
-          html = r.html,
-          gitlab = gitlab_info(ctx),
-        },
-      }
-    else
-      local why
-      if r.kind == "auth" then
-        why = ("トークンが拒否された (HTTP %d)。read_api のトークンと GITLAB_HOST を確かめて :GitLabPreview"):format(
-          r.status
-        )
-        state.api_off = why
-      elseif r.kind == "notfound" then
-        why = "GitLab の API が見つからない (HTTP 404)。GITLAB_HOST を確かめて :GitLabPreview"
-        state.api_off = why
-      elseif r.kind == "network" then
-        why = ("GitLab に接続できない (%s)"):format(r.reason or "")
-        state.retry_at, state.retry_reason = vim.uv.now() + M.config.retry_ms, why
-      elseif r.kind == "ratelimit" then
-        why = "GitLab の回数制限 (HTTP 429)。しばらく待ってから送り直す"
-        state.retry_at, state.retry_reason = vim.uv.now() + M.config.retry_ms, why
-      else
-        why = ("GitLab の応答を読めない (HTTP %s)"):format(r.status or "?")
-      end
-      payload = fallback(ctx, text, why)
-    end
-    publish(buf, tick, payload)
-    if state.dirty then
-      state.dirty = false
-      schedule_render(0)
-    end
-  end)
-end
-
-local function send_scroll()
-  if not state or not state.buf then
-    return
-  end
-  local win = vim.api.nvim_get_current_win()
-  if vim.api.nvim_win_get_buf(win) ~= state.buf then
-    return
-  end
-  local line = vim.api.nvim_win_get_cursor(win)[1]
-  local top = vim.fn.line("w0", win)
-  local height = vim.api.nvim_win_get_height(win)
-  -- ratio: カーソルが窓の中のどの高さにあるか (0 = 上端、1 = 下端)。ページも同じ高さに合わせる
-  local ratio = math.min(1, math.max(0, (line - top) / math.max(1, height - 1)))
-  local lines = vim.api.nvim_buf_line_count(state.buf)
-  local key = ("%d:%.3f:%d"):format(line, ratio, lines)
-  if key == state.scroll_key then
-    return
-  end
-  state.scroll_key = key
-  server.broadcast("scroll", { line = line, ratio = ratio, lines = lines })
-end
-
-local function schedule_scroll()
-  if state and not state.timers.scroll:is_active() then
-    state.timers.scroll:start(M.config.scroll_ms, 0, vim.schedule_wrap(send_scroll))
-  end
-end
-
-local function follow(buf)
-  if state.buf == buf then
-    return
-  end
-  state.buf = buf
-  state.scroll_key = nil
-  schedule_render(0)
-  schedule_scroll()
-end
-
-local function open_browser()
-  local url = server.url()
-  if not url then
+local function open_browser(s)
+  if app ~= s or not s.url then
     return
   end
   local browser = vim.g.gitlab_preview_browser
   if browser == false then
-    return notify(url)
+    return notify(s.url)
   end
   if type(browser) == "function" then
-    local ok, err = pcall(browser, url)
+    local ok, err = pcall(browser, s.url)
     if not ok then
-      notify(("ブラウザを開けない (%s)。%s"):format(err, url), vim.log.levels.WARN)
+      notify(("ブラウザを開けない (%s)。%s"):format(err, s.url), vim.log.levels.WARN)
     end
     return
   end
-  local opt = nil
+  local opt
   if type(browser) == "string" then
     opt = { cmd = { browser } }
   elseif type(browser) == "table" then
     opt = { cmd = vim.deepcopy(browser) }
   end
-  local _, err = vim.ui.open(url, opt)
+  local _, err = vim.ui.open(s.url, opt)
   if err then
-    notify(("ブラウザを開けない (%s)。%s"):format(err, url), vim.log.levels.WARN)
+    notify(("ブラウザを開けない (%s)。%s"):format(err, s.url), vim.log.levels.WARN)
   end
 end
 
-local function create_autocmds()
-  local group = vim.api.nvim_create_augroup("user_gitlab_preview", { clear = true })
-  state.group = group
-  -- 表示中の markdown のバッファに追従する (ほかの種類のバッファに移っても、ページはそのまま)
+local function send(s, value)
+  if app ~= s or s.exited or not s.proc then
+    return false
+  end
+  local ok, err = pcall(function()
+    s.proc:write(vim.json.encode(value) .. "\n")
+  end)
+  if not ok then
+    notify("アプリへ送れません: " .. tostring(err), vim.log.levels.ERROR)
+    terminate(s)
+  end
+  return ok
+end
+
+local function schedule_doc(s, delay)
+  if app ~= s or not s.active then
+    return
+  end
+  s.timers.doc:stop()
+  s.timers.doc:start(
+    delay,
+    0,
+    vim.schedule_wrap(function()
+      send_doc(s)
+    end)
+  )
+end
+
+local function schedule_scroll(s)
+  if app == s and s.active and not s.timers.scroll:is_active() then
+    s.timers.scroll:start(
+      M.config.scroll_ms,
+      0,
+      vim.schedule_wrap(function()
+        send_scroll(s)
+      end)
+    )
+  end
+end
+
+send_doc = function(s, force)
+  if app ~= s or not s.active or not s.ready or not s.buf or not is_target(s.buf) then
+    return
+  end
+  local buf = s.buf
+  local tick = vim.api.nvim_buf_get_changedtick(buf)
+  if not force and s.last_buf == buf and s.last_tick == tick then
+    return
+  end
+  local name = vim.api.nvim_buf_get_name(buf)
+  local file = name ~= "" and vim.fs.normalize(vim.fn.fnamemodify(name, ":p")) or vim.NIL
+  if
+    send(s, {
+      type = "doc",
+      path = file,
+      name = name ~= "" and vim.fs.basename(name) or "[No Name]",
+      text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n") .. "\n",
+      rev = tick,
+    })
+  then
+    s.last_buf, s.last_tick = buf, tick
+    schedule_scroll(s)
+  end
+end
+
+send_scroll = function(s)
+  if app ~= s or not s.active or not s.ready or not s.buf or not vim.api.nvim_buf_is_valid(s.buf) then
+    return
+  end
+  local win = vim.api.nvim_get_current_win()
+  if vim.api.nvim_win_get_buf(win) ~= s.buf then
+    return
+  end
+  local line = vim.api.nvim_win_get_cursor(win)[1]
+  local top = vim.fn.line("w0", win)
+  local height = vim.api.nvim_win_get_height(win)
+  local ratio = math.min(1, math.max(0, (line - top) / math.max(1, height - 1)))
+  local lines = vim.api.nvim_buf_line_count(s.buf)
+  local key = ("%d:%.3f:%d"):format(line, ratio, lines)
+  if key ~= s.scroll_key and send(s, { type = "scroll", line = line, ratio = ratio, lines = lines }) then
+    s.scroll_key = key
+  end
+end
+
+local function follow(s, buf)
+  if s.buf ~= buf then
+    s.buf, s.last_buf, s.last_tick, s.scroll_key = buf, nil, nil, nil
+    schedule_doc(s, 0)
+    schedule_scroll(s)
+  end
+end
+
+local function activate(s, buf)
+  s.active = true
+  s.timers = { doc = assert(uv.new_timer()), scroll = assert(uv.new_timer()) }
+  s.group = vim.api.nvim_create_augroup("user_gitlab_preview", { clear = true })
   vim.api.nvim_create_autocmd({ "BufEnter", "FileType" }, {
-    group = group,
+    group = s.group,
     callback = function(ev)
-      if ev.buf == vim.api.nvim_get_current_buf() and is_target(ev.buf) then
-        follow(ev.buf)
+      if app == s and s.active and ev.buf == vim.api.nvim_get_current_buf() and is_target(ev.buf) then
+        follow(s, ev.buf)
       end
     end,
   })
   vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI", "TextChangedP" }, {
-    group = group,
+    group = s.group,
     callback = function(ev)
-      if ev.buf == state.buf then
-        schedule_render(M.config.debounce_ms)
+      if app == s and s.active and ev.buf == s.buf then
+        schedule_doc(s, M.config.debounce_ms)
       end
     end,
   })
-  -- 名前を変えた (:saveas など) ときは、ルートと project を求め直す
   vim.api.nvim_create_autocmd("BufFilePost", {
-    group = group,
+    group = s.group,
     callback = function(ev)
-      state.cache[ev.buf] = nil
-      state.ctx_cache = {}
-      if ev.buf == state.buf then
-        schedule_render(0)
+      if app == s and s.active and ev.buf == s.buf then
+        s.last_buf, s.last_tick = nil, nil
+        schedule_doc(s, 0)
       end
     end,
   })
   vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI", "WinScrolled" }, {
-    group = group,
-    callback = schedule_scroll,
+    group = s.group,
+    callback = function()
+      schedule_scroll(s)
+    end,
   })
   vim.api.nvim_create_autocmd("BufWipeout", {
-    group = group,
+    group = s.group,
     callback = function(ev)
-      state.cache[ev.buf] = nil
+      if s.buf == ev.buf then
+        s.buf, s.last_buf, s.last_tick = nil, nil, nil
+      end
     end,
   })
-  vim.api.nvim_create_autocmd("VimLeavePre", {
-    group = group,
-    callback = function()
-      M.stop("exit")
-    end,
-  })
+  s.buf = nil
+  follow(s, buf)
 end
 
--- 明示的な開き直しと導入完了の両方で、別プロセスが入れた資産も再検査する。
-local function refresh_page(force_reload)
-  page_cache = nil
-  if not state then
+local function reconnect(s)
+  if s.clients ~= 0 then
     return
   end
-  local ok, page = pcall(load_page)
-  if not ok then
-    return notify("ページを読み込めない: " .. tostring(page), vim.log.levels.ERROR)
-  end
-  local previous = state.assets_id
-  server.update_page(
-    { html = page.html, js = page.js, css = page.css, fallback = page.fallback },
-    page.csp,
-    page.assets
+  close_timer(s.timers.reconnect)
+  s.timers.reconnect = assert(uv.new_timer())
+  s.timers.reconnect:start(
+    M.config.reconnect_wait_ms,
+    0,
+    vim.schedule_wrap(function()
+      if app == s and s.active and s.clients == 0 then
+        open_browser(s)
+      end
+    end)
   )
-  state.assets_id = page.assets and page.assets.id or false
-  for _, cached in pairs(state.cache) do
-    cached.payload.data.assets_id = state.assets_id
+end
+
+local function jump(s, message)
+  if type(message.line) ~= "number" or message.line ~= message.line then
+    return
   end
-  local cached = state.buf and state.cache[state.buf]
-  if cached then
-    server.broadcast("render", cached.payload.data)
-  else
-    schedule_render(0)
+  local buf
+  if message.path == vim.NIL then
+    buf = s.buf
+  elseif type(message.path) == "string" then
+    local target = vim.fs.normalize(vim.fn.fnamemodify(message.path, ":p"))
+    local windows = vim.fn.has("win32") == 1
+    for _, candidate in ipairs(vim.api.nvim_list_bufs()) do
+      local name = vim.api.nvim_buf_get_name(candidate)
+      if name ~= "" then
+        name = vim.fs.normalize(vim.fn.fnamemodify(name, ":p"))
+        if (windows and name:lower() == target:lower()) or (not windows and name == target) then
+          buf = candidate
+          break
+        end
+      end
+    end
   end
-  if force_reload or previous ~= state.assets_id then
-    server.broadcast("reload", {})
+  if not buf or not vim.api.nvim_buf_is_valid(buf) then
+    return -- どのバッファにも無いファイルを開かない。
+  end
+  local win = vim.api.nvim_get_current_win()
+  if vim.api.nvim_win_get_buf(win) ~= buf then
+    for _, candidate in ipairs(vim.api.nvim_list_wins()) do
+      if vim.api.nvim_win_get_buf(candidate) == buf then
+        win = candidate
+        break
+      end
+    end
+    vim.api.nvim_set_current_win(win)
+    if vim.api.nvim_win_get_buf(win) ~= buf then
+      vim.api.nvim_win_set_buf(win, buf)
+    end
+  end
+  local line = math.min(vim.api.nvim_buf_line_count(buf), math.max(1, math.floor(message.line)))
+  vim.api.nvim_win_set_cursor(win, { line, 0 })
+  schedule_scroll(s)
+end
+
+local function last_line(value)
+  return vim.trim(value or ""):match("([^\r\n]+)$") or ""
+end
+
+local function receive(s, value)
+  if app ~= s or s.exited then
+    return
+  end
+  if type(value) ~= "table" then
+    return
+  end
+  if value.type == "ready" and not s.ready then
+    if value.protocol ~= 1 then
+      notify("取り決めの版が違います。md-preview を更新してください", vim.log.levels.ERROR)
+      return terminate(s)
+    end
+    if type(value.url) ~= "string" or value.url == "" then
+      notify("アプリの URL を読めません", vim.log.levels.ERROR)
+      return terminate(s)
+    end
+    close_timer(s.ready_timer)
+    s.ready_timer = nil
+    s.ready, s.url = true, value.url
+    if s.active then
+      if s.resuming then
+        send(s, { type = "resume" })
+      end
+      send_doc(s, true)
+      schedule_scroll(s)
+    else
+      send(s, { type = "pause" })
+    end
+    local mode = s.open_mode
+    s.open_mode, s.resuming = nil, nil
+    if mode == "now" then
+      open_browser(s)
+    elseif mode == "resume" then
+      reconnect(s)
+    end
+  elseif value.type == "clients" and type(value.count) == "number" and value.count >= 0 then
+    s.clients = value.count
+  elseif value.type == "jump" and s.ready then
+    jump(s, value)
+  elseif value.type == "error" and type(value.message) == "string" then
+    if value.message ~= s.last_error then
+      s.last_error = value.message
+      notify(value.message, value.fatal and vim.log.levels.ERROR or vim.log.levels.WARN)
+    end
+    if value.fatal then
+      terminate(s)
+    end
   end
 end
 
---- プレビューを始める。動いていれば、GitLab への送信の停止を解いて描き直し、ブラウザを開き直す
---- (トークンや GITLAB_HOST を直した後は、これで送り直す)。
+local function stdout(s, data)
+  if app ~= s then
+    return
+  end
+  s.output = s.output .. data
+  while true do
+    local at = s.output:find("\n", 1, true)
+    if not at then
+      break
+    end
+    local line = s.output:sub(1, at - 1):gsub("\r$", "")
+    s.output = s.output:sub(at + 1)
+    if line ~= "" then
+      local ok, value = pcall(vim.json.decode, line)
+      if ok then
+        receive(s, value)
+      elseif s.last_error ~= "アプリの JSON の行を読めません" then
+        s.last_error = "アプリの JSON の行を読めません"
+        notify(s.last_error, vim.log.levels.WARN)
+      end
+    end
+  end
+end
+
+local function stderr(s, data)
+  if app ~= s then
+    return
+  end
+  s.stderr = s.stderr .. data
+  local lines = vim.split(s.stderr, "\n", { plain = true })
+  while #lines > 11 do
+    table.remove(lines, 1)
+  end
+  s.stderr = table.concat(lines, "\n"):sub(-8192)
+end
+
+terminate = function(s)
+  s.intentional = true
+  deactivate(s)
+  close_timer(s.ready_timer)
+  s.ready_timer = nil
+  if s.proc and not s.exited then
+    pcall(s.proc.write, s.proc, nil)
+    local ok, result = pcall(s.proc.wait, s.proc, 200)
+    if not ok or not result or result.code == 124 then
+      pcall(s.proc.kill, s.proc, 9)
+      pcall(s.proc.wait, s.proc, 200)
+    end
+  end
+  if app == s then
+    app = nil
+  end
+end
+
+local function ensure_shutdown()
+  if not shutdown_group then
+    shutdown_group = vim.api.nvim_create_augroup("user_gitlab_preview_process", { clear = true })
+    vim.api.nvim_create_autocmd("VimLeavePre", {
+      group = shutdown_group,
+      callback = function()
+        leaving = true
+        if app then
+          terminate(app)
+        end
+        if install_job and install_job.proc then
+          pcall(install_job.proc.kill, install_job.proc, 9)
+        end
+      end,
+    })
+  end
+end
+
+spawn_app = function(buf, active, open_mode)
+  local argv = command()
+  if not argv then
+    return
+  end
+  argv[#argv + 1] = "--stdio"
+  local s = { buf = buf, active = false, clients = 0, timers = {}, output = "", stderr = "", open_mode = open_mode }
+  app = s
+  if active then
+    activate(s, buf)
+  end
+  ensure_shutdown()
+  -- vim.system のコールバックは fast context。状態のフラグ以外は schedule の中で触る。
+  local ok, proc = pcall(vim.system, argv, {
+    stdin = true,
+    text = true,
+    stdout = function(_, data)
+      if data then
+        vim.schedule(function()
+          stdout(s, data)
+        end)
+      end
+    end,
+    stderr = function(_, data)
+      if data then
+        vim.schedule(function()
+          stderr(s, data)
+        end)
+      end
+    end,
+  }, function(result)
+    s.exited = true
+    vim.schedule(function()
+      if app ~= s then
+        return
+      end
+      deactivate(s)
+      close_timer(s.ready_timer)
+      app = nil
+      if not s.intentional and not leaving then
+        local tail = not s.ready and last_line(s.stderr) or ""
+        notify(
+          "プレビューのアプリが終了しました" .. (tail ~= "" and ": " .. tail or ""),
+          vim.log.levels.ERROR
+        )
+      end
+    end)
+  end)
+  if not ok then
+    deactivate(s)
+    app = nil
+    notify("アプリを起動できません: " .. tostring(proc), vim.log.levels.ERROR)
+    return
+  end
+  s.proc = proc
+  s.ready_timer = assert(uv.new_timer())
+  s.ready_timer:start(
+    M.config.ready_timeout_ms,
+    0,
+    vim.schedule_wrap(function()
+      if app == s and not s.ready then
+        local tail = last_line(s.stderr)
+        notify("アプリの起動が時間切れです" .. (tail ~= "" and ": " .. tail or ""), vim.log.levels.ERROR)
+        terminate(s)
+      end
+    end)
+  )
+  local appearance = vim.g.gitlab_preview_appearance
+  appearance = type(appearance) == "table" and appearance or {}
+  local theme, width = appearance.theme, appearance.width
+  send(s, {
+    type = "hello",
+    protocol = 1,
+    appearance = {
+      theme = (theme == "light" or theme == "dark") and theme or "system",
+      width = width == "fixed" and width or "fluid",
+    },
+  })
+end
+
 function M.start()
+  if leaving then
+    return
+  end
   local buf = vim.api.nvim_get_current_buf()
   if not is_target(buf) then
     return notify("Markdown のバッファで実行する", vim.log.levels.WARN)
   end
-  if state then
-    refresh_page(false)
-    state.api_off, state.retry_at, state.retry_reason = nil, nil, nil
-    state.ctx_cache, state.cache = {}, {}
-    state.buf = buf
-    schedule_render(0)
-    open_browser()
-    return
+  if not app then
+    return spawn_app(buf, true, "now")
   end
-
-  -- headless の別プロセスで導入した資産も、次の開始から反映する。
-  page_cache = nil
-  local ok_page, page = pcall(load_page)
-  if not ok_page then
-    return notify("ページのファイルを読めない: " .. tostring(page), vim.log.levels.ERROR)
-  end
-  local ok, err = server.start({
-    page = { html = page.html, js = page.js, css = page.css, fallback = page.fallback },
-    csp = page.csp,
-    assets = page.assets,
-    root = function()
-      return state and state.root
-    end,
-  })
-  if not ok then
-    return notify("サーバーを起動できない: " .. tostring(err), vim.log.levels.ERROR)
-  end
-  state = {
-    assets_id = page.assets and page.assets.id or false,
-    buf = nil,
-    req_id = 0,
-    req = nil,
-    dirty = false,
-    cache = {},
-    ctx_cache = {},
-    timers = { render = assert(vim.uv.new_timer()), scroll = assert(vim.uv.new_timer()) },
-  }
-  create_autocmds()
-  follow(buf)
-
-  local url = server.url()
-  -- このセッションで前に開いたのと同じ URL (同じポートと token) なら、開いたままのタブが
-  -- 再接続してくる (EventSource は 1 秒ごとにつなぎ直す)。少し待ち、来なければ開く
-  if url == last_url then
-    vim.defer_fn(function()
-      if state and server.client_count() == 0 then
-        open_browser()
-      end
-    end, M.config.reconnect_wait_ms)
+  local s = app
+  if s.active then
+    follow(s, buf)
+    send_doc(s, true)
+    if s.ready then
+      open_browser(s)
+    else
+      s.open_mode = "now"
+    end
   else
-    open_browser()
+    activate(s, buf)
+    if s.ready then
+      send(s, { type = "resume" })
+      send_doc(s, true)
+      reconnect(s)
+    else
+      s.resuming, s.open_mode = true, "resume"
+    end
   end
-  last_url = url
 end
 
---- プレビューを止める。ページには止めたことを伝える ("exit" は Neovim の終了)。
----@param reason? "stop"|"exit"
-function M.stop(reason)
-  if not state then
-    return
-  end
-  local s = state
-  state = nil
-  if s.req then
-    s.req.cancel()
-  end
-  for _, t in pairs(s.timers) do
-    t:stop()
-    t:close()
-  end
-  pcall(vim.api.nvim_del_augroup_by_id, s.group)
-  local clients = server.close(reason or "stop")
-  if reason == "exit" then
-    -- 終了する前に、タブへの「終了した」を書き終える (短く待つだけ。届かなくてもタブは切断を表示する)
-    vim.wait(200, function()
-      return next(clients) == nil
-    end, 10)
+function M.stop()
+  if app and app.active then
+    if app.ready then
+      send(app, { type = "pause" })
+    end
+    if app then
+      deactivate(app)
+    end
   end
 end
 
 function M.toggle()
-  if state then
+  if M.is_running() then
     M.stop()
   else
     M.start()
   end
 end
 
---- ブラウザでページを開き直す
 function M.open()
-  if state then
-    open_browser()
+  if app and app.active then
+    open_browser(app)
   end
 end
 
----@return string?
 function M.url()
-  return state and server.url() or nil
+  return app and app.active and app.url or nil
 end
 
 function M.is_running()
-  return state ~= nil
+  return app ~= nil and app.active
 end
 
---- 利用者が明示的に要求したときだけ公式資産を取得する。
 function M.install()
-  local ok, err = require("config.gitlab_preview.installer").run({
-    on_done = function(success)
-      if success then
-        refresh_page(true)
+  if install_job then
+    return notify("公式スタイルの導入は進行中です")
+  end
+  local argv = command()
+  if not argv then
+    return
+  end
+  argv[#argv + 1] = "install-style"
+  ensure_shutdown()
+  local job = {}
+  install_job = job
+  local ok, proc = pcall(vim.system, argv, { text = true }, function(result)
+    vim.schedule(function()
+      if install_job ~= job then
+        return
       end
-    end,
-  })
-  if not ok then
-    notify(tostring(err), vim.log.levels.ERROR)
+      install_job = nil
+      if leaving then
+        return
+      end
+      if result.code ~= 0 then
+        local reason = last_line(result.stderr)
+        return notify(
+          reason ~= "" and reason or "公式スタイルの導入に失敗しました",
+          vim.log.levels.ERROR
+        )
+      end
+      local message = last_line(result.stdout)
+      notify(message ~= "" and message or "公式スタイルを導入しました")
+      if app then
+        local buf, active = app.buf, app.active
+        terminate(app)
+        -- 休止状態は保ち、URL が変わるので新しいページを開く。
+        spawn_app(buf, active, "now")
+      end
+    end)
+  end)
+  if ok then
+    job.proc = proc
+  else
+    install_job = nil
+    notify("導入のアプリを起動できません: " .. tostring(proc), vim.log.levels.ERROR)
   end
 end
 

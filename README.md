@@ -16,12 +16,13 @@ Markdown (GLFM) 執筆を強化した Neovim 設定。
 | この設定だけ (本体が入っているとき) | [LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する) |
 | Markdown の整形器 md-format (`mdfmt`) | [md-format を導入・更新する](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/install.md#md-format-を導入更新する) | [Windows 11 で md-format を導入・更新する](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/install.md#windows-11-で-md-format-を導入更新する) |
 | 安全な Markdown 整形 (md-format の後) | [LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する) | [Windows 11 で LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の安全な-markdown-整形を導入する) |
-| 動作の確認 | [LazyVim の日本語検索・整形・IME 連携を確かめる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の日本語検索整形ime-連携を確かめる) (この設定と安全な整形の後、再起動してから) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 10 (その項を最後まで通したなら済んでいる) |
+| GitLab プレビューのアプリ md-preview (`mdpreview`。任意) | [md-preview を導入・更新する](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#md-preview-を導入更新する) | [Windows 11 で md-preview を導入・更新する](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#windows-11-で-md-preview-を導入更新する) |
+| GitLab プレビュー (md-preview の後。任意) | [LazyVim の GitLab プレビューを導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを導入する) | [Windows 11 で LazyVim の GitLab プレビューを導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の-gitlab-プレビューを導入する) |
+| 動作の確認 | [LazyVim の日本語検索・整形・IME 連携を確かめる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の日本語検索整形ime-連携を確かめる) (この設定と安全な整形の後、再起動してから) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 9 (その項を最後まで通したなら済んでいる) |
 | ほかのマシンの変更を取り込む | [LazyVim の設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定とプラグインの版を揃える) | [Windows 11 で LazyVim の設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定とプラグインの版を揃える) |
 | 更新 | [LazyVim の本体・外部コマンド・プラグインを更新する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の本体外部コマンドプラグインを更新する) | [Windows 11 で LazyVim の本体・外部コマンド・プラグインを更新する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の本体外部コマンドプラグインを更新する) |
 
-- 任意: [GitLab プレビューを設定する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを設定する) (Windows 11 は[同じ名前の項](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の-gitlab-プレビューを設定する))・
-  [カーソル色を tmux で使う](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のカーソル色を-tmux-で使う)・
+- 任意: [カーソル色を tmux で使う](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のカーソル色を-tmux-で使う)・
   [IME 連携に GNOME の上部バーを合わせる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)・
   [ヤンクを SSH 越しに手元へ送る](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のヤンクを-ssh-越しに手元へ送る)・
   [Neovim を既定のエディタにする](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#neovim-を既定のエディタにする) (Windows 11)
@@ -174,40 +175,34 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
     Windows では build も通らなかった)。代わりに下の GitLab プレビューを使う。
   - render-markdown.nvim は無効化 (記法をそのまま見て書き、見た目はプレビューで確かめる)。
   - 診断と整形の両方から外す markdownlint ルールは `lua/plugins/lang-markdown.lua` の `disabled_rules` に列挙。
-- **GitLab プレビュー** (`<leader>cp` で切り替え、`:GitLabPreview` / `:GitLabPreviewStop`) — 編集中の内容を
-  GitLab の Markdown API に描かせて、ブラウザに出す。GitLab が描いた HTML を使い、
-  `[[_TOC_]]`・`` $`…`$ ``・`>>>`・`{+ +}`・`[~]`・アラート・`#123` などの参照を GitLab 本体の解釈で確かめられる。
+- **GitLab プレビュー** (`<leader>cp` で切り替え、`:GitLabPreview` / `:GitLabPreviewStop` / `:GitLabPreviewToggle`) —
+  [md-preview](https://github.com/ryo-aoki-pc/md-preview) (`mdpreview`) を起動して、編集中の内容をブラウザに出す。
+  GitLab の描画エンジンを WebAssembly にしたものと、GitLab のフィルターの写しで手元で描き、本文を GitLab にも CDN にも送らない。トークンの設定は要らない。
   - 打つたびに (約 0.3 秒ごと。保存しなくてよい) 描き直し、スクロールがカーソルの位置に付いてくる。
     表示している markdown のバッファに追従する (別のファイルに移ると、ページもそちらになる)
-  - CSS・フォント・SVG は GitLab CE の公式資産から導入時に取得する (初回は約 785 MB)。このリポジトリには含めず、
-    Neovim のデータ領域の `gitlab-preview/assets/` に必要なファイルとライセンスを保存する。
-    通常起動・プレビュー表示では取得しない。導入と版を揃える手順は setup-notes の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)
-    (Windows 11 は[同じ名前の項](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する))
-  - `:GitLabPreviewInstall` で公式スタイルを取得し直せる。同じ版とハッシュの資産が揃っていれば取得しない。
-    未導入・破損時は独自 CSS で表示し、「公式スタイル未導入」と案内する (GitLab API と近似表示の区別とは別)
+  - 本文の `.md` へのリンクは同じタブの中で開く。「一覧」でフォルダーの Markdown の一覧、「見出し」で見出しの欄を開く。
+    本文をダブルクリックすると、エディタのその行へ移る。印刷用のスタイルもある
+  - `::include` は手元のファイルで展開し、未 push の変更も入る。画像と動画の相対リンクも手元のファイルを出す
+  - 「GitLab との違い <件数>」には、手元で再現しない記法や、見つからない画像などの知らせが出る (知らせがあるときだけ表示する)。
+    `#123`・`!45`・`@名前`・`~ラベル` などの参照、PlantUML・Kroki の図、提案 (suggestion)、独自の絵文字、URL の include は原文のまま出す。参照はリンクにならない
   - 上部で「システム / ライト / ダーク」と「全幅 / 固定幅」を切り替えられる。初期値はシステム配色・全幅。
     `vim.g.gitlab_preview_appearance = { theme = "dark", width = "fixed" }` などで初期値を変えられる
     (`theme` は `system` / `light` / `dark`、`width` は `fluid` / `fixed`。固定幅の上限は 1600 px)
-  - コード配色は、ライセンスを確認できた Dracula を明暗両方のテーマで使う。GitLab.com の標準の white / dark 配色とは異なる
-  - **内容を GitLab に送るのは、環境変数 `GITLAB_TOKEN` (`read_api` のアクセストークン) があるときだけ**。
-    送り先は `GITLAB_HOST` (無ければ gitlab.com) だけで、git の remote のホスト名からは決めない。
-    設定の手順は setup-notes の[LazyVim の GitLab プレビューを設定する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを設定する) (Windows 11 は[同じ名前の項](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の-gitlab-プレビューを設定する))
-  - git の remote (origin) のホストが送り先と同じなら、そのプロジェクトとして描かせる (`#123` などがリンクになる)。
-    違うとき、そのプロジェクトを読めないときは、プロジェクト無しで描かせる
-  - 画像と動画の相対リンクは手元のファイルを出す (push していない画像も見える)。ほかのファイルへの
-    リンクは GitLab の URL のまま (新しいタブで開く)
-  - トークンが無い・GitLab に届かないときは、markdown-it で描いた**近似表示**になり、理由をバナーに出す。
-    近似表示では inline diff・色見本・`>>>`・include・参照・絵文字の短縮記法・PlantUML は描かない。
-    描画用のライブラリ (cdn.jsdelivr.net) にも届かないときは、原文をそのまま出す
+  - 公式スタイル (GitLab の CSS・フォント) は任意。入れなければ同梱のスタイルで表示し、知らせは出ない。
+    `mdpreview install-style` (Neovim からは `:GitLabPreviewInstall`) で約 785 MB を取得し、約 4 MB を保存する。
+    保存先は AlmaLinux 10 が `${XDG_DATA_HOME:-~/.local/share}/md-preview-assets`、Windows 11 が `%LOCALAPPDATA%\md-preview-assets`。
+    手順は md-preview の[公式スタイルの取得 (AlmaLinux 10)](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#md-preview-の公式スタイルを取得する)・[Windows 11](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#windows-11-で-md-preview-の公式スタイルを取得する)
+  - コードの色分けは highlight.js の字句を GitLab (Rouge) のクラス名に対応づけており、GitLab より粗い。
+    公式スタイルのコード配色は、明暗両方のテーマで Dracula を使う
   - 数式 (KaTeX) と図 (mermaid) は、GitLab と同じくブラウザが描く (ライブラリの版は GitLab とは違う)
-  - 安全策: 127.0.0.1 だけで待ち受け、URL に推測できない値を入れる。編集対象のファイルはリポジトリの中だけで、
-    `.git` は返さない。公式スタイルは別の配信口から登録済みの資産だけを返す。トークンはコマンドラインにもファイルにも書かない
-  - 制限: 非公開のプロジェクトの `/uploads/` の画像は出ないことがある (ブラウザが GitLab のログインの Cookie を
-    送らないため)。`::include` は GitLab が既定のブランチの内容で展開する (手元の未 push の変更は入らない)
-    公式 CSS は固定版で、GitLab.com の更新やブラウザ・OS のフォントによって表示に差が出ることがある
+  - 外へ通信するのは、本文が外部 URL の画像・動画を指すときにブラウザがその URL から読む場合と、公式スタイルを取得する場合だけ
+  - 安全策: 127.0.0.1 だけで待ち受け、URL に推測できない値を入れる。編集対象のファイルはリポジトリの中だけで、`.git` は返さない
+  - md-preview の導入先は AlmaLinux 10 が `${XDG_DATA_HOME:-~/.local/share}/md-preview`、Windows 11 が `%LOCALAPPDATA%\md-preview`。
+    別の場所に入れたときは `vim.g.gitlab_preview_dir` に導入先を入れる
   - ブラウザは OS の既定。変えるときは `vim.g.gitlab_preview_browser` に関数を入れる
     (例: Edge の別窓なら `function(url) vim.system({ "cmd.exe", "/d", "/c", "start", "", "msedge", "--app=" .. url }) end`)
-  - 実装は `lua/config/gitlab_preview/` (配線は `lua/plugins/gitlab-preview.lua`)
+  - 使い方は [md-preview の使い方](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/usage.md)にある。
+    橋渡しの実装は `lua/config/gitlab_preview/init.lua` (配線は `lua/plugins/gitlab-preview.lua`)
 - **画像の貼り付け** ([img-clip.nvim](https://github.com/HakonHarnes/img-clip.nvim)、`<leader>ci`) — クリップボードの
   画像 (スクリーンショットなど) を、.md と同じディレクトリの `assets/` に保存し、`![](assets/….png)` を入れる。
   ファイル名を聞かれる (空のまま Enter で日時)。取り出しは Windows が PowerShell、Linux が wl-clipboard。
@@ -252,7 +247,7 @@ Neovim 0.12 以上のほかに、git / ripgrep / fd / C コンパイラ / curl�
 Node.js / Nerd Font / ibus + ibus-anthy (Linux) を前提にしている
 (`lazy-lock.json` の nvim-treesitter が Neovim 0.12 を要る。LazyVim 自身の下限は 0.11.2)。
 **足りなくてもエラーにならず静かに壊れる**ため、初回起動の前に揃えること。
-GitLab プレビューには GitLab のアクセストークン・curl 8.3 以上・ブラウザが、Linux での画像の貼り付けには
+GitLab プレビューには md-preview とブラウザが、Linux での画像の貼り付けには
 wl-clipboard が要る (どれも任意。無ければその機能だけが使えない)。
 
 Termux では、`lua-language-server`・`stylua`・`taplo`・`shellcheck`・`shfmt`・`tree-sitter` (tree-sitter CLI) を、
@@ -268,7 +263,7 @@ Mason ではなく Termux のパッケージで入れる。
 (別マシンでは `:Lazy restore` で同じバージョンに揃う)。
 `:Lazy sync` は update を含むので、揃えるだけのときは使わない。
 初めてのマシンでは初回の導入が lock ファイルを書き換えるので、
-正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 10 (Windows 11 は[Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 7) の形で揃える。
+正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 8 (Windows 11 は[Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 7) の形で揃える。
 
 ## 文書
 

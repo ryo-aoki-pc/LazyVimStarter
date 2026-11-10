@@ -4,7 +4,7 @@
 -- extra の内容: marksman LSP / markdownlint-cli2 + markdown-toc / conform (整形) /
 --       nvim-lint + none-ls (lint 診断) / markdown-preview.nvim / render-markdown.nvim
 -- このうち markdown-preview.nvim・render-markdown.nvim・markdown-toc は下で外している。
--- プレビューは GitLab の Markdown API で描く自作のもの (lua/plugins/gitlab-preview.lua)。
+-- プレビューは md-preview で手元の Markdown を描くもの (lua/plugins/gitlab-preview.lua)。
 
 -- markdownlint で無効化 (除外) したいルールをここに列挙する。
 -- 例:
@@ -57,7 +57,7 @@ local specs = {
   -- ブラウザのプレビュー (markdown-preview.nvim) は外す。2023-10 を最後に更新が止まっており、
   -- node 製のプレビューアプリの build は Windows の 'shell' (PowerShell) では通らない。
   -- 描画は markdown-it で、GLFM 固有の記法 ($`…`$・```math・>>>・アラート・[~] など) を描けない。
-  -- 代わりに GitLab 自身に描かせるプレビュー (lua/plugins/gitlab-preview.lua) を <leader>cp に置く。
+  -- 代わりに md-preview で手元で描くプレビュー (lua/plugins/gitlab-preview.lua) を <leader>cp に置く。
   -- enabled = false で extra の <leader>cp・:MarkdownPreview* コマンド・build も登録されなくなる。
   { "iamcco/markdown-preview.nvim", enabled = false },
 

@@ -63,7 +63,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
   `:Lazy restore` で揃える)。`:Lazy sync` は update を含むので、揃えるだけのときは使わない。
 - **初回導入は `lazy-lock.json` を書き換える**。lazy.nvim の起動時の導入は何回かに分かれ、1 回目の後に
   導入済みの分だけで lock を書き直す (`lazy/manage/lock.lua` の `update()`) ため、後から入るプラグインが最新になる。
-  git で lock を戻してから `:Lazy restore` し直すと揃う (正本の「LazyVim の設定を導入する」の手順 10、Windows 11 は「Windows 11 で LazyVim の設定を導入する」の手順 7)。
+  git で lock を戻してから `:Lazy restore` し直すと揃う (正本の「LazyVim の設定を導入する」の手順 8、Windows 11 は「Windows 11 で LazyVim の設定を導入する」の手順 7)。
 - `checkhealth lazyvim` を headless で見るときは、先に `mason.nvim` を読み込む (Mason の `bin` が PATH に
   入るのは Mason を読み込んだときだけで、読み込まないと `tree-sitter (CLI)` が ERROR になる)。
 
@@ -95,7 +95,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
   `gnome-shell/` の拡張。日本語の検索 (Migemo) の `lua/config/migemo.lua`・`migemo_blink.lua`・
   `lua/plugins/migemo.lua` も同じ節
 - 「Markdown / GLFM」: `lua/plugins/lang-markdown.lua`・`table-mode.lua`・`img-clip.lua`・`gitlab-preview.lua`、
-  `lua/config/gitlab_preview/`、`snippets/markdown.json`、`lua/config/md_format.lua`・`md_format_spare.lua`、
+  `lua/config/gitlab_preview/init.lua`・`tests/gitlab_preview_bridge.lua`・`tests/gitlab_preview_bridge/cli.mjs`、`snippets/markdown.json`、`lua/config/md_format.lua`・`md_format_spare.lua`、
   `tests/md_format_conform.lua`、
   `lua/config/autocmds.lua` の Markdown の conceal
 
@@ -154,7 +154,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
   (npm で入るものか、glibc 向けのバイナリか) を確かめる。glibc 向けなら、`termux.lua` の除外の一覧にも足す。
 - スニペットの JSON で文字の `$` は `\\$` と書く (Neovim のスニペットの文法では `$` がタブストップになる)。
 - `vim.uv` と `vim.system` のコールバックは fast context で走る。`vim.api` / `vim.fn` / `vim.fs` を呼ぶと
-  エラーになるので、`vim.schedule` で通常の文脈に移してから呼ぶ (`lua/config/gitlab_preview/` が実例)。
+  エラーになるので、`vim.schedule` で通常の文脈に移してから呼ぶ (`lua/config/gitlab_preview/init.lua` が実例)。
 - `lua/plugins/gitlab-preview.lua` の `virtual = true` は lazy.nvim の文書に無い機能。lazy.nvim を上げたら
   `<leader>cp` と `:GitLabPreview` が生きているか確かめる (だめなら snacks.nvim の spec の keys に相乗りさせる)。
 - LazyVim は SSH の中では `clipboard` を空にし、Neovim は `clipboard` が空のときしか OSC 52 を自動で選ばないので、
@@ -173,7 +173,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
 
 - 導入・利用・更新の手順は正本に置き、README の「導入」の表から正本の項へ直接リンクする (手順書の先頭やカテゴリの見出しへはリンクしない)。執筆規則は setup-notes の `docs/dev/writing-rules.md`
 - `docs/extra/setup.md` は必要なもの一覧・注意点。ロールバック（取り消し）の手順は書かない。`docs/reference/setup.md` は正本の各手順の背景 (見出しは `### <項> / 手順 N: 補足: <題>`)。検証記録 (環境・日付・対象コミット・実出力・未確認事項) は Forgejo の非公開リポジトリ `setup-notes-verification` の `repos/LazyVimStarter/docs/verification/` に置く
-- `docs/dev/architecture.md` は設計、`docs/dev/check.md` は変更後の確認 (Markdown の整形の配線の試験)。整形器のルール一覧は md-format の `docs/reference/rules.md` にある。非公開側の検証記録の `claude.md` は実施範囲の要約
+- `docs/dev/architecture.md` は設計、`docs/dev/check.md` は変更後の確認 (Markdown の整形の配線とプレビューの橋渡しの試験)。整形器のルール一覧は md-format の `docs/reference/rules.md` にある。非公開側の検証記録の `claude.md` は実施範囲の要約
 - 正本の手順番号が変わったら、参考資料と extra の手順番号を付け替える。setup-notes から張られている見出し (extra の「必要なもの一覧」「注意点」など) は名前を変えない
 - 文書を移す・分ける・まとめるときは、移した経緯と、旧ファイル名・旧見出しとの対応を文書に書かない (経緯は git の履歴と Pull Request の本文に残す)。リンクを今の場所へ直す。中身が新しい場所への案内だけになったファイルは消す
 - 検証記録を書く・直すときは、Forgejo の非公開リポジトリ `setup-notes-verification` を clone し、そちらへ Pull Request を作る。このリポジトリから検証記録へは URL で指さず、「`<検証記録のパス>` の「<見出し>」」と文字で書く（見出しを指さないときは、同じ名前の文書の記録なら「検証記録」とだけ書き、ほかの記録はパスを添える）
