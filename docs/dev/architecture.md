@@ -132,14 +132,15 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
 - render-markdown.nvim と **markdown-preview.nvim は無効** (後者は 2023-10 から更新が止まり、GLFM を描けない)。
 - **プレビューは [md-preview](https://github.com/ryo-aoki-pc/md-preview)** を使う（切り替えは `<leader>cp`）。
   本文は GitLab に送らず、導入したアプリが手元で HTML にし、ブラウザへ表示する。
-  - Lua の橋渡しは **`lua/config/gitlab_preview/init.lua`**。最初の start で node と導入先の `cli.mjs --stdio` を
+  - Lua の橋渡しは **`lua/config/gitlab_preview/init.lua`**。最初の start で `mdpreview --stdio` を
     `vim.system` で起こし、UTF-8 の JSON を1行ずつ標準入出力で送受信する。require だけでは何もしない。
     最初に hello（`protocol: 1` と表示の初期値）を送り、10秒以内の ready と対応する版を確かめる。
     分割して届く標準出力は改行までまとめ、標準エラーは起動失敗の知らせに使う最後の数行だけを覚える
-  - 導入先は md-format と同じ決まりの md-preview フォルダー（Windows は `%LOCALAPPDATA%/md-preview`、
-    macOS は `~/Library/Application Support/md-preview`、ほかは `XDG_DATA_HOME` または `~/.local/share` の下）。
-    `vim.g.gitlab_preview_dir` に文字列を置くと変えられる。node や cli.mjs が無ければ導入を促す。
-    通常の起動や開始から導入処理は呼ばない
+  - 実行ファイルは `vim.g.gitlab_preview_command`、PATH の `mdpreview`、`~/.local/bin/mdpreview` の順に探す
+    （Windows は `%USERPROFILE%/.local/bin/mdpreview.exe`。PATH では大文字と小文字を区別せず `.exe` だけを使う）。
+    設定が空でない文字列なら正規化した絶対パス、空でない文字列の並びならその引数をそのまま使う。
+    ほかの型や空の値は未設定として扱い、決まった場所では通常のファイルだけを使う。
+    見つからなければ導入を1回だけ促す。通常の起動や開始から導入処理は呼ばない
   - 通常の Markdown バッファへ追従し、ほかの種類へ移ってもページを保つ。本文は変更後300 msで間引き、
     絶対パス・表示名・本文・`changedtick` を doc で送る。無名のバッファのパスは null。
     同じバッファと `changedtick` は続けて送らず、バッファの切り替え・名前の変更・再開では送り直す。
@@ -154,7 +155,7 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
     子が勝手に終わったら状態を片付け、次の start で起こし直せる。
     `VimLeavePre` で標準入力を閉じ、200 msで終わらなければ子を止める。
     `vim.system` と `vim.uv` のコールバックから `vim.api`・`vim.fn`・`vim.fs` を使う処理は、`vim.schedule` で通常の文脈へ移す
-  - `:GitLabPreviewInstall` は node と導入先の `cli.mjs install-style` を明示的に起こす。
+  - `:GitLabPreviewInstall` は同じ決まりで探した実行ファイルを `mdpreview install-style` として明示的に起こす。
     終了後に結果を知らせ、プレビューの子があれば起こし直して新しい URL を開く。
     取得・検証・HTTP・ブラウザのページの実装と試験は md-preview にあり、Lua では扱わない
   - 配線は `lua/plugins/gitlab-preview.lua` の **lazy.nvim の virtual spec**（取得も `runtimepath` への追加もせず、

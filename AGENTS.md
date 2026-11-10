@@ -96,7 +96,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
   `lua/plugins/migemo.lua` も同じ節
 - 「Markdown / GLFM」: `lua/plugins/lang-markdown.lua`・`table-mode.lua`・`img-clip.lua`・`gitlab-preview.lua`、
   `lua/plugins/mdtable.lua`・`lua/config/mdtable.lua`・`tests/mdtable_edit.lua`、
-  `lua/config/gitlab_preview/init.lua`・`tests/gitlab_preview_bridge.lua`・`tests/gitlab_preview_bridge/cli.mjs`、`snippets/markdown.json`、`lua/config/md_format.lua`・`md_format_spare.lua`、
+  `lua/config/gitlab_preview/init.lua`・`tests/gitlab_preview_bridge.lua`・`tests/gitlab_preview_bridge/fake-app.mjs`、`snippets/markdown.json`、`lua/config/md_format.lua`・`md_format_spare.lua`、
   `tests/md_format_conform.lua`、
   `lua/config/autocmds.lua` の Markdown の conceal
 

@@ -1,4 +1,4 @@
--- md-preview との橋渡し。描画・HTTP・公式スタイルの処理は導入先の cli.mjs に任せる。
+-- md-preview との橋渡し。描画・HTTP・公式スタイルの処理は mdpreview 実行ファイルに任せる。
 -- require だけでは起動せず、Neovim につき1つの子プロセスを標準入出力の取り決めの版1で使う。
 -- stop は休止、VimLeavePre は標準入力を閉じる。設定と配線は lua/plugins/gitlab-preview.lua。
 local M = {}
@@ -13,39 +13,47 @@ local function notify(message, level)
   vim.notify("GitLab プレビュー: " .. message, level or vim.log.levels.INFO)
 end
 
-local function install_dir()
-  local configured = vim.g.gitlab_preview_dir
-  if type(configured) == "string" and configured ~= "" then
-    return vim.fs.normalize(vim.fn.fnamemodify(vim.fs.normalize(configured), ":p"))
-  end
-  local home = uv.os_homedir() or vim.fn.expand("~")
-  local base
-  if vim.fn.has("win32") == 1 then
-    local value = vim.env.LOCALAPPDATA
-    base = (value and value ~= "") and value or vim.fs.joinpath(home, "AppData", "Local")
-  elseif vim.fn.has("mac") == 1 then
-    base = vim.fs.joinpath(home, "Library", "Application Support")
-  else
-    local value = vim.env.XDG_DATA_HOME
-    base = (value and value:sub(1, 1) == "/") and value or vim.fs.joinpath(home, ".local", "share")
-  end
-  return vim.fs.joinpath(base, "md-preview")
+local function absolute_path(path)
+  return vim.fs.normalize(vim.fn.fnamemodify(vim.fs.normalize(path), ":p"))
 end
 
 local function command()
-  local cli = vim.fs.joinpath(install_dir(), "cli.mjs")
-  if vim.fn.executable("node") == 0 or not uv.fs_stat(cli) then
-    if not missing_warned then
-      missing_warned = true
-      notify(
-        "md-preview が導入されていません。md-preview の docs/install.md の手順で導入してください: "
-          .. "https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md",
-        vim.log.levels.WARN
-      )
+  local configured = vim.g.gitlab_preview_command
+  if type(configured) == "string" and configured ~= "" then
+    return { absolute_path(configured) }
+  elseif type(configured) == "table" and vim.islist(configured) and #configured > 0 then
+    local valid = true
+    for _, value in ipairs(configured) do
+      if type(value) ~= "string" or value == "" then
+        valid = false
+        break
+      end
     end
-    return
+    if valid then
+      return vim.deepcopy(configured)
+    end
   end
-  return { "node", cli }
+
+  local windows = vim.fn.has("win32") == 1
+  local executable = vim.fn.exepath("mdpreview")
+  if executable ~= "" and (not windows or executable:lower():match("%.exe$")) then
+    return { absolute_path(executable) }
+  end
+
+  local home = uv.os_homedir() or vim.fn.expand("~")
+  local fallback = vim.fs.joinpath(home, ".local", "bin", windows and "mdpreview.exe" or "mdpreview")
+  local stat = uv.fs_stat(fallback)
+  if stat and stat.type == "file" then
+    return { absolute_path(fallback) }
+  end
+  if not missing_warned then
+    missing_warned = true
+    notify(
+      "md-preview が導入されていません。md-preview の docs/install.md の手順で導入してください: "
+        .. "https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md",
+      vim.log.levels.WARN
+    )
+  end
 end
 
 local function is_target(buf)

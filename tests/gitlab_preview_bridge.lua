@@ -10,10 +10,26 @@ local uv = vim.uv or vim.loop
 local sandbox = vim.fs.joinpath(root, ".tests", "gitlab-preview-bridge-" .. uv.os_getpid())
 vim.fn.mkdir(sandbox, "p")
 local log = vim.fs.joinpath(sandbox, "events.jsonl")
-local original = { notify = vim.notify, open = vim.ui.open, executable = vim.fn.executable }
+local original = {
+  notify = vim.notify,
+  open = vim.ui.open,
+  system = vim.system,
+  exepath = vim.fn.exepath,
+  has = vim.fn.has,
+  homedir = uv.os_homedir,
+}
 local saved_dir = vim.env.MD_PREVIEW_BRIDGE_TEST_DIR
 vim.env.MD_PREVIEW_BRIDGE_TEST_DIR = sandbox
-vim.g.gitlab_preview_dir = vim.fs.joinpath(root, "tests", "gitlab_preview_bridge")
+local fake_app = vim.fs.joinpath(root, "tests", "gitlab_preview_bridge", "fake-app.mjs")
+local fake_command = { "node", fake_app }
+vim.g.gitlab_preview_command = vim.deepcopy(fake_command)
+local home = vim.fs.joinpath(sandbox, "home")
+uv.os_homedir = function()
+  return home
+end
+vim.fn.exepath = function(name)
+  return name == "mdpreview" and "" or original.exepath(name)
+end
 local warnings, opened, commands = {}, {}, {}
 vim.notify = function(message, level)
   assert(not vim.in_fast_event(), "知らせを fast context から出さない")
@@ -160,6 +176,92 @@ local ok, error_message = xpcall(function()
     lines[i] = "行 " .. i
   end
   local a = buffer("文書 A.md", lines)
+  local function select_command(configured, executable, windows, action)
+    local captured = {}
+    vim.g.gitlab_preview_command = configured
+    vim.fn.exepath = function(name)
+      return name == "mdpreview" and executable or original.exepath(name)
+    end
+    vim.fn.has = function(name)
+      return name == "win32" and (windows and 1 or 0) or original.has(name)
+    end
+    vim.system = function(argv)
+      captured[#captured + 1] = argv
+      error("探索だけを確かめ、子プロセスは起こさない")
+    end
+    action(captured)
+    vim.system, vim.fn.has = original.system, original.has
+    vim.fn.exepath = function(name)
+      return name == "mdpreview" and "" or original.exepath(name)
+    end
+    vim.g.gitlab_preview_command = vim.deepcopy(fake_command)
+  end
+  test("文字列の設定を正規化した絶対パスにし、PATH より優先する", function()
+    local relative = "tests/../tests/gitlab_preview_bridge/試験用アプリ"
+    select_command(relative, vim.fs.joinpath(sandbox, "path-mdpreview.exe"), true, function(captured)
+      preview.start()
+      assert(vim.deep_equal(captured[1], { vim.fs.normalize(vim.fn.fnamemodify(relative, ":p")), "--stdio" }))
+      assert(vim.g.gitlab_preview_command == relative)
+    end)
+  end)
+  test("並びの設定をそのまま使い、起動ごとに引数の並びを新しく作る", function()
+    select_command(fake_command, "", false, function(captured)
+      preview.start()
+      preview.install()
+      assert(vim.deep_equal(captured[1], { "node", fake_app, "--stdio" }))
+      assert(vim.deep_equal(captured[2], { "node", fake_app, "install-style" }))
+      assert(captured[1] ~= captured[2] and vim.deep_equal(vim.g.gitlab_preview_command, fake_command))
+    end)
+  end)
+  test("未設定・空の値・誤った型は無視して PATH を探す", function()
+    local executable = vim.fs.joinpath(sandbox, "PATH の mdpreview.exe")
+    local invalid = { "", {}, false, 42, { program = "node" }, { "node", "" }, { "node", 42 } }
+    for i = 0, #invalid do
+      select_command(invalid[i], executable, true, function(captured)
+        preview.start()
+        assert(vim.deep_equal(captured[1], { executable, "--stdio" }), vim.inspect(invalid[i]))
+      end)
+    end
+  end)
+  test("Windows の PATH は大文字の EXE も使い、ほかの OS は拡張子を求めない", function()
+    for _, item in ipairs({ { true, "mdpreview.EXE" }, { false, "mdpreview" } }) do
+      local executable = vim.fs.joinpath(sandbox, item[2])
+      select_command(nil, executable, item[1], function(captured)
+        preview.install()
+        assert(vim.deep_equal(captured[1], { executable, "install-style" }))
+      end)
+    end
+  end)
+  local bin = vim.fs.joinpath(home, ".local", "bin")
+  test("PATH に無ければ試験用ホームの .local/bin のファイルを使う", function()
+    vim.fn.mkdir(bin, "p")
+    for _, windows in ipairs({ false, true }) do
+      local executable = vim.fs.joinpath(bin, windows and "mdpreview.exe" or "mdpreview")
+      vim.fn.writefile({ "探索の試験用" }, executable)
+      select_command(nil, "", windows, function(captured)
+        preview.start()
+        assert(vim.deep_equal(captured[1], { executable, "--stdio" }))
+      end)
+    end
+  end)
+  test("Windows の PATH の cmd・bat・ps1 は使わず、決まった場所へ進む", function()
+    local executable = vim.fs.joinpath(bin, "mdpreview.exe")
+    for _, extension in ipairs({ "cmd", "CMD", "bat", "ps1" }) do
+      select_command(nil, vim.fs.joinpath(sandbox, "mdpreview." .. extension), true, function(captured)
+        preview.start()
+        assert(vim.deep_equal(captured[1], { executable, "--stdio" }))
+      end)
+    end
+  end)
+  test("PATH で見つかれば決まった場所のファイルより優先する", function()
+    local executable = vim.fs.joinpath(sandbox, "優先する mdpreview.exe")
+    select_command(nil, executable, true, function(captured)
+      preview.start()
+      assert(vim.deep_equal(captured[1], { executable, "--stdio" }))
+    end)
+    vim.fn.delete(vim.fs.joinpath(bin, "mdpreview"))
+    vim.fn.delete(vim.fs.joinpath(bin, "mdpreview.exe"))
+  end)
   test("hello と appearance を送り、ready の URL でブラウザの関数を呼ぶ", function()
     preview.start()
     ready(preview)
@@ -475,12 +577,11 @@ local ok, error_message = xpcall(function()
     end
     assert(spec.keys[1][1] == "<leader>cp")
   end)
-  test("導入先や node が無いときは導入の案内を1回だけ出す", function()
+  test("設定・PATH・決まった場所に無いときは導入の案内を1回だけ出す", function()
     preview.stop()
     emit({ type = "error", fatal = true, message = "未導入の試験の前に片付ける" })
     local before, count = #warnings, process_count()
-    local directory = vim.g.gitlab_preview_dir
-    vim.g.gitlab_preview_dir = vim.fs.joinpath(sandbox, "not-installed")
+    vim.g.gitlab_preview_command = nil
     preview.start()
     preview.start()
     assert(
@@ -494,14 +595,31 @@ local ok, error_message = xpcall(function()
         running = preview.is_running(),
       })
     )
-    vim.g.gitlab_preview_dir = directory
-    vim.fn.executable = function(name)
-      return name == "node" and 0 or original.executable(name)
-    end
+    -- 同じ名前のフォルダーは、決まった場所にあっても実行ファイルとして扱わない。
+    vim.fn.mkdir(vim.fs.joinpath(bin, "mdpreview"), "p")
+    vim.fn.mkdir(vim.fs.joinpath(bin, "mdpreview.exe"), "p")
     preview.start()
+    preview.install()
     assert(#warnings == before + 1 and process_count() == count)
-    vim.fn.executable = original.executable
+    vim.g.gitlab_preview_command = vim.deepcopy(fake_command)
     config({})
+    preview.start()
+    ready(preview)
+  end)
+  test("実行ファイルを起こせないときの知らせを保ち、設定を直すと再開できる", function()
+    emit({ type = "error", fatal = true, message = "起動失敗の試験の前に片付ける" })
+    local before, count = #warnings, process_count()
+    vim.g.gitlab_preview_command = vim.fs.joinpath(sandbox, "存在しないアプリ.exe")
+    preview.start()
+    assert(not preview.is_running() and #warnings == before + 1)
+    assert(warnings[#warnings].message:find("アプリを起動できません", 1, true))
+    preview.install()
+    assert(
+      #warnings == before + 2
+        and warnings[#warnings].message:find("導入のアプリを起動できません", 1, true)
+    )
+    assert(warnings[#warnings].level == vim.log.levels.ERROR and process_count() == count)
+    vim.g.gitlab_preview_command = vim.deepcopy(fake_command)
     preview.start()
     ready(preview)
   end)
@@ -525,9 +643,10 @@ end, debug.traceback)
 if preview then
   pcall(vim.api.nvim_exec_autocmds, "VimLeavePre", {})
 end
-vim.notify, vim.ui.open, vim.fn.executable = original.notify, original.open, original.executable
+vim.notify, vim.ui.open, vim.system = original.notify, original.open, original.system
+vim.fn.exepath, vim.fn.has, uv.os_homedir = original.exepath, original.has, original.homedir
 vim.env.MD_PREVIEW_BRIDGE_TEST_DIR = saved_dir
-vim.g.gitlab_preview_dir, vim.g.gitlab_preview_browser, vim.g.gitlab_preview_appearance = nil, nil, nil
+vim.g.gitlab_preview_command, vim.g.gitlab_preview_browser, vim.g.gitlab_preview_appearance = nil, nil, nil
 assert(
   vim.fs.normalize(sandbox):sub(1, #root + 8) == root .. "/.tests/",
   "試験の片付けは作業ツリー内だけ"
