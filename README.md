@@ -16,7 +16,7 @@ Markdown (GLFM) 執筆を強化した Neovim 設定。
 | この設定だけ (本体が入っているとき) | [LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する) |
 | Markdown の整形器 md-format (`mdfmt`) | [md-format を導入・更新する](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/install.md#md-format-を導入更新する) | [Windows 11 で md-format を導入・更新する](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/install.md#windows-11-で-md-format-を導入更新する) |
 | 安全な Markdown 整形 (md-format の後) | [LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する) | [Windows 11 で LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の安全な-markdown-整形を導入する) |
-| GitLab プレビューのアプリ md-preview (`mdpreview`。任意) | [md-preview を導入・更新する](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#md-preview-を導入更新する) | [Windows 11 で md-preview を導入・更新する](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#windows-11-で-md-preview-を導入更新する) |
+| GitLab プレビューの実行ファイル md-preview (`mdpreview` / `mdpreview.exe`。任意) | [md-preview を導入・更新する](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#md-preview-を導入更新する) | [Windows 11 で md-preview を導入・更新する](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#windows-11-で-md-preview-を導入更新する) |
 | GitLab プレビュー (md-preview の後。任意) | [LazyVim の GitLab プレビューを導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを導入する) | [Windows 11 で LazyVim の GitLab プレビューを導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の-gitlab-プレビューを導入する) |
 | 動作の確認 | [LazyVim の日本語検索・整形・IME 連携を確かめる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の日本語検索整形ime-連携を確かめる) (この設定と安全な整形の後、再起動してから) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 9 (その項を最後まで通したなら済んでいる) |
 | ほかのマシンの変更を取り込む | [LazyVim の設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定とプラグインの版を揃える) | [Windows 11 で LazyVim の設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定とプラグインの版を揃える) |
@@ -197,8 +197,9 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   - 数式 (KaTeX) と図 (mermaid) は、GitLab と同じくブラウザが描く (ライブラリの版は GitLab とは違う)
   - 外へ通信するのは、本文が外部 URL の画像・動画を指すときにブラウザがその URL から読む場合と、公式スタイルを取得する場合だけ
   - 安全策: 127.0.0.1 だけで待ち受け、URL に推測できない値を入れる。編集対象のファイルはリポジトリの中だけで、`.git` は返さない
-  - md-preview の導入先は AlmaLinux 10 が `${XDG_DATA_HOME:-~/.local/share}/md-preview`、Windows 11 が `%LOCALAPPDATA%\md-preview`。
-    別の場所に入れたときは `vim.g.gitlab_preview_dir` に導入先を入れる
+  - 実行ファイルは `vim.g.gitlab_preview_command`、PATH の `mdpreview`、`~/.local/bin/mdpreview` の順に探す
+    (Windows 11 は `%USERPROFILE%\.local\bin\mdpreview.exe`。PATH では `.exe` だけを使う)。
+    別の場所に置いたときは `vim.g.gitlab_preview_command` にその実行ファイルのパスを入れる
   - ブラウザは OS の既定。変えるときは `vim.g.gitlab_preview_browser` に関数を入れる
     (例: Edge の別窓なら `function(url) vim.system({ "cmd.exe", "/d", "/c", "start", "", "msedge", "--app=" .. url }) end`)
   - 使い方は [md-preview の使い方](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/usage.md)にある。
