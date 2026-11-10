@@ -1,23 +1,45 @@
 -- mdtable の編集コマンドとの配線。Excel のブックの管理と書き戻しは mdtable に任せる。
 local M = {}
 
+local install_url = "https://github.com/ryo-aoki-pc/md-table-excel/blob/main/docs/install.md"
+  .. "#windows-11-で-mdtable-を導入更新する"
+
+local function fail(message)
+  vim.notify("mdtable: " .. message, vim.log.levels.ERROR)
+end
+
 function M.edit()
   local buf = vim.api.nvim_get_current_buf()
+  -- :MdTableEdit はどのバッファからも呼べるので、Markdown のファイルのバッファだけを相手にする。
+  if vim.bo[buf].buftype ~= "" or vim.bo[buf].filetype ~= "markdown" then
+    fail("Markdown のファイルのバッファで使ってください。")
+    return
+  end
+
   local filename = vim.api.nvim_buf_get_name(buf)
   if filename == "" then
-    vim.notify("mdtable: ファイルを保存してから使ってください。", vim.log.levels.ERROR)
+    fail("ファイルを保存してから使ってください。")
+    return
+  end
+
+  -- 読み取り専用のバッファは、変更が無くても開かない (Excel で編集した後で、書き戻せないと分かるのを避ける)。
+  if vim.bo[buf].readonly or not vim.bo[buf].modifiable then
+    fail("読み取り専用のバッファでは使えません。")
     return
   end
 
   local executable = vim.fn.exepath("mdtable")
   if executable == "" then
-    vim.notify(
-      "mdtable が見つかりません。md-table-excel の docs/install.md の"
+    fail(
+      "コマンドが見つかりません。md-table-excel の docs/install.md の"
         .. "「Windows 11 で mdtable を導入・更新する」に従って導入してください: "
-        .. "https://github.com/ryo-aoki-pc/md-table-excel/blob/main/docs/install.md"
-        .. "#windows-11-で-mdtable-を導入更新する",
-      vim.log.levels.ERROR
+        .. install_url
     )
+    return
+  end
+
+  if not (_G.Snacks and Snacks.terminal) then
+    fail("snacks.nvim の端末 (Snacks.terminal) を使えません。")
     return
   end
 
@@ -25,7 +47,7 @@ function M.edit()
   if vim.bo[buf].modified then
     local ok, err = pcall(vim.cmd.write)
     if not ok then
-      vim.notify("mdtable: 保存に失敗しました: " .. tostring(err), vim.log.levels.ERROR)
+      fail("保存に失敗しました: " .. tostring(err))
       return
     end
   end

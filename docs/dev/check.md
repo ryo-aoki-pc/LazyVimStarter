@@ -37,7 +37,7 @@
    - `mdtable edit integration: PASS` と終了コード 0 を確かめる
    - Windows では `:MdTableEdit` と markdown 限定の `<leader>te`、Windows 以外では空の spec になることを確かめる
    - 空白と日本語を含む絶対パス、`--table L<行>`、未保存の変更の保存、保存済みのバッファを書き直さないことを確かめる
-   - ファイル名が無い場合・mdtable が無い場合・保存できない場合は、端末を開かず通知することを確かめる
+   - Markdown のファイルでないバッファ・ファイル名が無い場合・読み取り専用の場合・mdtable が無い場合・保存できない場合は、端末を開かず通知することを確かめる
    - `Snacks` と実行ファイルの検索を差し替えるので、Excel と mdtable は起動しない
    - 一時データは作業ツリー内の `.tests/` に作り、試験後に消す。stylua と `git diff --check` も通す
 

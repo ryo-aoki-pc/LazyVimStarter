@@ -116,18 +116,59 @@ local ok, err = xpcall(function()
     .. "#windows-11-で-mdtable-を導入更新する"
   assert(missing.message:find(install_url, 1, true))
 
-  -- 保存できないバッファでは、変更を保ったまま通知し、端末を開かない。
+  assert(missing.message:sub(1, 9) == "mdtable: ", "通知は mdtable: で始める")
+
   vim.fn.exepath = function()
     return executable
   end
-  local readonly_file = vim.fs.joinpath(sandbox, "保存 できない.md")
-  local readonly_buf = buffer(readonly_file)
-  vim.bo[readonly_buf].readonly = true
+
+  -- 保存できないバッファ (フォルダーが無い) では、変更を保ったまま通知し、端末を開かない。
+  local unwritable_file = vim.fs.joinpath(sandbox, "無い フォルダー", "保存 できない.md")
+  local unwritable_buf = buffer(unwritable_file)
   mdtable.edit()
   assert(#terminals == 2 and #notifications == 3)
-  assert(vim.bo[readonly_buf].modified and vim.fn.filereadable(readonly_file) == 0)
+  assert(vim.bo[unwritable_buf].modified and vim.fn.filereadable(unwritable_file) == 0)
   assert(notifications[3].level == vim.log.levels.ERROR)
   assert(notifications[3].message:find("保存に失敗", 1, true))
+
+  -- 読み取り専用のバッファは、変更が有っても無くても開かない。
+  local readonly_file = vim.fs.joinpath(sandbox, "読み取り 専用.md")
+  vim.fn.writefile({ "本文" }, readonly_file)
+  for _, modified in ipairs({ true, false }) do
+    local readonly_buf = buffer(readonly_file .. (modified and ".変更" or ""))
+    vim.bo[readonly_buf].readonly = true
+    vim.bo[readonly_buf].modified = modified
+    local count = #notifications
+    mdtable.edit()
+    assert(#terminals == 2 and #notifications == count + 1)
+    assert(notifications[#notifications].message:find("読み取り専用", 1, true))
+  end
+
+  -- Markdown でないバッファと、ファイルでないバッファ (端末など) では使えない。
+  local other = buffer(vim.fs.joinpath(sandbox, "文書.txt"))
+  vim.bo[other].filetype = "text"
+  local scratch = buffer(vim.fs.joinpath(sandbox, "一時.md"))
+  vim.bo[scratch].buftype = "nofile"
+  for _, target in ipairs({ other, scratch }) do
+    vim.api.nvim_set_current_buf(target)
+    local count = #notifications
+    mdtable.edit()
+    assert(#terminals == 2 and #notifications == count + 1)
+    assert(notifications[#notifications].message:find("Markdown のファイルのバッファ", 1, true))
+  end
+
+  -- snacks.nvim が無いときも、エラーにならずに通知する。
+  local saved_snacks = _G.Snacks
+  _G.Snacks = nil
+  buffer(vim.fs.joinpath(sandbox, "snacks の無い文書.md"))
+  local count = #notifications
+  mdtable.edit()
+  _G.Snacks = saved_snacks
+  assert(#terminals == 2 and #notifications == count + 1)
+  assert(notifications[#notifications].message:find("Snacks.terminal", 1, true))
+  for _, notification in ipairs(notifications) do
+    assert(notification.level == vim.log.levels.ERROR and notification.message:sub(1, 9) == "mdtable: ")
+  end
 end, debug.traceback)
 
 vim.fn.has, vim.fn.exepath, vim.notify, _G.Snacks = original.has, original.exepath, original.notify, original.snacks
