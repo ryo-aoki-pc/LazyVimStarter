@@ -130,50 +130,39 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   MDX の連鎖と nvim-lint には渡さない。ルールごとの例は md-format の [ルール一覧](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/reference/rules.md)、
   代表的な例は md-format の README の「整形の例」にあり、md-format の試験がどちらの例もすべて整形し直して確かめる。
 - render-markdown.nvim と **markdown-preview.nvim は無効** (後者は 2023-10 から更新が止まり、GLFM を描けない)。
-- **プレビューは自作の GitLab プレビュー** (`<leader>cp`)。**`lua/config/gitlab_preview/`** が実体で、
-  編集中の内容を curl で GitLab の Markdown API (`POST /api/v4/markdown`) に送り、返ってきた HTML を
-  127.0.0.1 の HTTP サーバー (`vim.uv`) と SSE でブラウザのページに流す。分担と守ること:
-  - `gitlab.lua` — 送り先と curl。**本文を送るのは `GITLAB_TOKEN` があるときだけで、送り先は `GITLAB_HOST`
-    (無ければ gitlab.com) だけ**。git の remote のホスト名から送り先を推測しない (名前に gitlab を含む
-    無関係なホストへトークンを送らないため)。remote は `project` を決めるのに使うだけ (ホストが一致するとき)。
-    トークンは `--variable` で環境変数から curl に取り込ませ、コマンドラインにもファイルにも書かない (curl 8.3 以上)
-  - `server.lua` — 127.0.0.1 だけで待ち受け、URL に推測できない token を入れる。Host と `Sec-Fetch-Site` を確かめる。
-    リポジトリのファイルは `resolve()` で閉じ込める (`..`・`\`・ドライブ・デバイス名・`.git` を拒み、realpath が
-    ルートの内側にあることを確かめる)。**`vim.uv` のコールバックは fast context** なので、ここでは `vim.api` /
-    `vim.fn` / `vim.fs` を呼ばない (`vim.system` の終了のコールバックも同じ。`gitlab.lua` は `vim.schedule` で移す)
-    公式スタイルは `_/assets/<版とハッシュ>/` の専用の配信口から、導入済みマニフェストにあるファイルだけを返す。
-    編集対象リポジトリのファイルを返す処理へは流さない。フォントの MIME を付け、CSP は `font-src 'self'` を許す
-  - `init.lua` — 状態・autocmd・描画のループ (300ms で間引き、送信中の変更は 1 回にまとめ、古い応答は捨てる)。
-    GitLab に送れないときは生の Markdown を送り、ページの markdown-it で近似表示にする。
-    公式スタイルの導入状態は描画方式と分けて扱う。通常の起動やプレビュー開始からインストーラーを呼ばない
-  - `page/` — ブラウザ側。GitLab のフロントエンドがする処理 (KaTeX・mermaid・遅延読み込みの画像) と、
-    `data-canonical-src` (GitLab が残す書き換え前の相対リンク) を手元のファイルに戻す処理、スクロールの同期。
-    本文は GitLab の `.file-content.js-markup-content.md` に合わせ、コード配色に必要なクラスを補う。
-    公式 CSS があれば本文の独自規則を使わず、未導入なら `fallback.css` を使う。
-    明暗の本体 CSS・コード配色・`html.gl-dark` を同期し、フォント読込・幅変更・リサイズ後にもスクロールを合わせ直す。
-    操作欄とバナーの高さは実測する。公式の色変数はルートへ適用し、`md-table-sticky` が `body` に移す全幅パネルにも渡す
-    コード配色は、原版のライセンスを確認できた Dracula を明暗両方で使う。GitLab 標準の white / dark と Solarized は、
-    派生元までの許諾が未確認のためロックに含めない
-  - `assets.lua` — データ領域にある資産の検証と、ページ・配信側へ渡すマニフェスト。取得処理は持たない。
-    資産 URL に版とロックのハッシュを含め、更新後に古いタブが再接続したときはページを読み直す
-  - `installer.lua`・`tools/install_gitlab_preview.lua` — `:GitLabPreviewInstall` と headless の入口。
-    前者は明示的に実行されたときだけ非同期で取得し、後者は設定や lazy.nvim を読み込まずに完了まで待つ。
-    取得成功後はページのキャッシュと配信情報を更新し、開いているプレビューも読み直す
-  - `tools/gitlab-preview/install.mjs`・`assets.lock.json` — Node.js で固定版の公式 CE 資産イメージを取得し、
-    指定 digest と必要ファイル・ライセンスを検証して、必要な CSS・フォント・SVG を取り出す。
-    展開は Node.js の標準機能で gzip と tar を順に読み、外部の tar コマンドは呼ばない。
-    配布資産はリポジトリに含めない。取得先・版・digest・必要ファイル・ライセンス出典だけを追跡する。
-    `stdpath("data")/gitlab-preview/assets/<版とハッシュ>` の同じファイルシステム上で一時領域を作り、
-    全検証の後に完成版を公開する。失敗・中断時は既存版を保ち、旧版を自動削除しない。
-    導入済みの版と内容が揃っていれば取得を省き、取得アーカイブは保存しない。
-    フォントは無改変で使い、必要な原ライセンス・著作権表示・NOTICE もデータ領域へ保存する
-  - `libs.lua` — ページが jsDelivr から読むライブラリの版と SRI。CSP もここから組み立てるので、
-    **版を上げるときは url と sri を一緒に書き換える**
-  - 配線は `lua/plugins/gitlab-preview.lua` の **lazy.nvim の virtual spec** (取得も runtimepath への追加もせず、
-    lock にも載らない)。名前は `[1]` に書く (`name` だけだと lazy.nvim が不正な spec として捨てる)
-- 表示の初期値は `vim.g.gitlab_preview_appearance`。`theme` は `system`・`light`・`dark` (`system` が既定)、
-  `width` は `fluid`・`fixed` (`fluid` が既定)。固定幅の上限は 1600 px。ページの操作欄で変えた値は、
-  本文の描き直しと再接続で保つ。KaTeX・mermaid の版は公式 CSS の資産とは別で、`libs.lua` の版を使う
+- **プレビューは [md-preview](https://github.com/ryo-aoki-pc/md-preview)** を使う（切り替えは `<leader>cp`）。
+  本文は GitLab に送らず、導入したアプリが手元で HTML にし、ブラウザへ表示する。
+  - Lua の橋渡しは **`lua/config/gitlab_preview/init.lua`**。最初の start で node と導入先の `cli.mjs --stdio` を
+    `vim.system` で起こし、UTF-8 の JSON を1行ずつ標準入出力で送受信する。require だけでは何もしない。
+    最初に hello（`protocol: 1` と表示の初期値）を送り、10秒以内の ready と対応する版を確かめる。
+    分割して届く標準出力は改行までまとめ、標準エラーは起動失敗の知らせに使う最後の数行だけを覚える
+  - 導入先は md-format と同じ決まりの md-preview フォルダー（Windows は `%LOCALAPPDATA%/md-preview`、
+    macOS は `~/Library/Application Support/md-preview`、ほかは `XDG_DATA_HOME` または `~/.local/share` の下）。
+    `vim.g.gitlab_preview_dir` に文字列を置くと変えられる。node や cli.mjs が無ければ導入を促す。
+    通常の起動や開始から導入処理は呼ばない
+  - 通常の Markdown バッファへ追従し、ほかの種類へ移ってもページを保つ。本文は変更後300 msで間引き、
+    絶対パス・表示名・本文・`changedtick` を doc で送る。無名のバッファのパスは null。
+    同じバッファと `changedtick` は続けて送らず、バッファの切り替え・名前の変更・再開では送り直す。
+    カーソルの行・窓の中の高さの比・文書の行数は80 msで間引いて scroll で送り、同じ値は送らない
+  - Neovim ごとに子プロセスは1つ。stop は pause と autocmd・タイマーの解除だけで、プロセスと URL を保つ。
+    start で resume と今の文書を送る。開いたままのタブが戻れるよう、最後の clients が0のときだけ1.5秒待ち、
+    まだ0ならブラウザを開く。動作中の start は、今の文書を再送しブラウザも開き直す
+  - ブラウザは既定で `vim.ui.open` を使う。`vim.g.gitlab_preview_browser` は false（URL を知らせるだけ）、
+    関数、実行ファイル名の文字列、引数を含む表で変えられる。ページのダブルクリックによる jump は、
+    対応するバッファを表示している窓へ移り、なければ今の窓にそのバッファを出す。まだ無いバッファやファイルは開かない
+  - error は致命的なら誤り、ほかは警告として知らせ、同じ文の繰り返しはまとめる。
+    子が勝手に終わったら状態を片付け、次の start で起こし直せる。
+    `VimLeavePre` で標準入力を閉じ、200 msで終わらなければ子を止める。
+    `vim.system` と `vim.uv` のコールバックから `vim.api`・`vim.fn`・`vim.fs` を使う処理は、`vim.schedule` で通常の文脈へ移す
+  - `:GitLabPreviewInstall` は node と導入先の `cli.mjs install-style` を明示的に起こす。
+    終了後に結果を知らせ、プレビューの子があれば起こし直して新しい URL を開く。
+    取得・検証・HTTP・ブラウザのページの実装と試験は md-preview にあり、Lua では扱わない
+  - 配線は `lua/plugins/gitlab-preview.lua` の **lazy.nvim の virtual spec**（取得も `runtimepath` への追加もせず、
+    lock にも載らない）。名前は `[1]` に書く（name だけだと lazy.nvim が不正な spec として捨てる）。
+    `:GitLabPreview`・`:GitLabPreviewStop`・`:GitLabPreviewToggle`・`:GitLabPreviewInstall` と `<leader>cp` を登録する
+- 表示の初期値は `vim.g.gitlab_preview_appearance`。theme は system・light・dark（system が既定）、
+  width は fluid・fixed（fluid が既定）。固定幅の上限は1600 px。ページの操作欄で変えた値は、
+  本文の描き直しと再接続で保つ
 - 画像の貼り付けは `lua/plugins/img-clip.lua` (img-clip.nvim、`<leader>ci`)。`relative_to_current_file` で
   .md の隣の `assets/` に保存する。ドラッグ & ドロップは切り、リポジトリの `.img-clip.lua` を dofile させない
   ように `get_config` を差し替えている (img-clip の内部関数。上げたら効いているか確かめる)。
