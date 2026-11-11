@@ -47,7 +47,7 @@
 - 実行場所はこのリポジトリのルート。`Neovim` 0.12以上と `Node.js` 22以上が必要
 - 本物の `md-preview` やブラウザ、公式資産は使わず、通信もしない。Node.js で動く偽のアプリ
   `tests/gitlab_preview_bridge/fake-app.mjs` を `vim.g.gitlab_preview_command = { "node", <偽のアプリの絶対パス> }`
-  で起こし、受けた JSON の行を記録して、試験が指定した ready・clients・jump・error を返す。
+  で起こし、受けた JSON の行を記録して、試験が指定した ready・clients・jump・edit・error を返す。
   実行ファイルの探索では PATH の検索結果とホームを差し替え、本物の `~/.local/bin` を見ない
 
 1. 橋渡しの試験を行う。
@@ -59,6 +59,8 @@
    - 「GitLab プレビューの橋渡し: 成功…件・失敗0件・skip0件」と終了コード0を確かめる
    - `Node.js` が無いときは未実施と表示する。skip は合格に数えない
    - hello と表示の初期値、分割された応答、doc のパス・表示名・本文・changedtick、間引きと追従、scroll を確かめる
+   - 編集の対応の合意と無効化、doc の buf、行の置換・追加・削除、undo、窓・カーソルの維持、結果と即時の doc を1回ずつ送ることを確かめる
+   - 文書・changedtick の不一致、不正な編集・id、modifiable、休止中・未対応・ready 前の拒否、readonly と無名のバッファの編集も確かめる
    - コマンドの設定の文字列・並び・無効な値、PATH と決まった場所の優先順位、Windows の `.exe` の判定、
      未導入の知らせを1回だけ出すこと、起動失敗の知らせと復旧も確かめる
    - pause・resume とタブの再接続待ち、jump の窓・行・未知のパス、誤りのまとめ、起動の時間切れと版の違い、

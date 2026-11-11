@@ -268,6 +268,7 @@ local ok, error_message = xpcall(function()
     assert(process_count() == 1)
     local hello = assert(last("hello"))
     assert(hello.protocol == 1 and hello.appearance.theme == "dark" and hello.appearance.width == "fixed")
+    assert(hello.edit == 1)
     assert(opened[#opened].callback and opened[#opened].url == preview.url())
   end)
   test("doc の絶対パス・名前・本文・changedtick を送る", function()
@@ -275,6 +276,7 @@ local ok, error_message = xpcall(function()
     assert(doc.path == vim.fs.normalize(vim.api.nvim_buf_get_name(a)))
     assert(doc.name == "文書 A.md" and doc.text == table.concat(lines, "\n") .. "\n")
     assert(doc.rev == vim.api.nvim_buf_get_changedtick(a))
+    assert(doc.buf == a)
   end)
   test("本文の連続する変更を1回にまとめ、同じ changedtick は再送しない", function()
     local before = #messages("doc")
@@ -623,6 +625,273 @@ local ok, error_message = xpcall(function()
     preview.start()
     ready(preview)
   end)
+  local edit_buf = buffer("画面の編集.md", { "先頭", "置き換える行", "三行目", "末尾" })
+  local edit_id = 0
+  local function start_editor(fields, enabled, extra)
+    emit({ type = "error", fatal = true, message = "編集の試験の前に片付ける" })
+    vim.g.gitlab_preview_edit = enabled
+    local options = extra or {}
+    options.readyFields = fields
+    config(options)
+    preview.start()
+    wait("新しいアプリから doc を受け取る", function()
+      local docs = messages("doc")
+      return preview.url() ~= nil and docs[#docs].pid == pid()
+    end)
+    settle(30)
+  end
+  local function edit_request(edits)
+    edit_id = edit_id + 1
+    local buf = vim.api.nvim_get_current_buf()
+    local name = vim.api.nvim_buf_get_name(buf)
+    return {
+      type = "edit",
+      id = edit_id,
+      path = name ~= "" and vim.fs.normalize(name) or vim.NIL,
+      buf = buf,
+      rev = vim.api.nvim_buf_get_changedtick(buf),
+      edits = edits or { { start = 1, ["end"] = 2, lines = { "画面からの変更" } } },
+    }
+  end
+  local function rejected(request)
+    local buf = vim.api.nvim_get_current_buf()
+    local before = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+    local tick, results, docs = vim.api.nvim_buf_get_changedtick(buf), #messages("edit_result"), #messages("doc")
+    emit(request)
+    wait("編集を断った結果を受け取る", function()
+      return #messages("edit_result") > results
+    end)
+    settle(80)
+    local result = last("edit_result")
+    assert(#messages("edit_result") == results + 1 and result.id == request.id and result.ok == false)
+    assert(type(result.message) == "string" and result.message ~= "" and not result.message:find("[\r\n]"))
+    assert(vim.deep_equal(vim.api.nvim_buf_get_lines(buf, 0, -1, false), before))
+    assert(vim.api.nvim_buf_get_changedtick(buf) == tick and #messages("doc") == docs)
+    return result
+  end
+  local function accepted(request, expected)
+    local results, docs = #messages("edit_result"), #messages("doc")
+    local win, cursor, mode =
+      vim.api.nvim_get_current_win(), vim.api.nvim_win_get_cursor(0), vim.api.nvim_get_mode().mode
+    -- -l のスクリプトは続けて走るので、利用者の操作ごとの undo の区切りをここで作る。
+    vim.cmd("let &g:undolevels = &g:undolevels")
+    emit(request)
+    wait("編集の結果と直後の doc を受け取る", function()
+      return #messages("edit_result") > results and #messages("doc") > docs
+    end)
+    -- TextChanged の間引きが残っても、即時送信した changedtick はもう送らない。
+    trigger("TextChanged", request.buf)
+    settle(preview.config.debounce_ms + 50)
+    assert(#messages("edit_result") == results + 1 and #messages("doc") == docs + 1)
+    local result, doc = last("edit_result"), last("doc")
+    assert(result.id == request.id and result.ok == true)
+    assert(vim.deep_equal(vim.api.nvim_buf_get_lines(request.buf, 0, -1, false), expected))
+    assert(doc.buf == request.buf and doc.text == table.concat(expected, "\n") .. "\n")
+    assert(doc.rev == vim.api.nvim_buf_get_changedtick(request.buf) and doc.rev > request.rev)
+    assert(vim.api.nvim_get_current_win() == win and vim.deep_equal(vim.api.nvim_win_get_cursor(win), cursor))
+    assert(vim.api.nvim_get_mode().mode == mode)
+    local ordered = false
+    for _, event in ipairs(messages()) do
+      if event.message.type == "edit_result" and event.message.id == request.id then
+        ordered = true
+      elseif event.message.type == "doc" and event.message.rev == doc.rev and event.message.buf == doc.buf then
+        assert(ordered, "edit_result の後に新しい doc を送る")
+      end
+    end
+    assert(
+      vim.fn.filereadable(vim.api.nvim_buf_get_name(request.buf)) == 0,
+      "バッファをファイルへ保存しない"
+    )
+  end
+  test("古いアプリは hello の edit を無視し、編集を断る", function()
+    start_editor(nil)
+    assert(last("hello").edit == 1)
+    rejected(edit_request())
+  end)
+  test("edit 対応の ready で置き換え、結果と本文を1回ずつ返し、undo で戻せる", function()
+    start_editor({ edit = 1 })
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    local before = vim.api.nvim_buf_get_lines(edit_buf, 0, -1, false)
+    accepted(edit_request(), { "先頭", "画面からの変更", "三行目", "末尾" })
+    vim.cmd("silent undo")
+    assert(vim.deep_equal(vim.api.nvim_buf_get_lines(edit_buf, 0, -1, false), before))
+    trigger("TextChanged", edit_buf)
+    settle(100)
+  end)
+  test("行の追加は start と end が同じ範囲で当てる", function()
+    accepted(edit_request({ { start = 2, ["end"] = 2, lines = { "追加" } } }), {
+      "先頭",
+      "置き換える行",
+      "追加",
+      "三行目",
+      "末尾",
+    })
+  end)
+  test("行の削除は空の lines で当てる", function()
+    accepted(edit_request({ { start = 2, ["end"] = 3, lines = {} } }), {
+      "先頭",
+      "置き換える行",
+      "三行目",
+      "末尾",
+    })
+  end)
+  test("複数の範囲は後ろから当て、undo 1回で全部戻る", function()
+    local before = vim.api.nvim_buf_get_lines(edit_buf, 0, -1, false)
+    accepted(
+      edit_request({
+        { start = 1, ["end"] = 2, lines = { "中の変更", "中の追加" } },
+        { start = 3, ["end"] = 4, lines = { "後ろの変更" } },
+      }),
+      { "先頭", "中の変更", "中の追加", "三行目", "後ろの変更" }
+    )
+    vim.cmd("silent undo")
+    assert(vim.deep_equal(vim.api.nvim_buf_get_lines(edit_buf, 0, -1, false), before))
+    trigger("TextChanged", edit_buf)
+    settle(100)
+  end)
+  test("changedtick が違う編集はやり直しを促す", function()
+    local request = edit_request()
+    request.rev = request.rev - 1
+    assert(rejected(request).message:find("もう一度操作", 1, true))
+  end)
+  test("違う buf への編集を断る", function()
+    local request = edit_request()
+    request.buf = a
+    rejected(request)
+  end)
+  test("違う path への編集を断る", function()
+    local request = edit_request()
+    request.path = vim.api.nvim_buf_get_name(a)
+    rejected(request)
+  end)
+  test("名前のあるバッファへ null の path を送っても断る", function()
+    local request = edit_request()
+    request.path = vim.NIL
+    rejected(request)
+  end)
+  local invalid_edits = {
+    { "空の edits", {} },
+    { "配列でない edits", { start = 0 } },
+    { "要素が表でない edits", { 1 } },
+    { "start が end より大きい", { { start = 2, ["end"] = 1, lines = {} } } },
+    { "負の行番号", { { start = -1, ["end"] = 0, lines = {} } } },
+    { "行数を越える範囲", { { start = 0, ["end"] = 999, lines = {} } } },
+    { "整数でない行番号", { { start = 0.5, ["end"] = 1, lines = {} } } },
+    { "改行を含む行", { { start = 1, ["end"] = 2, lines = { "前\n後" } } } },
+    { "NUL を含む行", { { start = 1, ["end"] = 2, lines = { "前\0後" } } } },
+    { "文字列でない行", { { start = 1, ["end"] = 2, lines = { 42 } } } },
+    { "配列でない lines", { { start = 1, ["end"] = 2, lines = "本文" } } },
+    { "オブジェクトの lines", { { start = 1, ["end"] = 2, lines = { text = "本文" } } } },
+    { "空のオブジェクトの lines", { { start = 1, ["end"] = 2, lines = vim.empty_dict() } } },
+    {
+      "重なる範囲",
+      {
+        { start = 1, ["end"] = 3, lines = { "前" } },
+        { start = 2, ["end"] = 4, lines = { "後" } },
+      },
+    },
+    {
+      "同じ位置への挿入",
+      {
+        { start = 1, ["end"] = 1, lines = { "前" } },
+        { start = 1, ["end"] = 1, lines = { "後" } },
+      },
+    },
+    {
+      "後ろの範囲だけが不正",
+      {
+        { start = 0, ["end"] = 1, lines = { "当てない行" } },
+        { start = 2, ["end"] = 999, lines = {} },
+      },
+    },
+  }
+  for _, item in ipairs(invalid_edits) do
+    test("不正な編集を変更前に断る: " .. item[1], function()
+      rejected(edit_request(item[2]))
+    end)
+  end
+  test("modifiable がオフなら編集を断る", function()
+    vim.bo[edit_buf].modifiable = false
+    rejected(edit_request())
+    vim.bo[edit_buf].modifiable = true
+  end)
+  test("readonly はファイルの書き込みだけなのでバッファの編集を通す", function()
+    vim.bo[edit_buf].readonly = true
+    accepted(edit_request(), { "先頭", "画面からの変更", "三行目", "末尾" })
+    vim.bo[edit_buf].readonly = false
+  end)
+  test("API の適用が失敗しても結果を1回返し、次の編集を受け付ける", function()
+    local set_lines = vim.api.nvim_buf_set_lines
+    vim.api.nvim_buf_set_lines = function()
+      assert(not vim.in_fast_event(), "編集も通常の文脈で当てる")
+      error("適用失敗の試験")
+    end
+    local success, reason = pcall(rejected, edit_request())
+    vim.api.nvim_buf_set_lines = set_lines
+    assert(success, reason)
+    accepted(edit_request(), { "先頭", "画面からの変更", "三行目", "末尾" })
+  end)
+  test("休止中は正しい編集でも断る", function()
+    preview.stop()
+    settle(30)
+    rejected(edit_request())
+    preview.start()
+    ready(preview)
+  end)
+  test("id が無いか正の整数でなければ返答せずに捨てる", function()
+    local before = vim.api.nvim_buf_get_lines(edit_buf, 0, -1, false)
+    local results, docs = #messages("edit_result"), #messages("doc")
+    for _, id in ipairs({ vim.NIL, "1", 0, -1, 1.5 }) do
+      local request = edit_request()
+      request.id = id ~= vim.NIL and id or nil
+      emit(request)
+    end
+    settle(100)
+    assert(#messages("edit_result") == results and #messages("doc") == docs)
+    assert(vim.deep_equal(vim.api.nvim_buf_get_lines(edit_buf, 0, -1, false), before))
+  end)
+  test("無名のバッファも null の path と buf で編集する", function()
+    edit_buf = buffer(nil, { "先頭", "無名の行" })
+    wait("無名の編集対象を送る", function()
+      return last("doc").buf == edit_buf
+    end)
+    local request = edit_request()
+    assert(request.path == vim.NIL)
+    accepted(request, { "先頭", "画面からの変更" })
+    request = edit_request()
+    request.path = vim.api.nvim_buf_get_name(a)
+    rejected(request)
+  end)
+  test("起動後に設定を変えても hello で決めた対応を保つ", function()
+    vim.g.gitlab_preview_edit = false
+    accepted(edit_request(), { "先頭", "画面からの変更" })
+    vim.g.gitlab_preview_edit = nil
+  end)
+  test("設定が false なら hello に edit を付けず、対応する ready でも断る", function()
+    start_editor({ edit = 1 }, false)
+    assert(last("hello").edit == nil)
+    rejected(edit_request())
+    vim.g.gitlab_preview_edit = nil
+    rejected(edit_request())
+  end)
+  test("ready の edit が数値の1でなければ編集を断る", function()
+    start_editor({ edit = true })
+    rejected(edit_request())
+  end)
+  test("ready の前は編集を断り、その後は通常どおり使える", function()
+    emit({ type = "error", fatal = true, message = "ready 前の試験の前に片付ける" })
+    config({ ready = false })
+    local previous = pid()
+    preview.start()
+    wait("hello を送って子を起こす", function()
+      local hellos = messages("hello")
+      return pid() ~= previous and hellos[#hellos].pid == pid()
+    end)
+    rejected(edit_request())
+    emit({ type = "ready", protocol = 1, url = "http://127.0.0.1:12345/ready-test/", edit = 1 })
+    ready(preview)
+    accepted(edit_request(), { "先頭", "画面からの変更" })
+  end)
   test("VimLeavePre 相当で標準入力を閉じ、子が自分で終了する", function()
     config({})
     local previous = pid()
@@ -647,6 +916,7 @@ vim.notify, vim.ui.open, vim.system = original.notify, original.open, original.s
 vim.fn.exepath, vim.fn.has, uv.os_homedir = original.exepath, original.has, original.homedir
 vim.env.MD_PREVIEW_BRIDGE_TEST_DIR = saved_dir
 vim.g.gitlab_preview_command, vim.g.gitlab_preview_browser, vim.g.gitlab_preview_appearance = nil, nil, nil
+vim.g.gitlab_preview_edit = nil
 assert(
   vim.fs.normalize(sandbox):sub(1, #root + 8) == root .. "/.tests/",
   "試験の片付けは作業ツリー内だけ"
