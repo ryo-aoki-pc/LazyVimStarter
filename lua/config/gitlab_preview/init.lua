@@ -161,6 +161,7 @@ send_doc = function(s, force)
   if
     send(s, {
       type = "doc",
+      buf = buf,
       path = file,
       name = name ~= "" and vim.fs.basename(name) or "[No Name]",
       text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n") .. "\n",
@@ -309,6 +310,89 @@ local function last_line(value)
   return vim.trim(value or ""):match("([^\r\n]+)$") or ""
 end
 
+local function is_integer(value)
+  return type(value) == "number" and value % 1 == 0
+end
+
+local function apply_edit(s, value)
+  if not s.ready or not s.active or not s.edit then
+    return false, "プレビューからの編集を受け付けていません"
+  end
+  local buf = s.buf
+  if not buf or value.buf ~= buf or not is_target(buf) then
+    return false, "Neovim で開いている文書が変わりました"
+  end
+  local name = vim.api.nvim_buf_get_name(buf)
+  local same_path = value.path == vim.NIL and name == ""
+  if type(value.path) == "string" and value.path ~= "" and name ~= "" then
+    local target = vim.fs.normalize(vim.fn.fnamemodify(value.path, ":p"))
+    name = vim.fs.normalize(vim.fn.fnamemodify(name, ":p"))
+    same_path = name == target or (vim.fn.has("win32") == 1 and name:lower() == target:lower())
+  end
+  if not same_path then
+    return false, "Neovim で開いている文書が変わりました"
+  end
+  if vim.api.nvim_buf_get_changedtick(buf) ~= value.rev then
+    return false, "Neovim のバッファが変わりました。もう一度操作してください"
+  end
+  if not vim.bo[buf].modifiable then
+    return false, "バッファを変更できません（modifiable がオフ）"
+  end
+  if type(value.edits) ~= "table" or not vim.islist(value.edits) or #value.edits == 0 then
+    return false, "編集の内容を読めません"
+  end
+  local count, edits = vim.api.nvim_buf_line_count(buf), {}
+  for _, item in ipairs(value.edits) do
+    if
+      type(item) ~= "table"
+      or not is_integer(item.start)
+      or not is_integer(item["end"])
+      or item.start < 0
+      or item.start > item["end"]
+      or item["end"] > count
+      or type(item.lines) ~= "table"
+      or not vim.islist(item.lines)
+    then
+      return false, "編集の内容を読めません"
+    end
+    for _, line in ipairs(item.lines) do
+      if type(line) ~= "string" or line:find("\n", 1, true) or line:find("\0", 1, true) then
+        return false, "編集の内容を読めません"
+      end
+    end
+    edits[#edits + 1] = item
+  end
+  table.sort(edits, function(a, b)
+    return a.start < b.start
+  end)
+  for i = 2, #edits do
+    -- 同じ位置への挿入も順序が曖昧なので断る。全範囲を確かめるまでは変更しない。
+    if edits[i].start < edits[i - 1]["end"] or edits[i].start == edits[i - 1].start then
+      return false, "編集の範囲が重なっています"
+    end
+  end
+  -- 1つのコールバックで後ろから当て、undo を1回にまとめる。窓やモードは変えない。
+  for i = #edits, 1, -1 do
+    local item = edits[i]
+    vim.api.nvim_buf_set_lines(buf, item.start, item["end"], true, item.lines)
+  end
+  return true
+end
+
+local function edit(s, value)
+  if not is_integer(value.id) or value.id <= 0 then
+    return
+  end
+  local called, ok, message = pcall(apply_edit, s, value)
+  if not called then
+    ok, message = false, "バッファへ編集を反映できませんでした"
+  end
+  send(s, { type = "edit_result", id = value.id, ok = ok, message = message })
+  if ok then
+    send_doc(s, true)
+  end
+end
+
 local function receive(s, value)
   if app ~= s or s.exited then
     return
@@ -328,6 +412,7 @@ local function receive(s, value)
     close_timer(s.ready_timer)
     s.ready_timer = nil
     s.ready, s.url = true, value.url
+    s.edit = s.edit_requested and value.edit == 1
     if s.active then
       if s.resuming then
         send(s, { type = "resume" })
@@ -348,6 +433,8 @@ local function receive(s, value)
     s.clients = value.count
   elseif value.type == "jump" and s.ready then
     jump(s, value)
+  elseif value.type == "edit" then
+    edit(s, value)
   elseif value.type == "error" and type(value.message) == "string" then
     if value.message ~= s.last_error then
       s.last_error = value.message
@@ -501,9 +588,11 @@ spawn_app = function(buf, active, open_mode)
   local appearance = vim.g.gitlab_preview_appearance
   appearance = type(appearance) == "table" and appearance or {}
   local theme, width = appearance.theme, appearance.width
+  s.edit_requested = vim.g.gitlab_preview_edit ~= false
   send(s, {
     type = "hello",
     protocol = 1,
+    edit = s.edit_requested and 1 or nil,
     appearance = {
       theme = (theme == "light" or theme == "dark") and theme or "system",
       width = width == "fixed" and width or "fluid",

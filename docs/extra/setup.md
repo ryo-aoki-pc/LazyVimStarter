@@ -68,6 +68,8 @@
   - `:ConformInfo` を開く。`Formatter 'mdfmt' timeout` は整形の時間切れで、ツールの未導入とは区別する
   - Markdown / MDX の整形上限は 10 秒。ほかのファイルは既定の 3 秒
 - **GitLab プレビューで `#123` などがリンクにならない**: 手元で再現しない仕様。`#123`・`!45`・`@名前`・`~ラベル` などは原文のまま出し、「GitLab との違い」に知らせる
+- **GitLab プレビューの画面からの編集**: 対応する md-preview と編集の対応を確認できたときだけ、Neovim のバッファへ反映する。ファイルの保存は `:w` で行う
+  - `vim.g.gitlab_preview_edit = false` で画面からの編集を無効にできる。設定はプレビューの子プロセスを起こすときに読み取る
 - **`<leader>ci` で画像を貼り付けられない**: `:ImgClipDebug` で、使ったコマンドと出力を見る
   - Linux では `wl-clipboard` が要り、Wayland のセッションで起動した Neovim だけが使える (tmux の中では `WAYLAND_DISPLAY` が引き継がれないことがある)
   - `Content is not an image.` は、クリップボードの中身が画像ではないとき。Windows では、PC のロック中はクリップボードを読めない

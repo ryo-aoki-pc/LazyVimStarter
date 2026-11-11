@@ -42,7 +42,7 @@ if (mode === 'install-style') {
     log({ kind: 'input', line, message });
     if (message?.type === 'hello' && config.ready !== false) {
       readyTimer = setTimeout(() => {
-        emit({ type: 'ready', protocol: config.protocol ?? 1, version: '試験用', url: 'http://127.0.0.1:12345/fixture-' + process.pid + '/' });
+        emit({ type: 'ready', protocol: config.protocol ?? 1, version: '試験用', url: 'http://127.0.0.1:12345/fixture-' + process.pid + '/', ...config.readyFields });
         emit({ type: 'clients', count: config.clients ?? 0 });
       }, config.readyDelay || 0);
     }
