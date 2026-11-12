@@ -190,7 +190,7 @@ Windows 11 では「Windows 11 で LazyVim の設定を導入する」の手順 
 - [luamigemo](https://github.com/delphinus/luamigemo): ローマ字検索 (Migemo) の純 Lua 実装。同梱の辞書のライセンスもここ
 - [ibus-anthy](https://github.com/ibus/ibus-anthy): `on_off` などのキー割り当て
 - [HackGen](https://github.com/yuru7/HackGen): フォントのリリース
-- [md-preview の設計](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/reference/readme.md): GitLab プレビューの描画と公式スタイル
+- [md-preview の設計](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/reference/readme.md): GitLab プレビューの描画と公式スタイル
 - [GitLab Flavored Markdown](https://docs.gitlab.com/user/markdown/): GLFM の記法 (スニペットとプレビューが扱う記法の出どころ)
 - [img-clip.nvim](https://github.com/HakonHarnes/img-clip.nvim): 画像の貼り付けの設定項目
 - [Neovim の clipboard-osc52](https://neovim.io/doc/user/provider/#clipboard-osc52): OSC 52 の提供元と、自動検出が効く条件 (`clipboard` が空のときだけ)
