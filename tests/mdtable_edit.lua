@@ -112,7 +112,7 @@ local ok, err = xpcall(function()
   local missing = notifications[2]
   assert(missing.level == vim.log.levels.ERROR)
   assert(missing.message:find("Windows 11 で mdtable を導入・更新する", 1, true))
-  local install_url = "https://github.com/ryo-aoki-pc/md-table-excel/blob/main/docs/install.md"
+  local install_url = "https://github.com/ryo-aoki-pc/md-tools/blob/main/mdtable/docs/install.md"
     .. "#windows-11-で-mdtable-を導入更新する"
   assert(missing.message:find(install_url, 1, true))
 

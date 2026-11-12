@@ -16,7 +16,7 @@ Markdown (GLFM) 執筆を強化した Neovim 設定。
 | この設定だけ (本体が入っているとき) | [LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する) |
 | Markdown の整形器 md-format (`mdfmt`) | [md-format を導入・更新する](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/install.md#md-format-を導入更新する) | [Windows 11 で md-format を導入・更新する](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/install.md#windows-11-で-md-format-を導入更新する) |
 | 安全な Markdown 整形 (md-format の後) | [LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する) | [Windows 11 で LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の安全な-markdown-整形を導入する) |
-| GitLab プレビューの実行ファイル md-preview (`mdpreview` / `mdpreview.exe`。任意) | [md-preview を導入・更新する](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#md-preview-を導入更新する) | [Windows 11 で md-preview を導入・更新する](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#windows-11-で-md-preview-を導入更新する) |
+| GitLab プレビューの実行ファイル md-preview (`mdpreview` / `mdpreview.exe`。任意) | [md-preview を導入・更新する](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md#md-preview-を導入更新する) | [Windows 11 で md-preview を導入・更新する](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md#windows-11-で-md-preview-を導入更新する) |
 | GitLab プレビュー (md-preview の後。任意) | [LazyVim の GitLab プレビューを導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを導入する) | [Windows 11 で LazyVim の GitLab プレビューを導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の-gitlab-プレビューを導入する) |
 | 動作の確認 | [LazyVim の日本語検索・整形・IME 連携を確かめる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の日本語検索整形ime-連携を確かめる) (この設定と安全な整形の後、再起動してから) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 9 (その項を最後まで通したなら済んでいる) |
 | ほかのマシンの変更を取り込む | [LazyVim の設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定とプラグインの版を揃える) | [Windows 11 で LazyVim の設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定とプラグインの版を揃える) |
@@ -176,7 +176,7 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   - render-markdown.nvim は無効化 (記法をそのまま見て書き、見た目はプレビューで確かめる)。
   - 診断と整形の両方から外す markdownlint ルールは `lua/plugins/lang-markdown.lua` の `disabled_rules` に列挙。
 - **GitLab プレビュー** (`<leader>cp` で切り替え、`:GitLabPreview` / `:GitLabPreviewStop` / `:GitLabPreviewToggle`) —
-  [md-preview](https://github.com/ryo-aoki-pc/md-preview) (`mdpreview`) を起動して、編集中の内容をブラウザに出す。
+  [md-preview](https://github.com/ryo-aoki-pc/md-tools) (`mdpreview`) を起動して、編集中の内容をブラウザに出す。
   GitLab の描画エンジンを WebAssembly にしたものと、GitLab のフィルターの写しで手元で描き、本文を GitLab にも CDN にも送らない。トークンの設定は要らない。
   - 打つたびに (約 0.3 秒ごと。保存しなくてよい) 描き直し、スクロールがカーソルの位置に付いてくる。
     表示している markdown のバッファに追従する (別のファイルに移ると、ページもそちらになる)
@@ -191,7 +191,7 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   - 公式スタイル (GitLab の CSS・フォント) は任意。入れなければ同梱のスタイルで表示し、知らせは出ない。
     `mdpreview install-style` (Neovim からは `:GitLabPreviewInstall`) で約 785 MB を取得し、約 4 MB を保存する。
     保存先は AlmaLinux 10 が `${XDG_DATA_HOME:-~/.local/share}/md-preview-assets`、Windows 11 が `%LOCALAPPDATA%\md-preview-assets`。
-    手順は md-preview の[公式スタイルの取得 (AlmaLinux 10)](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#md-preview-の公式スタイルを取得する)・[Windows 11](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#windows-11-で-md-preview-の公式スタイルを取得する)
+    手順は md-preview の[公式スタイルの取得 (AlmaLinux 10)](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md#md-preview-の公式スタイルを取得する)・[Windows 11](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md#windows-11-で-md-preview-の公式スタイルを取得する)
   - コードの色分けは highlight.js の字句を GitLab (Rouge) のクラス名に対応づけており、GitLab より粗い。
     公式スタイルのコード配色は、明暗両方のテーマで Dracula を使う
   - 数式 (KaTeX) と図 (mermaid) は、GitLab と同じくブラウザが描く (ライブラリの版は GitLab とは違う)
@@ -202,7 +202,7 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
     別の場所に置いたときは `vim.g.gitlab_preview_command` にその実行ファイルのパスを入れる
   - ブラウザは OS の既定。変えるときは `vim.g.gitlab_preview_browser` に関数を入れる
     (例: Edge の別窓なら `function(url) vim.system({ "cmd.exe", "/d", "/c", "start", "", "msedge", "--app=" .. url }) end`)
-  - 使い方は [md-preview の使い方](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/usage.md)にある。
+  - 使い方は [md-preview の使い方](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/usage.md)にある。
     橋渡しの実装は `lua/config/gitlab_preview/init.lua` (配線は `lua/plugins/gitlab-preview.lua`)
 - **画像の貼り付け** ([img-clip.nvim](https://github.com/HakonHarnes/img-clip.nvim)、`<leader>ci`) — クリップボードの
   画像 (スクリーンショットなど) を、.md と同じディレクトリの `assets/` に保存し、`![](assets/….png)` を入れる。
@@ -219,7 +219,7 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
   一時的に隠し表示へ戻すには `<leader>uc`。
 - **[vim-table-mode](https://github.com/dhruvasagar/vim-table-mode)** — パイプ表の整形
   (全角幅対応)。markdown バッファ限定で `<leader>tm` (toggle) / `<leader>tr` (realign)。
-- **表を Excel で編集** ([md-table-excel](https://github.com/ryo-aoki-pc/md-table-excel)、Windows 11 だけ) —
+- **表を Excel で編集** ([md-table-excel](https://github.com/ryo-aoki-pc/md-tools/tree/main/mdtable)、Windows 11 だけ) —
   `:MdTableEdit` / markdown バッファの `<leader>te` で、カーソルのある表を開く。未保存の変更は先に保存し、
   Excel のブックを保存して閉じると Markdown に書き戻す。成功時は端末を閉じてバッファを読み直し、失敗時は端末に結果を残す。
 

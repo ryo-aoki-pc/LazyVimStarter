@@ -22,8 +22,8 @@
 | [zenhan](https://github.com/iuchim/zenhan) または im-select | 日本語入力 (Windows) | 任意 (無ければ IME 連携のみ無効) |
 | [Neovide](https://neovide.dev/) 0.16 以上 | GUI クライアント。IME の未確定文字列の表示には Neovim 0.12 以上も要る | 任意 (端末で使うなら不要) |
 | lazygit | `<leader>gg` | 任意 (無ければキーマップが定義されないだけ) |
-| [mdtable](https://github.com/ryo-aoki-pc/md-table-excel) | カーソルのある表を Excel で編集 (`:MdTableEdit` / `<leader>te`) | 任意 (Windows 11 だけ。無くてもほかの機能は動く) |
-| [md-preview](https://github.com/ryo-aoki-pc/md-preview) の実行ファイル (`mdpreview` / `mdpreview.exe`) | GitLab プレビュー (導入: [AlmaLinux 10](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#md-preview-を導入更新する) / [Windows 11](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#windows-11-で-md-preview-を導入更新する)) | 任意 (プレビューを使うときだけ) |
+| [mdtable](https://github.com/ryo-aoki-pc/md-tools/tree/main/mdtable) | カーソルのある表を Excel で編集 (`:MdTableEdit` / `<leader>te`) | 任意 (Windows 11 だけ。無くてもほかの機能は動く) |
+| [md-preview](https://github.com/ryo-aoki-pc/md-tools) の実行ファイル (`mdpreview` / `mdpreview.exe`) | GitLab プレビュー (導入: [AlmaLinux 10](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md#md-preview-を導入更新する) / [Windows 11](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md#windows-11-で-md-preview-を導入更新する)) | 任意 (プレビューを使うときだけ) |
 | ブラウザ | GitLab プレビューのページ | 任意 (プレビューを使うときだけ) |
 | wl-clipboard (`wl-paste`) | `<leader>ci` での画像の貼り付け (Linux) | 任意 (無ければ `<leader>ci` だけが使えない) |
 | GNOME Shell 49 | [上部バーの節](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)の拡張 (上部バーと Super+Space の順番を Neovim の IME の切り替えに合わせる) | 任意 (無ければ上部バーが Neovim の切り替えに付いてこないだけ) |
@@ -40,12 +40,12 @@
 ## 注意点
 
 - **`<leader>cp` で「md-preview が導入されていません」と出る**: md-preview を導入する
-  - md-preview の導入の手順 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#md-preview-を導入更新する) / [Windows 11](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#windows-11-で-md-preview-を導入更新する)) に従う
+  - md-preview の導入の手順 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md#md-preview-を導入更新する) / [Windows 11](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md#windows-11-で-md-preview-を導入更新する)) に従う
   - 実行ファイルは `vim.g.gitlab_preview_command`、PATH の `mdpreview`、`~/.local/bin/mdpreview` の順に探す
     (Windows 11 は `%USERPROFILE%\.local\bin\mdpreview.exe`。PATH では `.exe` だけを使う)
   - 別の場所に置いたときは `vim.g.gitlab_preview_command` にその実行ファイルのパスを入れる
 - **「取り決めの版が違います。md-preview を更新してください」と出る**: md-preview を更新する
-  - 導入と同じ手順 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#md-preview-を導入更新する) / [Windows 11](https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md#windows-11-で-md-preview-を導入更新する)) で上げる
+  - 導入と同じ手順 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md#md-preview-を導入更新する) / [Windows 11](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md#windows-11-で-md-preview-を導入更新する)) で上げる
 - **コード配色が GitLab.com の標準と異なる**: highlight.js の字句を GitLab (Rouge) のクラス名に対応づけているため、色分けは GitLab より粗い。公式スタイルでは明暗両方のテーマで Dracula を使う
 - **Windows で `nvim` が起動しない (`VCRUNTIME140.dll が見つからない` / `0xC0000135`)**: Visual C++ のランタイムが入っていない
   - scoop の `neovim` は `VCRUNTIME140.dll` を同梱しない (`nvim.exe` と `lua51.dll` が読み込む)。[Windows 導入の手順 5](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の 1 行目が、`System32\vcruntime140.dll` が無いときだけ `vcredist2022` を入れる。手順 6 の `nvim --version` で確かめる

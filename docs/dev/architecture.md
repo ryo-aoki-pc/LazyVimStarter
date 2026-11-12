@@ -130,7 +130,7 @@ OS の IME を Neovim のモードに追従させる仕組み。Neovim には `i
   MDX の連鎖と nvim-lint には渡さない。ルールごとの例は md-format の [ルール一覧](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/reference/rules.md)、
   代表的な例は md-format の README の「整形の例」にあり、md-format の試験がどちらの例もすべて整形し直して確かめる。
 - render-markdown.nvim と **markdown-preview.nvim は無効** (後者は 2023-10 から更新が止まり、GLFM を描けない)。
-- **プレビューは [md-preview](https://github.com/ryo-aoki-pc/md-preview)** を使う（切り替えは `<leader>cp`）。
+- **プレビューは [md-preview](https://github.com/ryo-aoki-pc/md-tools)** を使う（切り替えは `<leader>cp`）。
   本文は GitLab に送らず、導入したアプリが手元で HTML にし、ブラウザへ表示する。
   - Lua の橋渡しは **`lua/config/gitlab_preview/init.lua`**。最初の start で `mdpreview --stdio` を
     `vim.system` で起こし、UTF-8 の JSON を1行ずつ標準入出力で送受信する。require だけでは何もしない。

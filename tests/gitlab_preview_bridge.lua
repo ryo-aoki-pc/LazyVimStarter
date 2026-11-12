@@ -587,7 +587,7 @@ local ok, error_message = xpcall(function()
     preview.start()
     preview.start()
     assert(
-      #warnings == before + 1 and warnings[#warnings].message:find("md-preview の docs/install.md", 1, true),
+      #warnings == before + 1 and warnings[#warnings].message:find("md-tools の docs/install.md", 1, true),
       vim.inspect({
         before = before,
         after = #warnings,

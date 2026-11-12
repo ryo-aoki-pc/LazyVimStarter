@@ -49,8 +49,8 @@ local function command()
   if not missing_warned then
     missing_warned = true
     notify(
-      "md-preview が導入されていません。md-preview の docs/install.md の手順で導入してください: "
-        .. "https://github.com/ryo-aoki-pc/md-preview/blob/main/docs/install.md",
+      "md-preview が導入されていません。md-tools の docs/install.md の手順で導入してください: "
+        .. "https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md",
       vim.log.levels.WARN
     )
   end

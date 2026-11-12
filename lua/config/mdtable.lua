@@ -1,7 +1,7 @@
 -- mdtable の編集コマンドとの配線。Excel のブックの管理と書き戻しは mdtable に任せる。
 local M = {}
 
-local install_url = "https://github.com/ryo-aoki-pc/md-table-excel/blob/main/docs/install.md"
+local install_url = "https://github.com/ryo-aoki-pc/md-tools/blob/main/mdtable/docs/install.md"
   .. "#windows-11-で-mdtable-を導入更新する"
 
 local function fail(message)
@@ -31,7 +31,7 @@ function M.edit()
   local executable = vim.fn.exepath("mdtable")
   if executable == "" then
     fail(
-      "コマンドが見つかりません。md-table-excel の docs/install.md の"
+      "コマンドが見つかりません。md-tools の mdtable/docs/install.md の"
         .. "「Windows 11 で mdtable を導入・更新する」に従って導入してください: "
         .. install_url
     )
