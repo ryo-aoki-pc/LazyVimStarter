@@ -413,6 +413,7 @@ local function receive(s, value)
     s.ready_timer = nil
     s.ready, s.url = true, value.url
     s.edit = s.edit_requested and value.edit == 1
+    s.review = s.review_requested and value.review == 1
     if s.active then
       if s.resuming then
         send(s, { type = "resume" })
@@ -589,10 +590,12 @@ spawn_app = function(buf, active, open_mode)
   appearance = type(appearance) == "table" and appearance or {}
   local theme, width = appearance.theme, appearance.width
   s.edit_requested = vim.g.gitlab_preview_edit ~= false
+  s.review_requested = vim.g.gitlab_preview_review ~= false
   send(s, {
     type = "hello",
     protocol = 1,
     edit = s.edit_requested and 1 or nil,
+    review = s.review_requested and 1 or nil,
     appearance = {
       theme = (theme == "light" or theme == "dark") and theme or "system",
       width = width == "fixed" and width or "fluid",
@@ -663,6 +666,11 @@ end
 
 function M.is_running()
   return app ~= nil and app.active
+end
+
+-- コメントの対応は子プロセスごとに決まり、休止中も保持する。
+function M.is_review_enabled()
+  return app ~= nil and app.review == true
 end
 
 function M.install()

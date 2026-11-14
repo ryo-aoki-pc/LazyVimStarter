@@ -152,6 +152,7 @@ local ok, error_message = xpcall(function()
   test("require だけでは起動も autocmd の登録もしない", function()
     preview = require("config.gitlab_preview")
     assert(not preview.is_running() and preview.url() == nil)
+    assert(not preview.is_review_enabled())
     assert(process_count() == 0)
     local exists = pcall(vim.api.nvim_get_autocmds, { group = "user_gitlab_preview_process" })
     assert(not exists)
@@ -268,7 +269,8 @@ local ok, error_message = xpcall(function()
     assert(process_count() == 1)
     local hello = assert(last("hello"))
     assert(hello.protocol == 1 and hello.appearance.theme == "dark" and hello.appearance.width == "fixed")
-    assert(hello.edit == 1)
+    assert(hello.edit == 1 and hello.review == 1)
+    assert(not preview.is_review_enabled())
     assert(opened[#opened].callback and opened[#opened].url == preview.url())
   end)
   test("doc の絶対パス・名前・本文・changedtick を送る", function()
@@ -629,6 +631,7 @@ local ok, error_message = xpcall(function()
   local edit_id = 0
   local function start_editor(fields, enabled, extra)
     emit({ type = "error", fatal = true, message = "編集の試験の前に片付ける" })
+    assert(not preview.is_review_enabled())
     vim.g.gitlab_preview_edit = enabled
     local options = extra or {}
     options.readyFields = fields
@@ -703,9 +706,99 @@ local ok, error_message = xpcall(function()
       "バッファをファイルへ保存しない"
     )
   end
-  test("古いアプリは hello の edit を無視し、編集を断る", function()
+  local review_settings = {
+    { name = "既定" },
+    { name = "false", value = false },
+    { name = "true", value = true },
+  }
+  for _, setting in ipairs(review_settings) do
+    for _, supported in ipairs({ false, true }) do
+      for _, editing in ipairs({ { name = "編集有効" }, { name = "編集無効", value = false } }) do
+        local name = ("コメント設定%s・%s・%s"):format(
+          setting.name,
+          supported and "コメント対応アプリ" or "コメント未対応アプリ",
+          editing.name
+        )
+        test(name, function()
+          vim.g.gitlab_preview_review = setting.value
+          start_editor({ edit = 1, unknown = { enabled = true } }, editing.value, { reviewSupported = supported })
+          local requested = setting.value ~= false
+          local hello = assert(last("hello"))
+          assert(hello.protocol == 1 and hello.review == (requested and 1 or nil))
+          assert(hello.edit == (editing.value ~= false and 1 or nil))
+          assert(preview.is_review_enabled() == (requested and supported))
+          if editing.value == false then
+            rejected(edit_request())
+          else
+            local before = vim.api.nvim_buf_get_lines(edit_buf, 0, -1, false)
+            accepted(edit_request(), { "先頭", "画面からの変更", "三行目", "末尾" })
+            vim.cmd("silent undo")
+            assert(vim.deep_equal(vim.api.nvim_buf_get_lines(edit_buf, 0, -1, false), before))
+            trigger("TextChanged", edit_buf)
+            settle(100)
+          end
+        end)
+      end
+    end
+  end
+  for _, value in ipairs({ false, true, "1", 0, 2, vim.NIL }) do
+    test("ready の review が数値の1でなければ有効にしない: " .. vim.inspect(value), function()
+      vim.g.gitlab_preview_review = true
+      start_editor({ edit = 1, review = value })
+      assert(last("hello").review == 1 and not preview.is_review_enabled())
+    end)
+  end
+  test("コメントだけに対応する ready ではコメントを有効にし、編集を断る", function()
+    vim.g.gitlab_preview_review = nil
+    start_editor({ review = 1 })
+    assert(last("hello").edit == 1 and last("hello").review == 1)
+    assert(preview.is_review_enabled())
+    rejected(edit_request())
+  end)
+  test("コメントを要求しなければ ready の review が1でも有効にしない", function()
+    vim.g.gitlab_preview_review = false
+    start_editor({ edit = 1, review = 1 })
+    assert(last("hello").review == nil and not preview.is_review_enabled())
+    vim.g.gitlab_preview_review = true
+    preview.stop()
+    preview.start()
+    ready(preview)
+    assert(not preview.is_review_enabled())
+  end)
+  test("コメントの設定は起動時に読み、ready 前は無効、合意は休止・再開で保つ", function()
+    emit({ type = "error", fatal = true, message = "コメントの起動前に片付ける" })
+    vim.g.gitlab_preview_review = true
+    config({ ready = false })
+    local previous = pid()
+    preview.start()
+    assert(not preview.is_review_enabled())
+    wait("新しい子へ hello を送る", function()
+      local hellos = messages("hello")
+      return pid() ~= previous and hellos[#hellos].pid == pid()
+    end)
+    assert(last("hello").review == 1)
+    vim.g.gitlab_preview_review = false
+    emit({ type = "ready", protocol = 1, url = "http://127.0.0.1:12345/review-test/", edit = 1, review = 1 })
+    ready(preview)
+    assert(preview.is_review_enabled())
+    local hellos = #messages("hello")
+    preview.stop()
+    assert(preview.is_review_enabled())
+    preview.start()
+    ready(preview)
+    assert(#messages("hello") == hellos and preview.is_review_enabled())
+    emit({ type = "error", fatal = true, message = "コメントの終了後は無効" })
+    assert(not preview.is_review_enabled())
+    config({})
+    preview.start()
+    ready(preview)
+    assert(last("hello").review == nil and not preview.is_review_enabled())
+    vim.g.gitlab_preview_review = nil
+  end)
+  test("古いアプリは hello の edit と review を無視し、編集を断る", function()
     start_editor(nil)
-    assert(last("hello").edit == 1)
+    assert(last("hello").edit == 1 and last("hello").review == 1)
+    assert(not preview.is_review_enabled())
     rejected(edit_request())
   end)
   test("edit 対応の ready で置き換え、結果と本文を1回ずつ返し、undo で戻せる", function()
@@ -916,7 +1009,7 @@ vim.notify, vim.ui.open, vim.system = original.notify, original.open, original.s
 vim.fn.exepath, vim.fn.has, uv.os_homedir = original.exepath, original.has, original.homedir
 vim.env.MD_PREVIEW_BRIDGE_TEST_DIR = saved_dir
 vim.g.gitlab_preview_command, vim.g.gitlab_preview_browser, vim.g.gitlab_preview_appearance = nil, nil, nil
-vim.g.gitlab_preview_edit = nil
+vim.g.gitlab_preview_edit, vim.g.gitlab_preview_review = nil, nil
 assert(
   vim.fs.normalize(sandbox):sub(1, #root + 8) == root .. "/.tests/",
   "試験の片付けは作業ツリー内だけ"
