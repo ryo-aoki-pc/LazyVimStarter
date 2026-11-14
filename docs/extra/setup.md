@@ -2,7 +2,7 @@
 
 [手順書（Neovim のセットアップ）](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md)・検証記録・[参考資料](../reference/setup.md)
 
-- 「AlmaLinux 導入の手順 N」は正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)、「Windows 導入の手順 N」は[Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順を指す
+- 「AlmaLinux 導入の手順 N」は正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順を指す。Windows 11 は、Neovim と外部コマンド・自分用の設定が入っていることを前提にする
 
 ## 必要なもの一覧
 
@@ -15,7 +15,7 @@
 | [fd](https://github.com/sharkdp/fd) | ファイルピッカーと explorer | Windows で必須 / Linux では推奨 |
 | C コンパイラ (gcc または MSVC の cl) | treesitter のパーサーのビルド | 必須 |
 | tree-sitter CLI | treesitter のパーサーのビルド。PATH に無ければ LazyVim が Mason で入れる | 必須 (自動で入る) |
-| curl / tar / gzip / unzip | treesitter と Mason の取得・展開 | 必須 (Windows 11 は同梱の curl と tar だけでよい。[Windows の外部コマンドの説明](../reference/setup.md#windows-11-で-lazyvim-の設定を導入する--手順-5-補足-windows-の外部コマンド)) |
+| curl / tar / gzip / unzip | treesitter と Mason の取得・展開 | 必須 (Windows 11 は同梱の curl と tar だけでよい。[Windows の外部コマンドの説明](../reference/setup.md#windows-の外部コマンド)) |
 | [Node.js](https://nodejs.org/) 22 以上 (node + npm) | Mason の LSP・lint、Markdown の整形器 [md-format](https://github.com/ryo-aoki-pc/md-format) | 必須 |
 | Nerd Font ([HackGen Console NF](https://github.com/yuru7/HackGen)) | アイコン表示と `guifont` | 実質必須 (無いと記号が豆腐になる) |
 | ibus + ibus-anthy、`busctl` か `gdbus` | 日本語入力 (Linux)。global engine を切り替える | Linux で必須 |
@@ -48,8 +48,8 @@
   - 導入と同じ手順 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md#md-preview-を導入更新する) / [Windows 11](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md#windows-11-で-md-preview-を導入更新する)) で上げる
 - **コード配色が GitLab.com の標準と異なる**: highlight.js の字句を GitLab (Rouge) のクラス名に対応づけているため、色分けは GitLab より粗い。公式スタイルでは明暗両方のテーマで Dracula を使う
 - **Windows で `nvim` が起動しない (`VCRUNTIME140.dll が見つからない` / `0xC0000135`)**: Visual C++ のランタイムが入っていない
-  - scoop の `neovim` は `VCRUNTIME140.dll` を同梱しない (`nvim.exe` と `lua51.dll` が読み込む)。[Windows 導入の手順 5](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の 1 行目が、`System32\vcruntime140.dll` が無いときだけ `vcredist2022` を入れる。手順 6 の `nvim --version` で確かめる
-  - `vcruntime140.dll` があるのに手順 6 の `nvim --version` が通らないときは、`scoop install vcredist2022` を条件を付けずに貼り、今の版のランタイムを入れる (手順 5 の 1 行目はファイルの有無だけを見て、版は見ない)。`already installed` と出たら、`scoop uninstall vcredist2022` の後にもう一度貼る (uninstall で消えるのはインストーラーだけで、ランタイムは残る)
+  - scoop の `neovim` は `VCRUNTIME140.dll` を同梱しない (`nvim.exe` と `lua51.dll` が読み込む)。[Microsoft の公式の案内](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)で x64 のランタイムが入っていることを確かめる
+  - `vcruntime140.dll` があっても `nvim --version` が通らないときは、同じ公式の案内に従い、今の版のランタイムへ更新する
   - VC++ のランタイムが無いクリーンインストールの Windows 11 VM では、Neovim 0.12.5 が終了コード `-1073741515` (`0xC0000135`) になり、起動しなかった
 - **一部の Mason のツールだけが入らない (`stylua` など)**: `unzip` が無い
   - Mason は zip で配布されるツールの展開に `unzip` を使い、無いと**そのツールだけ**が静かに失敗する

@@ -6,26 +6,25 @@ Markdown (GLFM) 執筆を強化した Neovim 設定。
 ## 導入
 
 - 対象: AlmaLinux 10 + GNOME、Windows 11 と Android の Termux の自分のユーザー。
-- AlmaLinux 10 と Windows 11 の手順は setup-notes にあり、
-  本体を入れてから、この設定を `~/.config/nvim` (Windows は `%LOCALAPPDATA%\nvim`) に clone する
+- AlmaLinux 10 の手順は setup-notes にある。Windows 11 は、Neovim と外部コマンドが入り、
+  `%LOCALAPPDATA%\nvim` にこの設定の `custom` ブランチの clone があることを前提にする
 - 外部コマンドとフォントは[外部依存](#外部依存)を前提にしている。足りなくてもエラーにならず静かに壊れるので、手順書の前提を先に通す
 
 | | AlmaLinux 10 | Windows 11 |
 | --- | --- | --- |
-| 本体とこの設定 | [Neovim](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#neovim) (手順 3 で「LazyVim の設定を導入する」も通す) | [Windows 11 で Neovim を入れる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-neovim-を入れる) (手順 4 で「Windows 11 で LazyVim の設定を導入する」も通す) |
-| この設定だけ (本体が入っているとき) | [LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する) |
+| 本体とこの設定 | [Neovim](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#neovim) (手順 3 で「LazyVim の設定を導入する」も通す) | [Neovim の公式の導入案内](https://neovim.io/doc/install/)。自分用の設定が入っていること |
+| この設定だけ (本体が入っているとき) | [LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する) | `%LOCALAPPDATA%\nvim` にこの設定の `custom` ブランチの clone があること |
 | Markdown の整形器 md-format (`mdfmt`) | [md-format を導入・更新する](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/install.md#md-format-を導入更新する) | [Windows 11 で md-format を導入・更新する](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/install.md#windows-11-で-md-format-を導入更新する) |
-| 安全な Markdown 整形 (md-format の後) | [LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する) | [Windows 11 で LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の安全な-markdown-整形を導入する) |
+| 安全な Markdown 整形 (md-format の後) | [LazyVim の安全な Markdown 整形を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する) | md-format が入り、この設定で保存時に `mdfmt` を使えること |
 | GitLab プレビューの実行ファイル md-preview (`mdpreview` / `mdpreview.exe`。任意) | [md-preview を導入・更新する](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md#md-preview-を導入更新する) | [Windows 11 で md-preview を導入・更新する](https://github.com/ryo-aoki-pc/md-tools/blob/main/docs/install.md#windows-11-で-md-preview-を導入更新する) |
-| GitLab プレビュー (md-preview の後。任意) | [LazyVim の GitLab プレビューを導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを導入する) | [Windows 11 で LazyVim の GitLab プレビューを導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の-gitlab-プレビューを導入する) |
-| 動作の確認 | [LazyVim の日本語検索・整形・IME 連携を確かめる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の日本語検索整形ime-連携を確かめる) (この設定と安全な整形の後、再起動してから) | [Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 9 (その項を最後まで通したなら済んでいる) |
+| GitLab プレビュー (md-preview の後。任意) | [LazyVim の GitLab プレビューを導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-gitlab-プレビューを導入する) | md-preview が入り、この設定で `<leader>cp` を使えること |
+| 動作の確認 | [LazyVim の日本語検索・整形・IME 連携を確かめる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の日本語検索整形ime-連携を確かめる) (この設定と安全な整形の後、再起動してから) | 自分用の設定で `:checkhealth lazyvim luamigemo` を確かめる |
 | ほかのマシンの変更を取り込む | [LazyVim の設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定とプラグインの版を揃える) | [Windows 11 で LazyVim の設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定とプラグインの版を揃える) |
 | 更新 | [LazyVim の本体・外部コマンド・プラグインを更新する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の本体外部コマンドプラグインを更新する) | [Windows 11 で LazyVim の本体・外部コマンド・プラグインを更新する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の本体外部コマンドプラグインを更新する) |
 
 - 任意: [カーソル色を tmux で使う](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のカーソル色を-tmux-で使う)・
   [IME 連携に GNOME の上部バーを合わせる](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の-ime-連携に-gnome-の上部バーを合わせる)・
-  [ヤンクを SSH 越しに手元へ送る](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のヤンクを-ssh-越しに手元へ送る)・
-  [Neovim を既定のエディタにする](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#neovim-を既定のエディタにする) (Windows 11)
+  [ヤンクを SSH 越しに手元へ送る](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-のヤンクを-ssh-越しに手元へ送る)
 
 この README は「何ができる設定か」を説明する。
 
@@ -164,7 +163,7 @@ Linux では **GNOME の入力ソース登録と anthy のショートカット�
     Markdown を開くと、依存を読み込んだ整形用の node を 1 つ先に起動しておき (約 85 MB)、保存の待ち時間を縮める
     (結果は同じ。使わないときは `lang-markdown.lua` の `format_spare = false`)。
     md-format は md-format の導入の手順 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/install.md#md-format-を導入更新する) / [Windows 11](https://github.com/ryo-aoki-pc/md-format/blob/main/docs/install.md#windows-11-で-md-format-を導入更新する)) で入れ、
-    安全な整形の導入 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する) / [Windows 11](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の安全な-markdown-整形を導入する)) で確かめる
+    AlmaLinux 10 は [安全な整形の導入](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する)で確かめる。Windows 11 は md-format とこの設定が入っていることを前提にする
     (Neovim からは導入しない。導入されていなければ、保存の整形は原文のまま、導入を促すエラーを出す)。
     MDX は prettier と markdownlint-cli2。Markdown / MDX の待ち時間の上限は 10 秒
     (速い環境では処理が終わった時点で戻る)。ほかのファイルは LazyVim 既定の 3 秒。
@@ -267,7 +266,7 @@ Mason ではなく Termux のパッケージで入れる。
 (別マシンでは `:Lazy restore` で同じバージョンに揃う)。
 `:Lazy sync` は update を含むので、揃えるだけのときは使わない。
 初めてのマシンでは初回の導入が lock ファイルを書き換えるので、
-正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 8 (Windows 11 は[Windows 11 で LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定を導入する)の手順 7) の形で揃える。
+AlmaLinux 10 は正本の[LazyVim の設定を導入する](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の設定を導入する)の手順 8、Windows 11 は[設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定とプラグインの版を揃える)の形で揃える。
 
 ## 文書
 

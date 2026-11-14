@@ -80,7 +80,7 @@
 
 ### LazyVim の設定を導入する / 手順 8: 補足: <code>lazy-lock.json</code> を戻してから restore する理由
 
-Windows 11 では「Windows 11 で LazyVim の設定を導入する」の手順 7 に当たる。
+Windows 11 の導入済みの設定は、[設定とプラグインの版を揃える](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の設定とプラグインの版を揃える)で取り込む。
 
 - lazy.nvim は起動時に、足りないプラグインを `lazy-lock.json` の版で入れる。ただし初回は導入が何回かに分かれて走る
 - 1 回目は LazyVim などの分だけを入れ、その時点で導入済みのものだけで `lazy-lock.json` を書き直す。そのため、2 回目以降に入るプラグインは記録の版ではなく最新になる
@@ -117,14 +117,11 @@ Windows 11 では「Windows 11 で LazyVim の設定を導入する」の手順 
 - 整形は保存時に conform.nvim が `mdfmt` (md-format) を掛ける。markdownlint-cli2 の修正候補のうち、説明リストの対応・所属・本文を保つものを反映する。`#動作確認` は MD018 (見出しの `#` の後の空白) の違反
 - IME 連携は ibus-daemon が動いているセッションで起動したときだけ有効になる。ログインし直した後の端末で起動する
 
-### Windows 11 で LazyVim の設定を導入する / 手順 5: 補足: Windows の外部コマンド
+### Windows の外部コマンド
 
 - `zenhan` / `neovim` / `ripgrep` / `fd` / `gcc` / `nodejs` は scoop の `main` バケット、`vcredist2022` / `lazygit` は `extras` にある (バケットの定義で確認)
 - `curl` と `tar` は Windows 11 が `C:\Windows\System32` に同梱している
-- scoop の `neovim` は VC++ のランタイム (`VCRUNTIME140.dll`) を同梱しない。`extras/vcredist2022` の提案だけでは自動導入されないため、この手順で先に入れて揃える ([注意点](../extra/setup.md#注意点))
-- ランタイムは `System32\vcruntime140.dll` が無いときだけ入れる。ほかのアプリや winget (`Microsoft.VCRedist.2015+.x64`) で入れてある PC で `vcredist2022` を入れると、x64・x86 の 2 つのインストーラーの UAC が余計に出るため
-  - 見るのはファイルの有無だけで、版は見ない
-  - `nvim.exe` は x64 なので、64 ビットの PowerShell (既定) で `System32` を見る。32 ビットの PowerShell では `System32` が `SysWOW64` に読み替えられ、x86 のランタイムを見てしまう
+- scoop の `neovim` は VC++ のランタイム (`VCRUNTIME140.dll`) を同梱しない。x64 のランタイムが入っていることを前提にする ([注意点](../extra/setup.md#注意点))
 - `gzip` と `unzip` は要らない。Mason は Windows では zip を PowerShell の `Expand-Archive` で、`.tar.gz` を同梱の `tar` で展開する。この設定で入る 11 個は、どちらかか、展開の要らない exe・npm で済む
 - `:checkhealth mason` の `unzip` / `gzip` / `wget` の WARNING は無視してよい
 - C コンパイラは `gcc` が PATH にあれば、LazyVim が見つけて `CC` に設定する
