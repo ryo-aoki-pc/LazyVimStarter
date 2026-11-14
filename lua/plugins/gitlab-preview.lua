@@ -3,6 +3,7 @@
 -- cmd / keys による遅延読み込みは普通のプラグインと同じに効く (初めて使うまで何も読み込まない)。
 -- virtual は lazy.nvim の文書に無い機能 (lazy/core/meta.lua と loader.lua で扱っている)。lazy.nvim を
 -- 上げて使えなくなったら、lua/plugins/spell.lua と同じく snacks.nvim の spec の keys に相乗りさせる。
+-- 画面のコメントは既定で有効。vim.g.gitlab_preview_review = false で無効にする (子の起動時に読む)。
 local commands = {
   GitLabPreview = {
     "start",
