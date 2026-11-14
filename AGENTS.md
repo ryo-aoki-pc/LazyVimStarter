@@ -4,7 +4,7 @@
 
 ## 導入手順の正本
 
-導入・利用・更新の手順は、setup-notes の [neovim.md](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md) (Neovim のセットアップ。AlmaLinux 10 と Windows 11) にある。このリポジトリには置かない。
+AlmaLinux 10 の導入・利用・更新と、Windows 11 の導入済みの設定・プラグインの更新の手順は、setup-notes の [neovim.md](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md) (Neovim のセットアップ。AlmaLinux 10 と Windows 11) にある。このリポジトリには置かない。
 
 ## このリポジトリについて
 
@@ -63,7 +63,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
   `:Lazy restore` で揃える)。`:Lazy sync` は update を含むので、揃えるだけのときは使わない。
 - **初回導入は `lazy-lock.json` を書き換える**。lazy.nvim の起動時の導入は何回かに分かれ、1 回目の後に
   導入済みの分だけで lock を書き直す (`lazy/manage/lock.lua` の `update()`) ため、後から入るプラグインが最新になる。
-  git で lock を戻してから `:Lazy restore` し直すと揃う (正本の「LazyVim の設定を導入する」の手順 8、Windows 11 は「Windows 11 で LazyVim の設定を導入する」の手順 7)。
+  git で lock を戻してから `:Lazy restore` し直すと揃う (正本の「LazyVim の設定を導入する」の手順 8、Windows 11 は「Windows 11 で LazyVim の設定とプラグインの版を揃える」の手順 2)。
 - `checkhealth lazyvim` を headless で見るときは、先に `mason.nvim` を読み込む (Mason の `bin` が PATH に
   入るのは Mason を読み込んだときだけで、読み込まないと `tree-sitter (CLI)` が ERROR になる)。
 
@@ -172,7 +172,7 @@ nvim --headless "+Lazy! load mason.nvim luamigemo" "+checkhealth lazyvim luamige
 
 ## 文書の置き場所
 
-- 導入・利用・更新の手順は正本に置き、README の「導入」の表から正本の項へ直接リンクする (手順書の先頭やカテゴリの見出しへはリンクしない)。執筆規則は setup-notes の `docs/dev/writing-rules.md`
+- 導入・利用・更新の手順は正本に置き、README の「導入」の表から正本の項へ直接リンクする (手順書の先頭やカテゴリの見出しへはリンクしない)。導入の項が無い Windows 11 の設定は、導入済みの状態か公式の案内へのリンクで書く。執筆規則は setup-notes の `docs/dev/writing-rules.md`
 - `docs/extra/setup.md` は必要なもの一覧・注意点。ロールバック（取り消し）の手順は書かない。`docs/reference/setup.md` は正本の各手順の背景 (見出しは `### <項> / 手順 N: 補足: <題>`)。検証記録 (環境・日付・対象コミット・実出力・未確認事項) は Forgejo の非公開リポジトリ `setup-notes-verification` の `repos/LazyVimStarter/docs/verification/` に置く
 - `docs/dev/architecture.md` は設計、`docs/dev/check.md` は変更後の確認 (Markdown の整形の配線とプレビューの橋渡しの試験)。整形器のルール一覧は md-format の `docs/reference/rules.md` にある。非公開側の検証記録の `claude.md` は実施範囲の要約
 - 正本の手順番号が変わったら、参考資料と extra の手順番号を付け替える。setup-notes から張られている見出し (extra の「必要なもの一覧」「注意点」など) は名前を変えない

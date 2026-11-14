@@ -2,7 +2,7 @@
 
 ## Markdown の整形の配線の試験
 
-- `lua/config/md_format.lua`・`md_format_spare.lua`・`lua/plugins/lang-markdown.lua` を変えたときに行う。setup-notes の安全な整形の導入 ([AlmaLinux 10](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する) / [Windows 11](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#windows-11-で-lazyvim-の安全な-markdown-整形を導入する)) を先に済ませる
+- `lua/config/md_format.lua`・`md_format_spare.lua`・`lua/plugins/lang-markdown.lua` を変えたときに行う。AlmaLinux 10 は setup-notes の[安全な整形の導入](https://github.com/ryo-aoki-pc/setup-notes/blob/main/docs/neovim.md#lazyvim-の安全な-markdown-整形を導入する)を先に済ませる。Windows 11 は md-format とこの設定が入り、保存時に `mdfmt` を使えることを前提にする
 - インストール済みの conform.nvim が必要。整形器そのものの試験は [md-format](https://github.com/ryo-aoki-pc/md-format) のリポジトリにある
 
 1. AlmaLinux 10 では、conform と予備のプロセスの配線を確かめる。
